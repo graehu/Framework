@@ -1,0 +1,18 @@
+----Classes----
+
+window: This gets you a context.
+graphics: This lets you render to that context.
+input: Deals with keyboard input. (so far)
+game: This is the base class that uses all the others. (so main loop)
+skin: contains all the info needed to blit to the context. (other than image specifics.)
+animSkin: all the info needed for an animated image. (other than image specifics)
+
+----The Future----
+
+Integrating Tiled maps. (Tiled map editor)
+Integrating my networking code.
+Entity code.
+Physics code.
+
+
+This is going to be interesting.
