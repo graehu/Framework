@@ -25,23 +25,23 @@ int gSdl::update()
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //this is how a an image is blited to a surface
-int gSdl::blitImage(int _imageID, rect _source, rect _destination)
+void gSdl::visit(sprite* _sprite) //rendering a sprite :)
 {
   //you can use image->w to get the width of the image.
   SDL_Surface* image = SDL_DisplayFormat(&m_images[_imageID]);
   SDL_Rect source, destination;
 
   //image space
-  source.x = _source.m_x;
-  source.y = _source.m_y;
-  source.w = _source.m_w;
-  source.h = _source.m_h;
+  source.x = 0;
+  source.y = 0;
+  source.w = image->w; //for now this doesn't take into account the cropping WHATEVES.
+  source.h = image->h;
 
   //screen space
-  destination.x = _destination.m_x;
-  destination.y = _destination.m_y;
-  destination.w = _destination.m_w;
-  destination.h = _destination.m_h;
+  destination.x = _sprite.m_x;
+  destination.y = _sprite.m_y;
+  destination.w = image->w;
+  destination.h = image->h;
 
   //image successfully blitted to the screen surface. flip to render.
   SDL_BlitSurface(image, &source, m_windowSurface, &destination);
@@ -69,7 +69,7 @@ int gSdl::loadImage(char* _fileName)
     }
   else m_images.push_back(*temp);
 
-  return 0;
+  return m_images.size() - 1;
 }
 
 
@@ -88,8 +88,6 @@ int gSdl::unloadImage(int _imageID){return 0;}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-
-
 int gSdl::render()
 {
 
@@ -97,8 +95,7 @@ int gSdl::render()
 
   return 0;
 
-} //this'll have flipping the buffer within
-
+}
 
 
 

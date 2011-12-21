@@ -13,7 +13,6 @@ class rect
 
   float m_x; //coordinates
   float m_y;
-  float m_z;
 
   float m_h; //height
   float m_w; //width

@@ -13,7 +13,11 @@ set(
   header 
   src/graphics/graphics.h;
   src/graphics/gSdl/gSdl.h;
-  src/types/rect.h
+  src/graphics/iRenderVisitor.h;
+  src/graphics/renderable/iRenderable.h;
+  src/graphics/renderable/sprite/sprite.h;
+  src/graphics/renderable/sprite/animSprite/animSprite.h;
+  src/types/rect.h;
   src/game/game.h;
   src/input/input.h;
   src/input/inSdl/inSdl.h;
