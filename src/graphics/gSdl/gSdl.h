@@ -4,8 +4,11 @@
 #include <SDL/SDL.h>
 #include <vector>
 
+
 #include "../graphics.h"
-#include "../iRenderVisitor.h"
+#include "../renderable/sprite/sprite.h"
+#include "../renderable/sprite/animSprite/animSprite.h"
+
 
 class gSdl : public graphics, public iRenderVisitor
 {
@@ -24,12 +27,13 @@ class gSdl : public graphics, public iRenderVisitor
 
   int init();
   int shutdown();
+  
+  iRenderVisitor* getRenderer(void);
 
   //visitor section
 
   void visit(sprite* _sprite);
-  void visit(animSprite* _animSprite){};
-
+  void visit(animSprite* _animSprite){printf("odd\n");}
 
  protected:
 

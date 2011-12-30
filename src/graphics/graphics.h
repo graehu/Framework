@@ -3,6 +3,7 @@
 
 #include <vector>
 #include "../types/rect.h"
+#include "iRenderVisitor.h"
 
 
 class graphics
@@ -18,6 +19,7 @@ class graphics
 
   virtual int shutdown(void) = 0; //shutsdown the graphics engine
   virtual int update(void) = 0; //this is currently useless.
+  virtual iRenderVisitor* getRenderer(void) = 0; //passes back the renderer
 
   static graphics* graphicsFactory(void);
 

@@ -2,6 +2,7 @@
 #define SPRITE_H
 
 #include "../../../types/rect.h"
+//#include "../../iRenderVisitor.h" // i shouldn't need this...
 #include "../iRenderable.h"
 
 class sprite : public iRenderable
@@ -11,7 +12,12 @@ class sprite : public iRenderable
   sprite(){m_imageID = 0; m_x = m_y = 0;}
   ~sprite(){};
 
-  void render(iRenderVisitor _renderer) {_renderer->visit(this);}
+  void render(iRenderVisitor* _renderer)
+  {
+    //printf("calling render\n");
+    sprite* odd = this;
+    _renderer->visit(odd);
+  }
 
   float m_x, m_y;
   int m_imageID; // This is the image we want.

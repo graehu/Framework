@@ -1,8 +1,9 @@
 #ifndef IRENDERABLE_H
 #define IRENDERABLE_H
 
-#include "../iRenderVisitor.h"
 //class iRenderVisitor;
+#include "../iRenderVisitor.h"
+
 class iRenderable
 {
  public:

@@ -1,6 +1,8 @@
 #ifndef ANIMSPRITE_H
 #define ANIMSPRITE_H
 
+#include "../sprite.h"
+
 class animSprite : public sprite
 {
  public:

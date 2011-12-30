@@ -11,9 +11,9 @@ set(
 
 set(
   header 
+  src/graphics/iRenderVisitor.h;
   src/graphics/graphics.h;
   src/graphics/gSdl/gSdl.h;
-  src/graphics/iRenderVisitor.h;
   src/graphics/renderable/iRenderable.h;
   src/graphics/renderable/sprite/sprite.h;
   src/graphics/renderable/sprite/animSprite/animSprite.h;

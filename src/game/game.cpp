@@ -1,6 +1,7 @@
 #include "game.h"
 #include <SDL/SDL.h>
 #include "../types/rect.h"
+#include "../graphics/renderable/sprite/sprite.h"
 
 
 game::game()
@@ -18,24 +19,32 @@ void game::init(void)
   
   m_input = input::inputFactory();
   m_input->init();
-
+  
   m_graphics->loadImage("image.bmp");
+  
 }
 
 void game::run(void)
 {
   init();
-  rect source, destination;
+
+  sprite mySprite;
+
+  rect source;
   source.m_x = 0; source.m_y = 0;
   source.m_w = 128; source.m_h = 128;
- 
-  destination.m_x = 20; destination.m_y = 20;
-  destination.m_w = 128; destination.m_h = 128;
+  
+  mySprite.m_imageCrop = source;
+  mySprite.m_x = 25;
+  mySprite.m_y = 25;
+  mySprite.m_imageID = 0;
 
   while(m_looping)
     {
       if(m_input->update()) m_looping = false;
-      m_graphics->blitImage(0, source, destination);
+      //m_graphics->blitImage(0, source, destination);
+      //mySprite.render((iRenderVisitor*)m_graphics);
+      mySprite.render(m_graphics->getRenderer());
       SDL_Delay(30);
       m_graphics->render();
     }
