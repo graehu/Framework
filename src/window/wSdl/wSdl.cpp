@@ -25,6 +25,7 @@ int wSdl::init(int _width, int _height, char* _name)
   m_width = _width;
   m_height = _height;
   m_name = _name;
+  return 0;
 }
 
 int wSdl::getWidth()

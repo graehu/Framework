@@ -1,5 +1,6 @@
 #ifndef PACKETUTILS_H
 #define PACKETUTILS_H
+#include <stdio.h>
 
 
 class dataUtils
@@ -8,9 +9,12 @@ public:
 
 	static dataUtils& instance(void)
 	{
-		dataUtils* instance;
-		if(!instance)
+		static dataUtils* instance = 0;
+		if(instance == 0)
+		{
+			printf("this is totally initialised.\n");
 			instance = new dataUtils();
+		}
 		return *instance;
 	}
 

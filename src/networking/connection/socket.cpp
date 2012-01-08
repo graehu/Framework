@@ -1,6 +1,7 @@
 #include "socket.h"
 using namespace net;
 
+
 socket::socket()
 {
 	m_socket = 0;
@@ -55,7 +56,7 @@ bool socket::openSock(unsigned short port)
 	#elif PLATFORM == PLATFORM_WINDOWS
 
 		DWORD nonBlocking = 1;
-		if ( ioctlsocket( socket, FIONBIO, &nonBlocking ) != 0 )
+		if ( ioctlsocket( m_socket, FIONBIO, &nonBlocking ) != 0 )
 		{
 			printf( "failed to set non-blocking socket\n" );
 			closeSock();
@@ -73,7 +74,7 @@ void socket::closeSock()
 		#if PLATFORM == PLATFORM_MAC || PLATFORM == PLATFORM_UNIX
 		close(m_socket);
 		#elif PLATFORM == PLATFORM_WINDOWS
-		closesocket(socket);
+		closesocket(m_socket);
 		#endif
 		m_socket = 0;
 	}

@@ -1,5 +1,5 @@
 #include "game.h"
-#include <SDL/SDL.h>
+#include "SDL/SDL.h"
 #include "../types/rect.h"
 #include "../graphics/renderable/sprite/sprite.h"
 
@@ -22,7 +22,7 @@ void game::init(void)
   m_input = input::inputFactory();
   m_input->init();
   
-  m_graphics->loadImage("right.bmp");
+  m_graphics->loadImage("hi.png");
   
   m_network = new net::network(0xF00D, 100.0f);
   printf("not hanging here\n");

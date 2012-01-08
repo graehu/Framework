@@ -1,4 +1,5 @@
 cmake_minimum_required (VERSION 2.6)
+
 project (gradius)
 set(
   source 
@@ -57,10 +58,30 @@ set(
   src/networking/utils/dataUtils.h;
 )
 
+
+
+
+if(WIN32)
+
+  file(COPY SDL DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
+  set(SDLIMAGE_INCLUDE_DIR $(SolutionDir)SDL)
+  set(SDLIMAGE_LIBRARY $(SolutionDir)SDL/lib/SDL_image.lib)
+
+  set(SDL_INCLUDE_DIR $(SolutionDir)SDL)
+  set(SDLMAIN_LIBRARY $(SolutionDir)SDL/lib/SDLmain.lib)
+  set(SDL_LIBRARY_TEMP $(SolutionDir)SDL/lib/SDL.lib)
+
+endif(WIN32)
+
 find_package(SDL)
 find_package(SDL_image)
+
 link_libraries(${SDL_LIBRARY} ${SDLIMAGE_LIBRARY})
 add_executable(gradius ${source} ${header})
+
+
+
 
 
 #These are possible future packages.
