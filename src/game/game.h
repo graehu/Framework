@@ -6,8 +6,11 @@
 #include "../window/window.h"
 #include "../graphics/graphics.h"
 #include "../input/input.h"
+#include "../networking/net.h"
+#include "../networking/utils/subscriber.h"
 
-class game
+
+class game : public net::subscriber
 {
  public:
 
@@ -15,6 +18,7 @@ class game
   ~game();
 
   void run(void);
+  void notify(net::events _event);
 
  protected:
 
@@ -22,6 +26,7 @@ class game
   graphics* m_graphics;
   window* m_window;
   input* m_input;
+  net::network* m_network;
 
  private:
 

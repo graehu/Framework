@@ -57,16 +57,30 @@ void gSdl::visit(sprite* _sprite) //rendering a sprite :)
 int gSdl::loadImage(char* _fileName)
 {
 
-  SDL_Surface* temp;
-  temp = SDL_LoadBMP(_fileName);
+  SDL_Surface* l_loadedImage;
+  l_loadedImage = IMG_Load(_fileName);
 
-  if (temp == NULL)
+  if (l_loadedImage == NULL)
     {
       printf("Unable to load bitmap: %s\n", SDL_GetError());
-      return 1;
+      return 0;
     }
-  else m_images.push_back(*temp);
-
+  else
+  {
+	  SDL_Surface* l_optimisedImage = SDL_DisplayFormat(l_loadedImage);
+	  SDL_FreeSurface(l_loadedImage);
+	  if(l_optimisedImage == NULL)
+	  {
+	      printf("Unable to load bitmap: %s\n", SDL_GetError());
+	      return 0;
+	  }
+	  else
+	  {
+		  Uint32 colourkey = SDL_MapRGB(l_optimisedImage->format, 0xFF, 0, 0xFF );
+		  SDL_SetColorKey(l_optimisedImage, SDL_SRCCOLORKEY, colourkey);
+		  m_images.push_back(*l_optimisedImage);
+	  }
+  }
   return m_images.size() - 1;
 }
 
@@ -90,6 +104,7 @@ int gSdl::render()
 {
 
   SDL_Flip(m_windowSurface);
+  SDL_FillRect(m_windowSurface, 0, SDL_MapRGB(m_windowSurface->format, 0, 0, 0));
 
   return 0;
 

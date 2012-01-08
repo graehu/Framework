@@ -8,8 +8,9 @@ class inSdl : public input
 {
  public:
 
+
   int init(void);
-  void getKeys(bool* _keys);
+  bool isKeyPressed(gameKeys _key);
   bool update(void);
   int mouse(void); //hmmmmmmmmmmmmmmm
 

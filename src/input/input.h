@@ -16,7 +16,7 @@ class input
 
   virtual int init(void) = 0; //This functions should read What keys will be assigned to the commands above.
   virtual bool update(void) = 0;
-  virtual void getKeys(bool* _key) = 0;
+  virtual bool isKeyPressed(gameKeys _key) = 0;
   virtual int mouse(void) = 0; //hmmmmmmmmmmmmmmm
 
   static input* inputFactory(void);

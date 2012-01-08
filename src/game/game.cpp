@@ -4,6 +4,8 @@
 #include "../graphics/renderable/sprite/sprite.h"
 
 
+
+
 game::game()
 {
   m_looping = true;
@@ -12,7 +14,7 @@ game::game()
 void game::init(void)
 {
   m_window = window::windowFactory();
-  m_window->init(200, 200, "Gradius");
+  m_window->init(500, 500, "Gradius");
 
   m_graphics = graphics::graphicsFactory();
   m_graphics->init();
@@ -20,8 +22,25 @@ void game::init(void)
   m_input = input::inputFactory();
   m_input->init();
   
-  m_graphics->loadImage("image.bmp");
+  m_graphics->loadImage("right.bmp");
   
+  m_network = new net::network(0xF00D, 100.0f);
+  printf("not hanging here\n");
+  if(m_network->init(true, 8000) == 1)
+  {
+	  bool unbound = true;
+	  int i=1;
+	  while(unbound)
+	  {
+		  if(m_network->init(false, 8000+i) == 0)
+		  {
+			  unbound = false;
+		  }
+		  i++;
+	  }
+  }
+
+
 }
 
 void game::run(void)
@@ -29,10 +48,17 @@ void game::run(void)
   init();
 
   sprite mySprite;
+  net::netEntity* me;
+
+  if(!m_network->getType())
+  {
+	  me = new net::netEntity;
+	  m_network->addEntity(me);
+  }
 
   rect source;
   source.m_x = 0; source.m_y = 0;
-  source.m_w = 128; source.m_h = 128;
+  source.m_w = 16; source.m_h = 16;
   
   mySprite.m_imageCrop = source;
   mySprite.m_x = 25;
@@ -42,12 +68,50 @@ void game::run(void)
   while(m_looping)
     {
       if(m_input->update()) m_looping = false;
-      //m_graphics->blitImage(0, source, destination);
-      //mySprite.render((iRenderVisitor*)m_graphics);
+
       mySprite.render(m_graphics->getRenderer());
-      SDL_Delay(30);
+
+      if(!m_network->getType())
+      {
+    	  if(m_input->isKeyPressed(e_up))
+		  {
+    		  me->setCommands(me->getCommands()|1);
+		  }
+		  else{me->setCommands(me->getCommands()&(255-1));}
+    	  if(m_input->isKeyPressed(e_left))
+		  {
+			 me->setCommands(me->getCommands()|2);
+		  }
+		  else{me->setCommands(me->getCommands()&(255-2));}
+    	  if(m_input->isKeyPressed(e_down))
+		  {
+			  me->setCommands(me->getCommands()|4);
+		  }
+		  else{me->setCommands(me->getCommands()&(255-4));}
+    	  if(m_input->isKeyPressed(e_right))
+		  {
+			 me->setCommands(me->getCommands()|8);
+		  }
+		  else{me->setCommands(me->getCommands()&(255-8));}
+
+		  mySprite.m_x = me->getXPos();
+		  mySprite.m_y = me->getYPos();
+      }
+      waitsecs(1.0f/60.0f);
+      //SDL_Delay(30);
+      m_network->update(1.0f/60.0f);
       m_graphics->render();
     }
+}
+
+void game::notify(net::events _event)
+{
+	switch(_event)
+	{
+		case net::e_newEntityEvent:
+			//push back new entity
+			break;
+	}
 }
 
 

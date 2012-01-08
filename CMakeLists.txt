@@ -2,11 +2,27 @@ cmake_minimum_required (VERSION 2.6)
 project (gradius)
 set(
   source 
+  #game section#
   src/main.cpp;
   src/graphics/gSdl/gSdl.cpp;
   src/game/game.cpp;
   src/input/inSdl/inSdl.cpp;
   src/window/wSdl/wSdl.cpp;
+
+  #networking section#
+
+  src/entities/networked/netEntity.cpp;
+  src/networking/net.cpp;
+  src/networking/connection/connection.cpp;
+  src/networking/connection/address.cpp;
+  src/networking/connection/stats.cpp;
+  src/networking/connection/socket.cpp;
+  src/networking/connection/flowControl.cpp;
+  src/networking/packet/packet.cpp;
+  src/networking/packet/packetqueue.cpp;
+  src/networking/packet/readPacket.cpp;
+  src/networking/packet/writePacket.cpp;
+  src/networking/utils/dataUtils.cpp;
 )
 
 set(
@@ -23,10 +39,27 @@ set(
   src/input/inSdl/inSdl.h;
   src/window/window.h;
   src/window/wSdl/wSdl.h;
+  src/entities/entity.h;
+
+  #netowkring section# 
+
+  src/entities/networked/netEntity.h;
+  src/networking/net.h;
+  src/networking/connection/connection.h;
+  src/networking/connection/address.h;
+  src/networking/connection/stats.h;
+  src/networking/connection/socket.h;
+  src/networking/connection/flowControl.h;
+  src/networking/packet/packet.h;
+  src/networking/packet/packetqueue.h;
+  src/networking/packet/readPacket.h;
+  src/networking/packet/writePacket.h;
+  src/networking/utils/dataUtils.h;
 )
 
 find_package(SDL)
-link_libraries(${SDL_LIBRARY})
+find_package(SDL_image)
+link_libraries(${SDL_LIBRARY} ${SDLIMAGE_LIBRARY})
 add_executable(gradius ${source} ${header})
 
 

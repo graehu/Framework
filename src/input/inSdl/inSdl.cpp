@@ -37,9 +37,9 @@ bool inSdl::update(void)
   return false;
 }
 
-void inSdl::getKeys(bool* _keys)
+bool inSdl::isKeyPressed(gameKeys _key)
 {
-  _keys = m_keys;
+  return m_keys[_key];
 }
 
 
