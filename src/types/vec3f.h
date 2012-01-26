@@ -44,11 +44,11 @@ inline vec3f operator + (const vec3f &v1,
 {
 	return vec3f(v1.i + v2.i, v1.j + v2.j, v1.k + v2.k);
 }
-inline ostream& operator << (ostream& stream, vec3f& rhs)
+/*inline ostream& operator << (ostream& stream, vec3f& rhs)
 {
     stream << " i: " << rhs.i << " j: " << rhs.j << " k: " << rhs.k;
     return stream;
-}
+}*/
 inline vec3f operator - (const vec3f &v1,
 						   const vec3f &v2)
 {

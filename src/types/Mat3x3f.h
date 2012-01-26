@@ -2,7 +2,7 @@
 #define MAT3X3F_H
 ////#include "main.h"
 
-#include "Vec2f.h"
+#include "vec2f.h"
 
 class Mat3x3f
 {

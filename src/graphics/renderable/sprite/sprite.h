@@ -14,7 +14,6 @@ class sprite : public iRenderable
 
   void render(iRenderVisitor* _renderer)
   {
-    //printf("calling render\n");
     sprite* odd = this;
     _renderer->visit(odd);
   }

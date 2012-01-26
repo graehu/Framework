@@ -27,7 +27,7 @@ struct vec2f
 	void set(float i_, float j_) {i = i_; j = j_;}
 
 	/// Negate this vector.
-	vec2f operator -() const {vec2f v; v.Set(-i, -j); return v;}
+	vec2f operator -() const {vec2f v; v.set(-i, -j); return v;}
 
 	/// Read from and indeied element.
 	/*float operator () (int i) const
@@ -75,7 +75,7 @@ struct vec2f
 	/// Convert this vector into a unit vector. Returns the length.
 	float normalize()
 	{
-		float length = length();
+		float length = vec2f::length();
 		/*if (length < b2_epsilon)
 		{
 			return 0.0f;
