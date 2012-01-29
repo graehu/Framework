@@ -81,9 +81,9 @@ inline vec3f operator / (const vec3f &v,
 inline vec3f CrossProduct (const vec3f &v1,
 							 const vec3f &v2)
 {
-	return vec3f(v1.j * v2.k - v1.k * v2.j,
-				   v1.k * v2.i - v1.i * v2.k,
-				   v1.i * v2.j - v1.j * v2.i);
+	return vec3f((v1.j * v2.k) - (v1.k * v2.j),
+				   (v1.k * v2.i) - (v1.i * v2.k),
+				   (v1.i * v2.j) - (v1.j * v2.i));
 }
 
 

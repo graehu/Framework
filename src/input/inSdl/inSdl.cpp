@@ -43,9 +43,14 @@ bool inSdl::isKeyPressed(gameKeys _key)
 }
 
 
-int inSdl::mouse()
+void inSdl::mouseDelta(float& _x, float& _y)
 {
-  return 0;
+	int x = 0;
+	int y = 0;
+
+	SDL_GetRelativeMouseState(&x, &y);
+	_x = x;
+	_y = y;
 }
 
 

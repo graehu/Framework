@@ -1,5 +1,6 @@
 #ifndef ENTITY_H
 #define ENTITY_H
+#include "../types/point3f.h"
 
 // In a real game this list would get considerably bigger.
 enum entityType
@@ -15,21 +16,21 @@ class entity
 {
 public:
 
-	entity() : m_x(0), m_y(0), m_z(0), m_type(e_entity){}
+	entity() : m_pos(), m_type(e_entity){}
 	~entity(){}
 
-    float getXPos(void){return m_x;}
-    float getYPos(void){return m_y;}
-    float getZPos(void){return m_z;}
-    void setXPos(float _x){m_x = _x;}
-    void setYPos(float _y){m_y = _y;}
-    void setZPos(float _z){m_z = _z;}
+    float getXPos(void){return m_pos.m_x;}
+    float getYPos(void){return m_pos.m_y;}
+    float getZPos(void){return m_pos.m_z;}
+    void setXPos(float _x){m_pos.m_x = _x;}
+    void setYPos(float _y){m_pos.m_y = _y;}
+    void setZPos(float _z){m_pos.m_z = _z;}
 
 	entityType getType(void){return m_type;}
 
 protected:
 
-    float m_x, m_y, m_z;
+    point3f m_pos;
 	entityType m_type;
 
 private:

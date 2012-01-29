@@ -1,20 +1,13 @@
-// glPoint.h: interface for the glPoint class.
-//
-//////////////////////////////////////////////////////////////////////
-
 #ifndef POINT3F_H
 #define POINT3F_H
-
 
 class point3f
 {
 public:
-	point3f();
-	virtual ~point3f();
+	point3f() : m_x(0), m_y(0), m_z(0){}
+	~point3f(){}
 
-	float z;
-	float y;
-	float x;
+	float m_x, m_y, m_z;
 };
 
-#endif//POINT3F_H//
+#endif//POINT3F_H

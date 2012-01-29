@@ -58,16 +58,19 @@ vec3f & vec3f::operator *=(const float s)
 
 vec3f & vec3f::operator /=(const float s)
 {
-	i /= s;
-	j /= s;
-	k /= s;
+	if(s>0 || s<0)
+	{
+		i /= s;
+		j /= s;
+		k /= s;
+	}
 
 	return *this;
 }
 
 float vec3f::Length() const
 {
-	return sqrt(i * i + j * j + k * k);
+	return sqrt((i * i) + (j * j) + (k * k));
 }
 
 float vec3f::LengthSqr() const

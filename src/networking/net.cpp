@@ -129,7 +129,7 @@ bool network::update(float _deltaTime)
     }
 
 
-  for(int i = 0; i < m_entities.size(); i++)
+  for(unsigned int i = 0; i < m_entities.size(); i++)
     m_entities[i]->move();
 
   }
@@ -168,7 +168,7 @@ void network::initEntity(unsigned short _packetSender, unsigned short _accessKey
 	    }
 	}
 
-      for(int i = 0; i < m_enUpdate.size(); i++)
+      for(unsigned int i = 0; i < m_enUpdate.size(); i++)
 	{
 	  if(i != _packetSender)
 	    {
@@ -208,7 +208,7 @@ void network::addEntity(netEntity* _newEntity)
 		m_entities.push_back(_newEntity);
 		m_enUpdate[0].push_back(enInfo((m_entities.size()-1),e_updating));
 
-		for(int i = 0; i < m_entities.size(); i++)
+		for(unsigned int i = 0; i < m_entities.size(); i++)
 		{
 		  m_enUpdate[i].push_back(enInfo((m_entities.size()-1),e_uninitialised));
 		}

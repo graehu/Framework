@@ -8,8 +8,8 @@ class window
   virtual int init(int _width, int _height, char* _name) = 0;
   virtual int move(int _x, int _y) = 0;
   virtual int resize(int _width, int _height) = 0;
-  virtual int getHeight() = 0;
-  virtual int getWidth() = 0;
+  int getHeight(){return m_height;}
+  int getWidth(){return m_width;}
   static window* windowFactory();
 
  protected:

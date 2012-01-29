@@ -22,7 +22,7 @@ class packet
 
 	bool clearPacket(void){m_end = m_headerSize; return false;}
 	bool setAlloc(unsigned int _alloc);
-	void setEnd(unsigned int _end){if(_end >! m_alloc && _end > m_headerSize)m_end = _end;}
+	void setEnd(unsigned int _end){if(_end < m_alloc && _end > m_headerSize)m_end = _end;}
 
 	unsigned int getAlloc(void) {return m_alloc;}
 	unsigned int getEnd(void){return m_end;}

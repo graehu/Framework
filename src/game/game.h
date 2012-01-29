@@ -6,8 +6,11 @@
 #include "../window/window.h"
 #include "../graphics/graphics.h"
 #include "../input/input.h"
+#include "../graphics/camera/camera.h"
 #include "../networking/net.h"
 #include "../networking/utils/subscriber.h"
+
+
 
 
 class game : public net::subscriber
@@ -27,6 +30,7 @@ class game : public net::subscriber
   graphics* m_graphics;
   window* m_window;
   input* m_input;
+  camera m_camera;
   //net::network* m_network;
 
  private:

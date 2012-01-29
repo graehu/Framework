@@ -1,9 +1,9 @@
 #include "game.h"
 #include "../types/rect.h"
 #include "../graphics/renderable/sprite/sprite.h"
+#include <GL/glu.h>
 
-
-
+#include "../graphics/renderable/3DObject/object3D.h"
 
 game::game()
 {
@@ -22,7 +22,7 @@ void game::init(void)
   m_input = input::inputFactory();
   m_input->init();
   
-  m_graphics->loadImage("hi.png");
+
   
   //m_network = new net::network(0xF00D, 100.0f);
   /*
@@ -48,60 +48,39 @@ void game::run(void)
 {
   init();
 
-  sprite mySprite;
-  net::netEntity* me = new net::netEntity();
-
-  /*if(!m_network->getType())
-    {
-      me = new net::netEntity;
-      m_network->addEntity(me);
-    }*/
-
-  rect source;
-  source.m_x = 0; source.m_y = 0;
-  source.m_w = 16; source.m_h = 16;
-  
-  mySprite.m_imageCrop = source;
-  mySprite.m_x = 25;
-  mySprite.m_y = 25;
-  mySprite.m_imageID = 0;
+  object3D* mahObject = new object3D("data/poolTable.ms3d");
+  glEnable(GL_LIGHT0);
+  glEnable(GL_LIGHT1);
+  glLightModelf(GL_LIGHT_MODEL_AMBIENT, (1.0, 1.0, 1.0, 1.0));
 
   while(m_looping)
     {
       if(m_input->update()) m_looping = false;
+	  
 
-      mySprite.render(m_graphics->getRenderer());
-
-    //  if(!m_network->getType())
-	//{
-    	  if(m_input->isKeyPressed(e_up))
-	    {
-	      me->setCommands(me->getCommands()|1);
-	    }
-	  else{me->setCommands(me->getCommands()&(255-1));}
-    	  if(m_input->isKeyPressed(e_left))
-	    {
-	      me->setCommands(me->getCommands()|2);
-	    }
-	  else{me->setCommands(me->getCommands()&(255-2));}
+       	  if(m_input->isKeyPressed(e_up))
+			m_camera.changeForwardVelocity(0.001f);
     	  if(m_input->isKeyPressed(e_down))
-	    {
-	      me->setCommands(me->getCommands()|4);
-	    }
-	  else{me->setCommands(me->getCommands()&(255-4));}
-    	  if(m_input->isKeyPressed(e_right))
-	    {
-	      me->setCommands(me->getCommands()|8);
-	    }
-	  else{me->setCommands(me->getCommands()&(255-8));}
+			m_camera.changeForwardVelocity(-0.001f);
+		  if(m_input->isKeyPressed(e_right))
+			m_camera.changeStrafeVelocity(0.001f);
+    	  if(m_input->isKeyPressed(e_left))
+			m_camera.changeStrafeVelocity(-0.001f);
+			 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);     // Clear The Screen And The Depth Buffer
+		  mahObject->render(m_graphics->getRenderer());
 
-    	  me->move();
-	  mySprite.m_x = me->getXPos();
-	  mySprite.m_y = me->getYPos();
-	//}
+
+		  float x, y;
+		  m_camera.update();
+		  m_input->mouseDelta(x,y);
+		  m_camera.changeHeading(x);
+		  m_camera.changePitch(y);
+
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		glMultMatrixf((GLfloat*)m_camera.getView().elem);
+
       waitsecs(1.0f/60.0f);
-      //SDL_Delay(30);
-      //m_network->update(1.0f/60.0f);
       m_graphics->render();
     }
 }
