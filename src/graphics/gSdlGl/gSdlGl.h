@@ -2,19 +2,16 @@
 #define GSDLGL_H
 
 #include <SDL/SDL.h>
-#include <SDL/SDL_image.h>
-#include <SDL/SDL_opengl.h>
 #include <GL/gl.h>
-#include <vector>
+#include <GL/glu.h>
 
+#include <vector>
+#include <map>
 
 #include "../graphics.h"
-
 #include "../renderable/sprite/sprite.h"
-#include "../renderable/3DObject/object3D.h"
 
-
-#include "../resources/model/model.h"
+//#include "../resources/model/model.h"
 
 
 class gSdlGl : public graphics, public iRenderVisitor
@@ -29,8 +26,6 @@ class gSdlGl : public graphics, public iRenderVisitor
   int update();
   int render();
 
-  int loadImage(char* _fileName);
-  int unloadImage(int _imageID);
 
   int init();
   int shutdown();
@@ -40,15 +35,16 @@ class gSdlGl : public graphics, public iRenderVisitor
   //visitor section
 
   void visit(sprite* _sprite);
-  void visit(object3D* _object3D);
-  void visit(bezierCurve* _bezierCurve){printf("render bezierCurve\n");}
+
 
  protected:
 
-	 void loadModelTextures(model* _model);
+	 //void loadModelTextures(model* _model);
+	 void loadImage(char* _fileName);
+     void loadOptimisedImage(char* _fileName);
 
-  std::vector<SDL_Surface> m_images;
-  std::vector<model*> m_models;
+	 std::map<char*,std::pair<SDL_Surface, GLuint> > m_images;
+  //std::vector<model*> m_models;
 
   SDL_Surface* m_windowSurface;
 

@@ -11,21 +11,21 @@ netEntity::netEntity()
 
 void netEntity::readPacket(packet* _packet)
 {
-	m_pos.m_x = (float)_packet->iterRead<int>();
-	m_pos.m_y = (float)_packet->iterRead<int>();
+	m_pos.i = (float)_packet->iterRead<int>();
+	m_pos.j = (float)_packet->iterRead<int>();
 }
 
 void netEntity::writePacket(packet* _packet)
 {
-	_packet->iterWrite((unsigned int)m_pos.m_x);
-	_packet->iterWrite((unsigned int)m_pos.m_y);
+	_packet->iterWrite((unsigned int)m_pos.i);
+	_packet->iterWrite((unsigned int)m_pos.j);
 }
 
 void netEntity::move(void)
 {
-    if((m_command&1) > 0) m_pos.m_y-=1;
-    if((m_command&2) > 0) m_pos.m_x-=1;
-    if((m_command&4) > 0) m_pos.m_y+=1;
-    if((m_command&8) > 0) m_pos.m_x+=1;
+    if((m_command&1) > 0) m_pos.j-=1;
+    if((m_command&2) > 0) m_pos.i-=1;
+    if((m_command&4) > 0) m_pos.j+=1;
+    if((m_command&8) > 0) m_pos.i+=1;
 }
 

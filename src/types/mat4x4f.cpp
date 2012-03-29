@@ -1,32 +1,32 @@
 #include <memory.h>
 #include <stdio.h>
 //#include "maths.h"
-#include "Mat4x4f.h"
+#include "mat4x4f.h"
 
-const Mat4x4f Mat4x4f::IDENTITY(1.0f,0.0f,0.0f,0.0f,
+const mat4x4f mat4x4f::IDENTITY(1.0f,0.0f,0.0f,0.0f,
 									0.0f,1.0f,0.0f,0.0f,
 									0.0f,0.0f,1.0f,0.0f,
 									0.0f,0.0f,0.0f,1.0f);
 
-const Mat4x4f Mat4x4f::NULLMATRIX(0.0f,0.0f,0.0f,0.0f,
+const mat4x4f mat4x4f::NULLMATRIX(0.0f,0.0f,0.0f,0.0f,
 									  0.0f,0.0f,0.0f,0.0f,
 									  0.0f,0.0f,0.0f,0.0f,
 									  0.0f,0.0f,0.0f,0.0f);
 
-/*Mat4x4f::Mat4x4f(void)
+/*mat4x4f::mat4x4f(void)
 {
 }*/
 
-Mat4x4f::~Mat4x4f(void)
+mat4x4f::~mat4x4f(void)
 {
 }
 
-Mat4x4f::Mat4x4f(const Mat4x4f & rhs)
+mat4x4f::mat4x4f(const mat4x4f & rhs)
 {
 	memcpy(elem, rhs.elem, sizeof(float) * 16);
 }
 
-Mat4x4f::Mat4x4f(float _11, float _12, float _13, float _14,
+mat4x4f::mat4x4f(float _11, float _12, float _13, float _14,
 					 float _21, float _22, float _23, float _24,
 					 float _31, float _32, float _33, float _34,
 					 float _41, float _42, float _43, float _44)
@@ -37,18 +37,18 @@ Mat4x4f::Mat4x4f(float _11, float _12, float _13, float _14,
 	elem[3][0] = _41;	elem[3][1] = _42;	elem[3][2] = _43;	elem[3][3] = _44;
 }
 
-Mat4x4f::Mat4x4f(float _elem[][4])
+mat4x4f::mat4x4f(float _elem[][4])
 {
 	memcpy(elem, _elem, sizeof(float) * 16);
 }
-Mat4x4f::Mat4x4f(float newElem[16])
+mat4x4f::mat4x4f(float newElem[16])
 {
     memcpy(elem,newElem,sizeof(float) * 16);
 }
-Mat4x4f operator*( const Mat4x4f &M1,
-                     const Mat4x4f &M2)
+mat4x4f operator*( const mat4x4f &M1,
+                     const mat4x4f &M2)
 {
-    Mat4x4f ret;
+    mat4x4f ret;
 
     for(int i = 0; i < 4; i++)
     {
@@ -68,7 +68,7 @@ Mat4x4f operator*( const Mat4x4f &M1,
     return ret;
 }
 
-vec3f operator * ( const Mat4x4f &M,
+vec3f operator * ( const mat4x4f &M,
 					 const vec3f &V )
 {
     vec3f ret;
@@ -87,7 +87,7 @@ float radians(float const degrees)
 		return degrees * (pi / float(180));
 }
 
-void Mat4x4f::Perspective(float fovy, float aspect, float zNear, float zFar)
+void mat4x4f::Perspective(float fovy, float aspect, float zNear, float zFar)
 {
 	float range = tan(radians(fovy / float(2))) * zNear;	
 	float left = -range * aspect;
@@ -104,7 +104,7 @@ void Mat4x4f::Perspective(float fovy, float aspect, float zNear, float zFar)
 	//return Result;
 }
 
-void Mat4x4f::Translate(float X, float Y, float Z)
+void mat4x4f::Translate(float X, float Y, float Z)
 {
 	memcpy(elem, IDENTITY.elem, sizeof(float) * 16);
 
@@ -113,7 +113,7 @@ void Mat4x4f::Translate(float X, float Y, float Z)
 	elem[3][2] = Z;
 }
 
-void Mat4x4f::Scale(float X, float Y, float Z)
+void mat4x4f::Scale(float X, float Y, float Z)
 {
 	memcpy(elem, IDENTITY.elem, sizeof(float) * 16);
 
@@ -122,7 +122,7 @@ void Mat4x4f::Scale(float X, float Y, float Z)
 	elem[2][2] = Z;
 }
 
-void Mat4x4f::RotateX(float fAngle)
+void mat4x4f::RotateX(float fAngle)
 {
 	memcpy(elem, IDENTITY.elem, sizeof(float) * 16);
 	float c = cos(fAngle);
@@ -133,7 +133,7 @@ void Mat4x4f::RotateX(float fAngle)
 	elem[2][2] = c;
 }
 
-void Mat4x4f::RotateY(float fAngle)
+void mat4x4f::RotateY(float fAngle)
 {
 	memcpy(elem, IDENTITY.elem, sizeof(float) * 16);
 	float c = cos(fAngle);
@@ -144,7 +144,7 @@ void Mat4x4f::RotateY(float fAngle)
 	elem[2][2] = c;
 }
 
-void Mat4x4f::RotateZ(float fAngle)
+void mat4x4f::RotateZ(float fAngle)
 {
 	memcpy(elem, IDENTITY.elem, sizeof(float) * 16);
 	float c = cos(fAngle);
@@ -155,7 +155,7 @@ void Mat4x4f::RotateZ(float fAngle)
 	elem[1][1] = c;
 }
 
-void Mat4x4f::LookAt(const vec3f & vFrom, const vec3f & vTo, const vec3f & vUp)
+void mat4x4f::LookAt(const vec3f & vFrom, const vec3f & vTo, const vec3f & vUp)
 {
 	vec3f vZ = Normalise(vFrom - vTo);
 	//vZ.Dumpvec3f("vZ");
@@ -173,7 +173,7 @@ void Mat4x4f::LookAt(const vec3f & vFrom, const vec3f & vTo, const vec3f & vUp)
 	elem[3][2] = -vZ.Dot3(vFrom);
 	elem[3][3] = 1;
 }
-float* Mat4x4f::asSingleArray()
+float* mat4x4f::asSingleArray()
 {
     float* a;
     a = new float[16];
@@ -183,7 +183,7 @@ float* Mat4x4f::asSingleArray()
     memcpy(a+12,elem[3],sizeof(float) * 4);
     return a;
 }
-void Mat4x4f::DumpMat4x4f(char * s)
+void mat4x4f::DumpMat4x4f(char * s)
 {
 	if(s != NULL)printf("\n%s\n",s);
 	else printf("\n");

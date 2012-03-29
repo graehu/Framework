@@ -1,11 +1,15 @@
 #include "game/game.h"
+#include <windows.h>
 
-int main()
+
+int WINAPI WinMain(HINSTANCE hInstance,
+                     HINSTANCE hPrevInstance,
+                     LPSTR    lpCmdLine,
+                     int       nCmdShow) 
 {
 
-  game gradius;
-  gradius.run();
-  ShutdownSockets();
+  game fuzzyLogic;
+  fuzzyLogic.run();
 
   return 0;
 }

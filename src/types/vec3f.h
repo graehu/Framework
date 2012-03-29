@@ -3,6 +3,7 @@
 
 #include <math.h>
 #include <ostream>
+//#include "point3f.h"
 class vec2f;
 using std::ostream;
 
@@ -13,6 +14,7 @@ public:
 	//vec3f(void);
 	vec3f(float _i = 0, float _j = 0, float _k = 0);
 	vec3f(const vec2f& rhs);
+	//vec3f(point3f _point) : i(_point.m_x),j(_point.m_y),k(_point.m_z){}
 	//vec3f(const vec3f & rhs);
 
 	~vec3f(void);
@@ -29,6 +31,7 @@ public:
 	vec3f & operator/=(const float s);
 
 	bool operator==(const vec3f & rhs) const;
+	bool operator!=(const vec3f& rhs) const {if(i!=rhs.i || j!=rhs.j || k!=rhs.k)return true;return false;}
 	void operator=(const float & rhs);
 	// Miscellaneous
 	float Length() const;

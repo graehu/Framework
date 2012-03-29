@@ -1,7 +1,5 @@
 #include "gSdl.h"
-//Lets go through these functions picking out what's good and what's not.
-
-
+#include <cassert>
 
 int gSdl::init()
 {
@@ -24,11 +22,14 @@ int gSdl::update()
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//this is how a an image is blited to a surface
+//this is how an image is blited to a surface
 void gSdl::visit(sprite* _sprite) //rendering a sprite :)
 {
   //you can use image->w to get the width of the image.
-  SDL_Surface* image = SDL_DisplayFormat(&m_images[_sprite->m_imageID]);
+	if(m_images.find(_sprite->m_fileName) == m_images.end())
+		loadImage(_sprite->m_fileName);
+
+  SDL_Surface* image = SDL_DisplayFormat(&m_images[_sprite->m_fileName]);
   SDL_Rect source, destination;
 
   //image space
@@ -49,10 +50,11 @@ void gSdl::visit(sprite* _sprite) //rendering a sprite :)
   //SDL_UpdateRects(m_windowSurface, 1, &destination);
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int gSdl::loadImage(char* _fileName)
 {
@@ -62,7 +64,8 @@ int gSdl::loadImage(char* _fileName)
 
   if (l_loadedImage == NULL)
     {
-      printf("Unable to load bitmap: %s\n", SDL_GetError());
+      printf("Unable to load bitmap: %s\n\n", SDL_GetError());
+	  assert(false);
       return 0;
     }
   else
@@ -71,29 +74,19 @@ int gSdl::loadImage(char* _fileName)
 	  SDL_FreeSurface(l_loadedImage);
 	  if(l_optimisedImage == NULL)
 	  {
-	      printf("Unable to load bitmap: %s\n", SDL_GetError());
+	      printf("Unable to load bitmap: %s\n\n", SDL_GetError());
+		  assert(false);
 	      return 0;
 	  }
 	  else
 	  {
 		  Uint32 colourkey = SDL_MapRGB(l_optimisedImage->format, 0xFF, 0, 0xFF );
 		  SDL_SetColorKey(l_optimisedImage, SDL_SRCCOLORKEY, colourkey);
-		  m_images.push_back(*l_optimisedImage);
+		  m_images[_fileName] = *l_optimisedImage;
 	  }
   }
   return m_images.size() - 1;
 }
-
-
-
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-int gSdl::unloadImage(int _imageID){return 0;}
-
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -102,15 +95,10 @@ int gSdl::unloadImage(int _imageID){return 0;}
 
 int gSdl::render()
 {
-
   SDL_Flip(m_windowSurface);
-  SDL_FillRect(m_windowSurface, 0, SDL_MapRGB(m_windowSurface->format, 0, 0, 0));
-
+  SDL_FillRect(m_windowSurface, 0, SDL_MapRGB(m_windowSurface->format, 64, 64, 64));
   return 0;
-
 }
-
-
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -149,3 +137,70 @@ graphics* graphics::graphicsFactory()
 {
   return (graphics*)new gSdl;
 }
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Un used fuzzy logic graphs
+/*void gSdl::visit(Graph* _graph)
+{
+	//stuffs
+	unsigned int i = 0;
+	Uint32 c_white = SDL_MapRGB(m_windowSurface->format, 255,255,255);
+	Shape* l_shape = _graph->getShape(i);
+	while(l_shape != NULL)
+	{
+		Shape::type l_type = l_shape->getType();
+		switch(l_type)
+		{
+		case Shape::e_base:
+			break;
+		case Shape::e_triangle:
+			{
+			Triangle* l_triangle = (Triangle*)l_shape;
+			Draw_Line(m_windowSurface,
+				(l_triangle->getLeftBound()*_graph->m_scale)+_graph->m_x,  
+				_graph->m_y, 
+				(l_triangle->getCenterPoint()*_graph->m_scale)+_graph->m_x,
+				(-1*_graph->m_scale)+_graph->m_y,
+				c_white);
+			Draw_Line(m_windowSurface,
+				(l_triangle->getCenterPoint()*_graph->m_scale)+_graph->m_x,
+				(-1*_graph->m_scale)+_graph->m_y,
+				(l_triangle->getRightBound()*_graph->m_scale)+_graph->m_x,
+				_graph->m_y,
+				c_white);
+			}
+			break;
+		case Shape::e_plateau:
+			{
+				Plateau* l_plateau = (Plateau*)l_shape;
+				Draw_Line(m_windowSurface,
+				(l_plateau->getBottom()*_graph->m_scale)+_graph->m_x,
+				_graph->m_y,
+				(l_plateau->getTop()*_graph->m_scale)+_graph->m_x,
+				(-1*_graph->m_scale)+_graph->m_y,
+				c_white);
+				if(l_plateau->isLeftPlateau())
+					Draw_Line(m_windowSurface,
+					(l_plateau->getTop()*_graph->m_scale)+_graph->m_x,
+					(-1*_graph->m_scale)+_graph->m_y,
+					((l_plateau->getTop()-1)*_graph->m_scale)+_graph->m_x,
+					(-1*_graph->m_scale)+_graph->m_y,
+					c_white);
+				else
+				Draw_Line(m_windowSurface,
+					(l_plateau->getTop()*_graph->m_scale)+_graph->m_x,
+					(-1*_graph->m_scale)+_graph->m_y,
+					((l_plateau->getTop()+1)*_graph->m_scale)+_graph->m_x,
+					(-1*_graph->m_scale)+_graph->m_y,
+					c_white);
+			}
+			break;
+		}
+		i++;
+		l_shape = _graph->getShape(i);
+	}
+}*/

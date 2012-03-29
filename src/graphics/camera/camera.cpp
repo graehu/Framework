@@ -65,34 +65,25 @@ void camera::update()
 
 	m_DirectionVector.NormaliseSelf();
 	// Scale the direction by our speed.
-	vec3f up(0,1,0);
-	up.j = sgn(m_DirectionVector.j);
+	vec3f up(0,1,0); 
 	vec3f strafeDirection;
-	if(up.j == 0)
-		up.j = 1;
-	if(up.j < 0)
-	{
-		strafeDirection = CrossProduct(m_DirectionVector, up);
-	}
-	else
-	{
-		strafeDirection = CrossProduct(up,m_DirectionVector);
-	}
+	strafeDirection = CrossProduct(m_DirectionVector, up);
 	//TODO: Find out why normalising here isn't going well.
 	strafeDirection.NormaliseSelf();
-
-	m_DirectionVector *= m_forwardVelocity;
-	strafeDirection *= m_strafeVelocity;
+	m_strafeVector = strafeDirection;
+	m_up.i = m_view.elem[0][1];
+	m_up.j = m_view.elem[1][1];
+	m_up.k = m_view.elem[2][1];
 
 	// Increment our position by the vector
-	m_position.m_x += m_DirectionVector.i + strafeDirection.i;
-	m_position.m_y += m_DirectionVector.j + strafeDirection.j;
-	m_position.m_z += m_DirectionVector.k + strafeDirection.k;
+	m_position.i += (m_DirectionVector.i*m_forwardVelocity) + (strafeDirection.i*m_strafeVelocity);
+	m_position.j += (m_DirectionVector.j*m_forwardVelocity) + (strafeDirection.j*m_strafeVelocity);
+	m_position.k += (m_DirectionVector.k*m_forwardVelocity) + (strafeDirection.k*m_strafeVelocity);
 
 	Mat4x4f temp; //= Matrix;
-	temp.elem[0][3] = -m_position.m_x;
-	temp.elem[1][3] = -m_position.m_y;
-	temp.elem[2][3] = m_position.m_z;
+	temp.elem[0][3] = -m_position.i;
+	temp.elem[1][3] = -m_position.j;
+	temp.elem[2][3] = m_position.k;
 
 	temp = Transpose(temp);
 	m_view = temp*m_view;

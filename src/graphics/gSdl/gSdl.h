@@ -3,12 +3,12 @@
 
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
-#include <vector>
+#include <SDL/SDL_draw.h>
+#include <map>
 
 
 #include "../graphics.h"
 #include "../renderable/sprite/sprite.h"
-#include "../renderable/sprite/animSprite/animSprite.h"
 
 
 class gSdl : public graphics, public iRenderVisitor
@@ -22,23 +22,23 @@ class gSdl : public graphics, public iRenderVisitor
 
   int update();
   int render();
-
-  int loadImage(char* _fileName);
-  int unloadImage(int _imageID);
-
   int init();
   int shutdown();
   
   iRenderVisitor* getRenderer(void);
 
-  //visitor section
-
+  //visitor section(renderer)
   void visit(sprite* _sprite);
-  void visit(animSprite* _animSprite){printf("odd\n");}
 
  protected:
 
-  std::vector<SDL_Surface> m_images;
+	int loadImage(char* _fileName);
+	int unloadImage(int _imageID);
+
+
+	 //std::vector<std::pair<SDL_Surface, char*> > m_images; //the surface, then the filename
+	 std::map<char*,SDL_Surface> m_images;
+
   SDL_Surface* m_windowSurface;
 
  private:

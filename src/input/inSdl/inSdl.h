@@ -10,7 +10,8 @@ class inSdl : public input
 
 
   int init(void);
-  bool isKeyPressed(gameKeys _key);
+  bool isKeyPressed(keys _key);
+  bool isMouseClicked(mouseButtons _button);
   bool update(void);
   void mouseDelta(float& _dx, float& _dy);
 

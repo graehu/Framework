@@ -1,6 +1,6 @@
 #ifndef ENTITY_H
 #define ENTITY_H
-#include "../types/point3f.h"
+#include "../types/vec3f.h"
 
 // In a real game this list would get considerably bigger.
 enum entityType
@@ -9,6 +9,8 @@ enum entityType
     e_netEntity,
     e_player,
     e_bot,
+	e_coasterRider,
+	e_car,
     e_totalEntities
 };
 
@@ -18,19 +20,23 @@ public:
 
 	entity() : m_pos(), m_type(e_entity){}
 	~entity(){}
+	
+    float getXPos(void){return m_pos.i;}
+    float getYPos(void){return m_pos.j;}
+    float getZPos(void){return m_pos.k;}
+    void setXPos(float _x){m_pos.i = _x;}
+    void setYPos(float _y){m_pos.j = _y;}
+    void setZPos(float _z){m_pos.k = _z;}
+	void setPos(vec3f _pos){m_pos = _pos;}
+	vec3f getPos(void){return m_pos;}
 
-    float getXPos(void){return m_pos.m_x;}
-    float getYPos(void){return m_pos.m_y;}
-    float getZPos(void){return m_pos.m_z;}
-    void setXPos(float _x){m_pos.m_x = _x;}
-    void setYPos(float _y){m_pos.m_y = _y;}
-    void setZPos(float _z){m_pos.m_z = _z;}
+	virtual void update(float _dt) = 0;
 
 	entityType getType(void){return m_type;}
 
 protected:
 
-    point3f m_pos;
+    vec3f m_pos;
 	entityType m_type;
 
 private:
