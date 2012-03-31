@@ -1,6 +1,11 @@
 #include "gSdl.h"
 #include <cassert>
 
+
+#pragma comment(lib, "SDL_image.lib")
+#pragma comment(lib, "SDL_draw.lib")
+#pragma comment(lib, "SDL_draw_static.lib")
+
 int gSdl::init()
 {
   m_windowSurface = SDL_GetVideoSurface();

@@ -34,7 +34,7 @@ camera::~camera()
 
 void camera::update()
 {
-	Mat4x4f Matrix;
+	mat4x4f Matrix;
 	quaternion q;
 
 	// Make the Quaternions that will represent our rotations
@@ -80,7 +80,7 @@ void camera::update()
 	m_position.j += (m_DirectionVector.j*m_forwardVelocity) + (strafeDirection.j*m_strafeVelocity);
 	m_position.k += (m_DirectionVector.k*m_forwardVelocity) + (strafeDirection.k*m_strafeVelocity);
 
-	Mat4x4f temp; //= Matrix;
+	mat4x4f temp; //= Matrix;
 	temp.elem[0][3] = -m_position.i;
 	temp.elem[1][3] = -m_position.j;
 	temp.elem[2][3] = m_position.k;

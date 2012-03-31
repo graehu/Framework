@@ -1,6 +1,6 @@
-#include "../gWinGl.h"
+#include "../gWinGl4.h"
 
-void gWinGl::visit(sprite* _sprite)
+void gWinGl4::visit(sprite* _sprite)
 {
 	//do some sort of rendery business here.
 

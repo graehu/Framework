@@ -2,6 +2,7 @@
 #include "../graphics/renderable/sprite/sprite.h"
 #include "../physics/rigidBody.h"
 #include <windows.h>
+#include <cassert>
 
 game::game()
 {
@@ -23,14 +24,15 @@ void game::run(void)
 {
   init();
   sprite mahSprite;
-  mahSprite.m_fileName = "data/car.png";
-  mahSprite.m_x = 10;
-  mahSprite.m_y = 20;
+  mahSprite.m_fileName = "assets/car.bmp";
+  mahSprite.m_x = 12;
+  mahSprite.m_y = 12;
   rigidBody mahBody;
 
   while(m_looping)
     {
       if(m_input->update()) m_looping = false;
+	  mahSprite.render(m_graphics->getRenderer());
 	  Sleep(30);
       m_graphics->render();
     }

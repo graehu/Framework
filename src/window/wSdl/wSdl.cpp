@@ -1,5 +1,8 @@
 #include "wSdl.h"
 
+#pragma comment(lib, "SDLmain.lib")
+#pragma comment(lib, "SDL.lib")
+
 int wSdl::init(int _width, int _height, char* _name)
 {
 
