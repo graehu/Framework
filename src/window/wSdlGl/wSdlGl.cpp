@@ -1,5 +1,11 @@
 #include "wSdlGl.h"
 
+
+#pragma comment(lib, "SDLmain.lib")
+#pragma comment(lib, "SDL.lib")
+#pragma comment(lib, "opengl32.lib")
+#pragma comment(lib, "glu32.lib")
+
 int wSdlGl::init(int _width, int _height, char* _name)
 {
 	//initialize the SDL video component

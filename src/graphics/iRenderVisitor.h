@@ -3,7 +3,7 @@
 
 
 class sprite;
-//class camera;
+class camera;
 //class Graph;
 //class object3D;
 //class bezierCurve;
@@ -15,7 +15,7 @@ class iRenderVisitor
  public:
 
   virtual void visit(sprite* _sprite) = 0;
-  //virtual void visit(camera* _camera) = 0;
+  virtual void visit(camera* _camera) = 0;
   //virtual void visit(Graph* _graph) = 0;
   //virtual void visit(object3D* _object3D) = 0;
   //virtual void visit(bezierCurve* _bezierCurve) = 0;

@@ -4,17 +4,15 @@
 class shader 
 {
 public:
-    shader(void);
     shader(const char *vsFile, const char *gsFile, const char *fsFile);
     ~shader(void);
-    
-    void init(const char *vsFile, const char *gsFile, const char *fsFile);
-    
     void bind();
     void unbind();
     unsigned int id();
     
 private:
+
+	  void init(const char *vsFile, const char *gsFile, const char *fsFile);
 
     unsigned int shader_id; // The shader program identifier
     unsigned int shader_vp; // The vertex shader identifier

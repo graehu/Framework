@@ -1,6 +1,7 @@
 #include "game.h"
 #include "../graphics/renderable/sprite/sprite.h"
 #include "../physics/rigidBody.h"
+#include "../physics/polygon.h"
 #include <windows.h>
 #include <cassert>
 
@@ -23,24 +24,74 @@ void game::init(void)
 void game::run(void)
 {
   init();
-  sprite mahSprite;
-  mahSprite.m_fileName = "assets/car.bmp";
-  mahSprite.m_x = 12;
-  mahSprite.m_y = 12;
+  sprite mahSprite, tester, center;
+  center.m_position = vec3f(2,2);
+  center.m_fileName = tester.m_fileName = mahSprite.m_fileName = "assets/car.bmp";
+  mahSprite.m_position = vec3f(0.2f, 0.2f);
+
+  polygon polyOne;
+  polygon polyTwo;
+
+  polyOne.m_vertices.push_back(vec3f(1.0f,1.0f));
+  polyOne.m_vertices.push_back(vec3f(1.0f,3.0f));
+  polyOne.m_vertices.push_back(vec3f(3.0f,3.0f));
+  polyOne.m_vertices.push_back(vec3f(3.0f,1.0f));
+
+  polyTwo.m_vertices = polyOne.m_vertices;
+
+  /*polyTwo.m_vertices.push_back(vec3f(-2.0f,-2.0f));
+  polyTwo.m_vertices.push_back(vec3f(-2.0f,0.0f));
+  polyTwo.m_vertices.push_back(vec3f(0.0f,-2.0f));
+  polyTwo.m_vertices.push_back(vec3f(0.0f,0.0f));*/
+
+
   rigidBody mahBody;
+  float time = 0;
+  float dt = 1.0f/30.0f;
+
 
   while(m_looping)
-    {
-      if(m_input->update()) m_looping = false;
-	  mahSprite.render(m_graphics->getRenderer());
+	{
+	  time += dt;
+	  mahBody.update(time, dt);
+	  if(m_input->update()) m_looping = false;
+
+	  if(m_input->isKeyPressed(input::e_left))
+	  {
+		  for(int i = 0; i < 4; i++)
+			  polyTwo.m_vertices[i].i -= 0.1f;
+
+		  center.render(m_graphics->getRenderer());
+		  tester.m_position.j =  polyTwo.m_vertices[0].j + 1;
+		  tester.m_position.i =  polyTwo.m_vertices[0].i + 1;
+		  tester.render(m_graphics->getRenderer());
+	  }
+
+	  if(m_input->isKeyPressed(input::e_right))
+	  {
+		  for(int i = 0; i < 4; i++)
+			  polyTwo.m_vertices[i].i += 0.1f;
+
+		  center.render(m_graphics->getRenderer());
+		  tester.m_position.j =  polyTwo.m_vertices[0].j+1;
+		  tester.m_position.i =  polyTwo.m_vertices[0].i+1;
+		  tester.render(m_graphics->getRenderer());
+	  }
+
+
+	  mahSprite.m_position = mahBody.getPos();
+	  mahSprite.m_orientation = mahBody.getOrientation();
+	  if(polyOne.collideSAT(&polyTwo))
+			mahSprite.render(m_graphics->getRenderer());
+	  m_graphics->render();
 	  Sleep(30);
-      m_graphics->render();
-    }
+	}
 }
+
+
 
 game::~game()
 {
-
 }
 
 ///find a better place to do hit detection you foo'

@@ -87,7 +87,7 @@ float radians(float const degrees)
 		return degrees * (pi / float(180));
 }
 
-void mat4x4f::Perspective(float fovy, float aspect, float zNear, float zFar)
+void mat4x4f::perspective(float fovy, float aspect, float zNear, float zFar)
 {
 	float range = tan(radians(fovy / float(2))) * zNear;	
 	float left = -range * aspect;
@@ -104,7 +104,7 @@ void mat4x4f::Perspective(float fovy, float aspect, float zNear, float zFar)
 	//return Result;
 }
 
-void mat4x4f::Translate(float X, float Y, float Z)
+void mat4x4f::translate(float X, float Y, float Z)
 {
 	memcpy(elem, IDENTITY.elem, sizeof(float) * 16);
 
@@ -113,7 +113,7 @@ void mat4x4f::Translate(float X, float Y, float Z)
 	elem[3][2] = Z;
 }
 
-void mat4x4f::Scale(float X, float Y, float Z)
+void mat4x4f::scale(float X, float Y, float Z)
 {
 	memcpy(elem, IDENTITY.elem, sizeof(float) * 16);
 
@@ -122,7 +122,7 @@ void mat4x4f::Scale(float X, float Y, float Z)
 	elem[2][2] = Z;
 }
 
-void mat4x4f::RotateX(float fAngle)
+void mat4x4f::rotateX(float fAngle)
 {
 	memcpy(elem, IDENTITY.elem, sizeof(float) * 16);
 	float c = cos(fAngle);
@@ -133,7 +133,7 @@ void mat4x4f::RotateX(float fAngle)
 	elem[2][2] = c;
 }
 
-void mat4x4f::RotateY(float fAngle)
+void mat4x4f::rotateY(float fAngle)
 {
 	memcpy(elem, IDENTITY.elem, sizeof(float) * 16);
 	float c = cos(fAngle);
@@ -144,7 +144,7 @@ void mat4x4f::RotateY(float fAngle)
 	elem[2][2] = c;
 }
 
-void mat4x4f::RotateZ(float fAngle)
+void mat4x4f::rotateZ(float fAngle)
 {
 	memcpy(elem, IDENTITY.elem, sizeof(float) * 16);
 	float c = cos(fAngle);
@@ -155,7 +155,7 @@ void mat4x4f::RotateZ(float fAngle)
 	elem[1][1] = c;
 }
 
-void mat4x4f::LookAt(const vec3f & vFrom, const vec3f & vTo, const vec3f & vUp)
+void mat4x4f::lookAt(const vec3f & vFrom, const vec3f & vTo, const vec3f & vUp)
 {
 	vec3f vZ = Normalise(vFrom - vTo);
 	//vZ.Dumpvec3f("vZ");
@@ -168,9 +168,9 @@ void mat4x4f::LookAt(const vec3f & vFrom, const vec3f & vTo, const vec3f & vUp)
 	elem[1][0] = vX.j;	elem[1][1] = vY.j;	elem[1][2] = vZ.j;	elem[1][3] = 0;
 	elem[2][0] = vX.k;	elem[2][1] = vY.k;	elem[2][2] = vZ.k;	elem[2][3] = 0;
 
-	elem[3][0] = -vX.Dot3(vFrom);
-	elem[3][1] = -vY.Dot3(vFrom);
-	elem[3][2] = -vZ.Dot3(vFrom);
+	elem[3][0] = -vX.dot3(vFrom);
+	elem[3][1] = -vY.dot3(vFrom);
+	elem[3][2] = -vZ.dot3(vFrom);
 	elem[3][3] = 1;
 }
 float* mat4x4f::asSingleArray()
@@ -183,7 +183,7 @@ float* mat4x4f::asSingleArray()
     memcpy(a+12,elem[3],sizeof(float) * 4);
     return a;
 }
-void mat4x4f::DumpMat4x4f(char * s)
+void mat4x4f::dumpMat4x4f(char * s)
 {
 	if(s != NULL)printf("\n%s\n",s);
 	else printf("\n");

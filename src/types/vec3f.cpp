@@ -37,9 +37,13 @@ vec3f & vec3f::operator -=(const vec3f &rhs)
 	return *this;
 }
 
-float vec3f::Dot3(const vec3f &rhs) const
+float vec3f::dot3(const vec3f &rhs) const
 {
 	return (i * rhs.i + j * rhs.j + k * rhs.k);
+}
+float vec3f::dot2(const vec3f &rhs) const
+{
+	return (i * rhs.i + j * rhs.j);
 }
 
 vec3f vec3f::Cross(const vec3f &rhs) const

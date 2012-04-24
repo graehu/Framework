@@ -32,8 +32,6 @@ public:
         vec3f velocity;                ///< velocity in meters per second (calculated from momentum).
         quaternion spin;                ///< quaternion rate of change in orientation.
         vec3f angularVelocity;         ///< angular velocity (calculated from angularMomentum).
-        //Mat4x4f bodyToWorld;             ///< body to world coordinates matrix.
-        //Mat4x4f worldToBody;             ///< world to body coordinates matrix.
 
         /// constant state
         float size;                     ///< length of the cube sides in meters.
@@ -50,12 +48,10 @@ public:
             angularVelocity = angularMomentum * inverseInertiaTensor;
             orientation.normalise();
             spin = (quaternion(0, angularVelocity.i, angularVelocity.j, angularVelocity.k) * orientation)*0.5;
-            //Mat4x4f translation;
-            //translation.translate(position);
-            //bodyToWorld = translation * orientation.matrix();
-            //worldToBody = bodyToWorld.inverse();
         }
     };
+	vec3f getPos(void){return current.position;}
+	quaternion getOrientation(void) {return current.orientation;}
 
     /// Default constructor.
 	
@@ -80,86 +76,12 @@ public:
     {
         previous = current;
         integrate(current, t, dt);
+		//if physics are 2d. do this:
+			current.position.k = 0;
+			current.orientation.i = 0;
+			current.orientation.j = 0;
     }
 
-    /// Render cube at interpolated state.
-    /// Calculates interpolated state then renders cube at the interpolated 
-	/// position and orientation using OpenGL.
-	/// @param alpha interpolation alpha in [0,1]
-
-    /*void render(float alpha = 1.0f)
-	{	
-		glPushMatrix();
-
-		// interpolate state with alpha for smooth animation
-
-		State state = interpolate(previous, current, alpha);
-	
-		// use position and orientation quaternion to build OpenGL body to world
-
-		glTranslatef(state.position.x, state.position.y, state.position.z); 
-		
-		float angle;
-		Mathematics::Vector axis;		
-		state.orientation.angleAxis(angle, axis);
-		glRotatef(angle/Mathematics::pi*180, axis.x, axis.y, axis.z);
-		
-        // render cube
-
-		GLfloat color[] = { 1,1,1,1 };
-
-		glMaterialfv(GL_FRONT, GL_AMBIENT, color);
-		glMaterialfv(GL_FRONT, GL_DIFFUSE, color);
-		
-		glEnable(GL_LIGHTING);
-		
-        const float s = state.size * 0.5f;
-
-        glBegin(GL_QUADS);
-		
-			glNormal3f(0,0,+1);
-			glVertex3f(-s,-s,+s);
-			glVertex3f(+s,-s,+s);
-			glVertex3f(+s,+s,+s);
-			glVertex3f(-s,+s,+s);
-
-			glNormal3f(0,0,-1);
-			glVertex3f(-s,-s,-s);
-			glVertex3f(-s,+s,-s);
-			glVertex3f(+s,+s,-s);
-			glVertex3f(+s,-s,-s);
-			
-			glNormal3f(0,+1,0);
-			glVertex3f(-s,+s,-s);
-			glVertex3f(-s,+s,+s);
-			glVertex3f(+s,+s,+s);
-			glVertex3f(+s,+s,-s);
-			
-			glNormal3f(0,-1,0);
-			glVertex3f(-s,-s,-s);
-			glVertex3f(+s,-s,-s);
-			glVertex3f(+s,-s,+s);
-			glVertex3f(-s,-s,+s);
-
-			glNormal3f(+1,0,0);
-			glVertex3f(+s,-s,-s);
-			glVertex3f(+s,+s,-s);
-			glVertex3f(+s,+s,+s);
-			glVertex3f(+s,-s,+s);
-			
-			glNormal3f(-1,0,0);
-			glVertex3f(-s,-s,-s);
-			glVertex3f(-s,-s,+s);
-			glVertex3f(-s,+s,+s);
-			glVertex3f(-s,+s,-s);
-			
-		glEnd();
-
-		glDisable(GL_LIGHTING);
-
-		glPopMatrix();
-	}*/
-	
 private:
 
     /// Interpolate between two physics states.
@@ -236,7 +158,9 @@ private:
 		
 		_state.position += 1.0f/6.0f * dt * (a.velocity + 2.0f*(b.velocity + c.velocity) + d.velocity);
 		_state.momentum += 1.0f/6.0f * dt * (a.force + 2.0f*(b.force + c.force) + d.force);
+
 		_state.orientation += (a.spin + (b.spin + c.spin)*2.0 + d.spin)*(1.0f/6.0f * dt);
+
 		_state.angularMomentum += 1.0f/6.0f * dt * (a.torque + 2.0f*(b.torque + c.torque) + d.torque);
 
 		_state.recalculate();

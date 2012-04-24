@@ -24,7 +24,8 @@ public:
 	vec3f & operator-=(const vec3f & rhs);
 
 	// Special arithmetic
-	float Dot3(const vec3f & rhs) const;
+	float dot3(const vec3f & rhs) const;
+	float dot2(const vec3f & rhs) const;
 	vec3f Cross(const vec3f & rhs) const;
 
 	vec3f & operator*=(const float s);

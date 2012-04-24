@@ -171,6 +171,10 @@ quaternion quaternion::operator *(quaternion q) const
 	
 	return(r);
 }
+quaternion quaternion::operator +(quaternion q) const
+{
+	return quaternion(w+q.w, i+q.i, j+q.j, k+q.k);
+}
 
 quaternion quaternion::operator *(float s) const
 {

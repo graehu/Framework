@@ -5,7 +5,7 @@
 int inWin::init()
 {return 0;}
 
-bool g_keys[input::e_down];
+bool g_keys[input::e_totalKeys];
 LRESULT CALLBACK WndProc (HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
@@ -14,25 +14,25 @@ LRESULT CALLBACK WndProc (HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 			break;
 		case WM_SIZE:
 			break;
-		case WM_KEYDOWN:
-			if(wParam == 'w')
+		case WM_KEYDOWN: //WINDOWS IS STUPID IT SENDS THE WRONG ASCII VALUES
+			if(wParam == 'W')
 				g_keys[input::e_up] = true;
-			else if(wParam == 'a') //a
+			else if(wParam == 'A') //a
 				g_keys[input::e_left] = true;
-			else if(wParam == 's') //s
+			else if(wParam == 'S') //s
 				g_keys[input::e_down] = true;
-			else if(wParam == 'd') //d
+			else if(wParam == 'D') //d
 				g_keys[input::e_right] = true;
 			break;
 		case WM_KEYUP:
-			if(wParam == 'w') //w
-				g_keys[input::e_up] = true;
-			else if(wParam == 'a') //a
-				g_keys[input::e_left] = true;
-			else if(wParam == 's') //s
-				g_keys[input::e_down] = true;
-			else if(wParam == 'd') //d
-				g_keys[input::e_right] = true;
+			if(wParam == 'W') //w
+				g_keys[input::e_up] = false;
+			else if(wParam == 'A') //a
+				g_keys[input::e_left] = false;
+			else if(wParam == 'S') //s
+				g_keys[input::e_down] = false;
+			else if(wParam == 'D') //d
+				g_keys[input::e_right] = false;
 			break;
 		case WM_MOUSEMOVE:
 			break;

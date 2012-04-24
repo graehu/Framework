@@ -19,17 +19,18 @@ public:
 
 	~mat4x4f(void);
 
-	void Perspective(float fovy, float aspect, float zNear, float zFar);
+	void perspective(float fovy, float aspect, float zNear, float zFar);
 
-	void Translate(float X, float Y, float Z);
-	void Scale(float X, float Y, float Z);
-	void RotateX(float fAngle);
-	void RotateY(float fAngle);
-	void RotateZ(float fAngle);
+	void translate(float X, float Y, float Z);
+	void scale(float X, float Y, float Z);
+	void rotate(float _x, float _y, float z);
+	void rotateX(float fAngle);
+	void rotateY(float fAngle);
+	void rotateZ(float fAngle);
 
-	void DumpMat4x4f(char * s = NULL);
+	void dumpMat4x4f(char * s = NULL);
 
-	void LookAt(const vec3f & vFrom,
+	void lookAt(const vec3f & vFrom,
 				const vec3f & vTo,
 				const vec3f & vUp);
 

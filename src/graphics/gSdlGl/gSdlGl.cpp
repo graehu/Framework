@@ -5,6 +5,9 @@
 #include <SDL/SDL_opengl.h>
 
 
+#pragma comment(lib, "SDL_image.lib")
+//#pragma comment(lib, "opengl32.lib")
+
 // This file shouldn't have any rendering in it. All of the utilities go in here like image loading
 // asset clean up, shader loading, yada yada.
 

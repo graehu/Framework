@@ -82,23 +82,13 @@ static void validateProgram(GLuint program)
 /**
 	Default constructor for the Shader class, at the moment it does nothing
 */
-shader::shader() 
-{
-	inited = false;
-	//output = fopen("shaderOutput.txt","w");
-}
-
 /**
 	Constructor for a Shader object which creates a GLSL shader based on a given
 	vertex and fragment shader file.
 */
 shader::shader(const char *vsFile, const char *gsFile, const char *fsFile) 
 {
-    inited = false; // Declare we have not initialized the shader yet
-	//output = fopen("shaderOutput.txt","w");
-	//fprintf(output,"opening file\n");
-	outfile << "opening file" << endl;
-    
+    inited = false; // Declare we have not initialized the shader yet    
     init(vsFile, gsFile, fsFile); // Initialize the shader
 }
 /**
@@ -150,7 +140,6 @@ void shader::init(const char *vsFile, const char *gsFile, const char *fsFile)
     glAttachShader(shader_id, shader_fp); // Attach the fragment shader to the program
 
 	glBindAttribLocation(shader_id, 0, "vPosition"); // Bind a constant attribute location for positions of vertices
-	//glBindAttribLocation(shader_id, 1, "in_Color"); // Bind another constant attribute location, this time for color
 	glBindAttribLocation(shader_id, 1, "vNormal"); // Bind another constant attribute location, this time for normal
 	glBindAttribLocation(shader_id, 2, "vTexCoords");
 

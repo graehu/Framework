@@ -10,77 +10,87 @@ int gWinGl4::init(void)
 {
 
 	///Going to have to get the window height somehow, probably through windows api.
-
+	
+	//Perspective calculations.
 	HWND hwnd = GetForegroundWindow();
 	m_hdc = GetDC(hwnd);
 	RECT rect;
 	GetWindowRect(hwnd, &rect);
-
 	int width = rect.right - rect.left;
 	int height = rect.bottom - rect.top;
-
-	m_projMat.Perspective(60.0f, (float)width / (float)height, 0.1f, 100.f);
-	m_viewMat.Translate(0,0,-10);
-
-	///////glTranslatef(-1.5f,0.0f,-6.0f);
-	float vert[9] = 
+	m_projMat.perspective(60.0f, (float)width / (float)height, 0.1f, 100.f);
+	////////////////////////////////////////
+	float squareVerts[12] = 
 	{
-		 -0.0f, 1.0f, 0.0f,
-		1.0f,-1.0f, 0.0f,
-		 -1.0f,-1.0f, 0.0f
+		-1.0f,-1.0f, 0.0f, // bot left
+		 -1.0f, 1.0f, 0.0f, //top left
+		 1.0f,-1.0f, 0.0f, // bot right
+		 1.0f, 1.0f, 0.0f // top right
 	};
-	
-	glGenVertexArrays(1, &m_vao);
-	glBindVertexArray(m_vao);
-		
-		glGenBuffers(1,&m_vbo);
-		glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-			glBufferData(GL_ARRAY_BUFFER, sizeof(vert),&vert, GL_STATIC_DRAW);
-			glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-			glEnableVertexAttribArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
+	GLuint squareVID;
+	glGenBuffers(1, &squareVID);
+	glBindBuffer(GL_ARRAY_BUFFER, squareVID);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(squareVerts),&squareVerts, GL_STATIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	////////////////////////////////////////
+	float squareNorms[12] = 
+	{
+		0.0f, 0.0f, 1.0f, // bot left
+		 0.0f, 0.0f, 1.0f, //top left
+		 0.0f, 0.0f, 1.0f, // bot right
+		 0.0f, 0.0f, 1.0f // top right
+	};
+	GLuint squareNID;
+	glGenBuffers(1, &squareNID);
+	glBindBuffer(GL_ARRAY_BUFFER, squareNID);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(squareNorms),&squareNorms, GL_STATIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	////////////////////////////////////////
+	float squareTexCoords[8] =  //these should probably be 2d.
+	{
+		 0.0f, 0.0f,  // bot left
+		 0.0f, 1.0f,  //top left
+		 1.0f, 0.0f,  // bot right
+		 1.0f, 1.0f  // top right
+	};
+	GLuint squareTID;
+	glGenBuffers(1, &squareTID);
+	glBindBuffer(GL_ARRAY_BUFFER, squareTID);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(squareTexCoords),&squareTexCoords, GL_STATIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	////////////////////////////////////////
 
+	m_vaos["square"] = 0;
+	
+	glGenVertexArrays(1, &m_vaos["square"]);
+	glBindVertexArray(m_vaos["square"]);
+		glBindBuffer(GL_ARRAY_BUFFER, squareVID);
+			glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, 0); // Set up our vertex attributes pointer
+			glEnableVertexAttribArray(0); //Enable Vertex Atribute array 0 (so positions)
+		glBindBuffer(GL_ARRAY_BUFFER, squareNID);
+			glVertexAttribPointer((GLuint)1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+			glEnableVertexAttribArray(1); //Enable Vertex Atribute array 1 (so normals)
+		glBindBuffer(GL_ARRAY_BUFFER, squareTID);
+			glVertexAttribPointer((GLuint)2, 2, GL_FLOAT, GL_FALSE, 0, 0);
+			glEnableVertexAttribArray(2); //Enable Vertex Atribute array 2 (so texCoords)
 	glBindVertexArray(0);
-	m_shader.init("assets/GLSL/simple.vs","assets/GLSL/simple.gs","assets/GLSL/simple.fs");
 
-	
+	GLenum error = glGetError();
+	if (error != GL_NO_ERROR)
+	{
+		assert(false);
+		throw -1;
+	}
+	m_shaders["texture"] = new shader("assets/GLSL/texture.vs","assets/GLSL/texture.gs","assets/GLSL/texture.fs");
 	return 0;
 
 } //initializing gl and what not for whatever window system is implamented
 
 int gWinGl4::render(void)
 {
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT); // Clear required buffers
-
-	//these methods wont work~~~~~
-
-	int projMatLocation = glGetUniformLocation(m_shader.id(), "projectionMatrix"); // Get the location of our projection matrix in the shader
-	int viewMatLocation = glGetUniformLocation(m_shader.id(), "viewMatrix"); // Get the location of our view matrix in the shader
-	int modelMatLocation = glGetUniformLocation(m_shader.id(), "modelMatrix"); // Get the location of our model matrix in the shader
-
-	//glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-	m_shader.bind();
-
-		glUniformMatrix4fv(projMatLocation, 1, GL_FALSE, &m_projMat.elem[0][0]); // Send our projection matrix to the shader
-		glUniformMatrix4fv(viewMatLocation, 1, GL_FALSE, &m_viewMat.elem[0][0]); // Send our view matrix to the shader
-		glUniformMatrix4fv(modelMatLocation, 1, GL_FALSE, &m_modelMat.elem[0][0]); // Send our model matrix to the shader
-
-		glBindVertexArray(m_vao);
-			glDrawArrays(GL_TRIANGLES, 0, 3);
-		glBindVertexArray(0);
-
-
-	m_shader.unbind();
-	
-	//glDrawBuffer(GL_TRIANGLES);
-	//		(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, 0);
-	//glBindBuffer(GL_ARRAY_BUFFER, 0);
-	//glBindVertexArray(vaoID[0]); // Bind our Vertex Array Object
-	//	glDrawElements(GL_TRIANGLES, (WIDTH)*(HEIGHT)*6, GL_UNSIGNED_SHORT, 0); // Draw our square
-	//glBindVertexArray(0); // Unbind our Vertex Array Object	
-
 
 	SwapBuffers(m_hdc); // Swap buffers so we can see our rendering
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT); // Clear required buffers
 	return 0;
 
 } //this'll have flipping the buffers
@@ -107,6 +117,7 @@ void gWinGl4::loadTexture(char* _fileName) //assumes 2d texture.
 	//make an abstract image class.
 	bitmap* image = new bitmap(_fileName);
 	m_textures[_fileName] = std::pair<bitmap*,GLuint>(image, 0);
+	int happy = image->getRedVal(16,16);
 
 	glGenTextures(1, &m_textures[_fileName].second);
 	glBindTexture(GL_TEXTURE_2D, m_textures[_fileName].second);
