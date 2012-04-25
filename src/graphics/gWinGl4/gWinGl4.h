@@ -6,6 +6,7 @@
 #include "../../types/Mat4x4f.h"
 #include "../renderable/sprite/sprite.h"
 #include "../camera/camera.h"
+#include "../../physics/polygon.h"
 #include "shader/shader.h"
 #include <windows.h>
 #include <GL/glew.h>
@@ -29,6 +30,7 @@ public:
 
 	void visit(sprite* _sprite);
 	void visit(camera* _camera);
+	void visit(polygon* _poly);
 
 	//utilities
 	void loadTexture(char* _fileName); // texture

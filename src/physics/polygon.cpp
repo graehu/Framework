@@ -1,11 +1,14 @@
 #include "polygon.h"
+#include <windows.h>
 #include "../types/vec3f.h"
 
 ///code optimisation two.
-bool polygon::collideSAT(polygon* _poly)
+vec3f polygon::collideSAT(polygon* _poly)
 {
 	if(!_poly)return false;
 	std::vector<vec3f> verts[] = {m_vertices, _poly->m_vertices};
+	vec3f MTV;
+	float  MinOverlap = -99999;
 	//this tests all of this poly's axes against the incoming poly and vice versa.
 	for(unsigned int i = 0; i < 2; i++)
 	{
@@ -13,6 +16,7 @@ bool polygon::collideSAT(polygon* _poly)
 		{
 			///Create an edge direction vector. Then Find it's normal.
 			vec3f edgeDir =  (verts[i][(ii+1)%(m_vertices.size())]) - (verts[i][ii]);
+			edgeDir.NormaliseSelf(); //This might not be nessisary
 			vec3f normal = vec3f(-edgeDir.j, edgeDir.i); //This technically isn't a normal. It's just a perp line.
 
 			//Find the projected shape's ranges on the normal.
@@ -27,13 +31,33 @@ bool polygon::collideSAT(polygon* _poly)
 					else if(diff[iii] > max[iii]) max[iii] = diff[iii];
 				}
 			}
-			float d0 = min[0] - max[1];
-			float d1 = min[1] - max[0];
+			float d0 = min[0] - max[1]; //overlap 1
+			float d1 = min[1] - max[0]; //overlap 2
 			if(d0 > 0.0f || d1 > 0.0f) return false;
+			else if(d0 > MinOverlap || d1 > MinOverlap)
+			{
+				MinOverlap = (d0>d1?d0:-d1);
+				MTV = normal*MinOverlap;
+			}
 		}
 	}
-	return true;
-}//*/
+	char hi[64];// = "how ya doin'?\n";
+	sprintf(hi, "MTV = (%f,%f,%f)\n", MTV.i, MTV.j, MTV.k);
+	OutputDebugString(hi);
+	return MTV;
+}
+
+
+
+
+
+
+
+
+
+
+
+//*/
 
 
 /*///code optimisation one.

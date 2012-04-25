@@ -4,6 +4,7 @@
 
 class sprite;
 class camera;
+class polygon;
 //class Graph;
 //class object3D;
 //class bezierCurve;
@@ -16,6 +17,7 @@ class iRenderVisitor
 
   virtual void visit(sprite* _sprite) = 0;
   virtual void visit(camera* _camera) = 0;
+  virtual void visit(polygon* _poly) = 0;
   //virtual void visit(Graph* _graph) = 0;
   //virtual void visit(object3D* _object3D) = 0;
   //virtual void visit(bezierCurve* _bezierCurve) = 0;

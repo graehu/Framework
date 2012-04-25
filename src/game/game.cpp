@@ -78,12 +78,35 @@ void game::run(void)
 		  tester.render(m_graphics->getRenderer());
 	  }
 
+	  if(m_input->isKeyPressed(input::e_up))
+	  {
+		  for(int i = 0; i < 4; i++)
+			  polyTwo.m_vertices[i].j += 0.1f;
+
+		  center.render(m_graphics->getRenderer());
+		  tester.m_position.j =  polyTwo.m_vertices[0].j+1;
+		  tester.m_position.i =  polyTwo.m_vertices[0].i+1;
+		  tester.render(m_graphics->getRenderer());
+	  }
+
+	  	  if(m_input->isKeyPressed(input::e_down))
+	  {
+		  for(int i = 0; i < 4; i++)
+			  polyTwo.m_vertices[i].j -= 0.1f;
+
+		  center.render(m_graphics->getRenderer());
+		  tester.m_position.j =  polyTwo.m_vertices[0].j+1;
+		  tester.m_position.i =  polyTwo.m_vertices[0].i+1;
+		  tester.render(m_graphics->getRenderer());
+	  }
+
 
 	  mahSprite.m_position = mahBody.getPos();
 	  mahSprite.m_orientation = mahBody.getOrientation();
-	  if(polyOne.collideSAT(&polyTwo))
-			mahSprite.render(m_graphics->getRenderer());
+	  vec3f harhar = polyOne.collideSAT(&polyTwo);
+
 	  m_graphics->render();
+	  
 	  Sleep(30);
 	}
 }
