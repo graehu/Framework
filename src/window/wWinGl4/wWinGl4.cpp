@@ -1,4 +1,4 @@
-#include "wWinGl.h"
+#include "wWinGl4.h"
 #include <windows.h>
 #include <iostream>
 
@@ -17,19 +17,19 @@
 
 
 
-int wWinGl::resize(int _width, int _height)
+int wWinGl4::resize(int _width, int _height)
 {
 	return 0;
 }
 
-int wWinGl::move(int _x, int _y)
+int wWinGl4::move(int _x, int _y)
 {
 	return 0;
 }
 LRESULT CALLBACK WndProc (HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 ///this assumes that the function will be defined at some point in the near future.
 
-int wWinGl::init(int _width, int _height, char *_name)
+int wWinGl4::init(int _width, int _height, char *_name)
 {
 
 	HDC hdc;
@@ -146,5 +146,5 @@ int wWinGl::init(int _width, int _height, char *_name)
 
 window* window::windowFactory()
 {
-	return new wWinGl;
+	return new wWinGl4;
 }

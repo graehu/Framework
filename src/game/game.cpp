@@ -56,6 +56,8 @@ void game::run(void)
 	  mahBody.update(time, dt);
 	  if(m_input->update()) m_looping = false;
 
+	  polyTwo.render(m_graphics->getRenderer());
+
 	  if(m_input->isKeyPressed(input::e_left))
 	  {
 		  for(int i = 0; i < 4; i++)
@@ -103,7 +105,7 @@ void game::run(void)
 
 	  mahSprite.m_position = mahBody.getPos();
 	  mahSprite.m_orientation = mahBody.getOrientation();
-	  vec3f harhar = polyOne.collideSAT(&polyTwo);
+	  vec3f harhar = polyOne.collideSAT(&polyTwo);//*/
 
 	  m_graphics->render();
 	  
