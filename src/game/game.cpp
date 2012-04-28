@@ -32,80 +32,55 @@ void game::run(void)
   polygon polyOne;
   polygon polyTwo;
 
+  polyOne.m_vertices.push_back(vec3f(-1.0f,-1.0f));
+  polyOne.m_vertices.push_back(vec3f(-1.0f,1.0f));
   polyOne.m_vertices.push_back(vec3f(1.0f,1.0f));
-  polyOne.m_vertices.push_back(vec3f(1.0f,3.0f));
-  polyOne.m_vertices.push_back(vec3f(3.0f,3.0f));
-  polyOne.m_vertices.push_back(vec3f(3.0f,1.0f));
+  polyOne.m_vertices.push_back(vec3f(1.0f,-1.0f));
 
   polyTwo.m_vertices = polyOne.m_vertices;
 
-  /*polyTwo.m_vertices.push_back(vec3f(-2.0f,-2.0f));
-  polyTwo.m_vertices.push_back(vec3f(-2.0f,0.0f));
-  polyTwo.m_vertices.push_back(vec3f(0.0f,-2.0f));
-  polyTwo.m_vertices.push_back(vec3f(0.0f,0.0f));*/
+  rigidBody test[10];
+  for(unsigned int i = 0; i < 10; i++)
+	test[i].m_vertices = polyOne.m_vertices;
 
-
-  rigidBody mahBody;
   float time = 0;
   float dt = 1.0f/30.0f;
-
+  
 
   while(m_looping)
 	{
-	  time += dt;
-	  mahBody.update(time, dt);
 	  if(m_input->update()) m_looping = false;
 
+	  for(unsigned int i = 0; i < 10; i++)
+	  {
+		  test[i].render(m_graphics->getRenderer());
+  		  test[i].update(time+i, dt);
+	  }
+	  time += dt;
+
 	  polyTwo.render(m_graphics->getRenderer());
+	  polyOne.render(m_graphics->getRenderer());
+
 
 	  if(m_input->isKeyPressed(input::e_left))
-	  {
-		  for(int i = 0; i < 4; i++)
+		  for(unsigned int i = 0; i < polyTwo.m_vertices.size(); i++)
 			  polyTwo.m_vertices[i].i -= 0.1f;
 
-		  center.render(m_graphics->getRenderer());
-		  tester.m_position.j =  polyTwo.m_vertices[0].j + 1;
-		  tester.m_position.i =  polyTwo.m_vertices[0].i + 1;
-		  tester.render(m_graphics->getRenderer());
-	  }
-
 	  if(m_input->isKeyPressed(input::e_right))
-	  {
-		  for(int i = 0; i < 4; i++)
+		  for(unsigned int i = 0; i < polyTwo.m_vertices.size(); i++)
 			  polyTwo.m_vertices[i].i += 0.1f;
 
-		  center.render(m_graphics->getRenderer());
-		  tester.m_position.j =  polyTwo.m_vertices[0].j+1;
-		  tester.m_position.i =  polyTwo.m_vertices[0].i+1;
-		  tester.render(m_graphics->getRenderer());
-	  }
-
 	  if(m_input->isKeyPressed(input::e_up))
-	  {
-		  for(int i = 0; i < 4; i++)
+		  for(unsigned int i = 0; i < polyTwo.m_vertices.size(); i++)
 			  polyTwo.m_vertices[i].j += 0.1f;
 
-		  center.render(m_graphics->getRenderer());
-		  tester.m_position.j =  polyTwo.m_vertices[0].j+1;
-		  tester.m_position.i =  polyTwo.m_vertices[0].i+1;
-		  tester.render(m_graphics->getRenderer());
-	  }
-
-	  	  if(m_input->isKeyPressed(input::e_down))
-	  {
-		  for(int i = 0; i < 4; i++)
+	  if(m_input->isKeyPressed(input::e_down))
+		  for(unsigned int i = 0; i < polyTwo.m_vertices.size(); i++)
 			  polyTwo.m_vertices[i].j -= 0.1f;
 
-		  center.render(m_graphics->getRenderer());
-		  tester.m_position.j =  polyTwo.m_vertices[0].j+1;
-		  tester.m_position.i =  polyTwo.m_vertices[0].i+1;
-		  tester.render(m_graphics->getRenderer());
-	  }
 
 
-	  mahSprite.m_position = mahBody.getPos();
-	  mahSprite.m_orientation = mahBody.getOrientation();
-	  vec3f harhar = polyOne.collideSAT(&polyTwo);//*/
+	  polyOne.collideSAT(&polyTwo);
 
 	  m_graphics->render();
 	  

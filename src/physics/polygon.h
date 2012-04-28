@@ -6,21 +6,19 @@
 
 class vec3f;
 
-//this class should probably sit inside of the
-//rigid body class.
-
+///A Generic polygon shape class, used for colidable areas.
 class polygon : public iRenderable
 {
 public:
 	polygon(){};
 	~polygon(){};
 
-	//this bool will become a vec3f
-	vec3f collideSAT(polygon* _polygon);
+	///Colides this polygon against another, returning the minimum translation vector to seperate them.
+	vec3f collideSAT(polygon* _polygon); 
+	///Renders this polygon, wireframe
 	void render(iRenderVisitor* _renderer){_renderer->visit(this);}
+	///Stores the vertices that make up the body.
 	std::vector<vec3f> m_vertices;
-
-	//this needs offsets.
 
 protected:
 

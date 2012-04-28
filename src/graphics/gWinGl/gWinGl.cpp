@@ -35,13 +35,6 @@ int gWinGl::init(void)
 
 int gWinGl::render(void)
 {
-	glBegin(GL_LINE_STRIP);
-		glVertex3f(-1.0f,-1.0f, 0.0f); // bot left
-		glVertex3f(-1.0f, 1.0f, 0.0f); //top left
-		glVertex3f( 1.0f,-1.0f, 0.0f); // bot right
-		glVertex3f( 1.0f, 1.0f, 0.0f); // top right
-	glEnd();
-
 	SwapBuffers(m_hdc); // Swap buffers so we can see our rendering
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT); // Clear required buffers
 	return 0;

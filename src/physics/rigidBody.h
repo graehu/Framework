@@ -4,6 +4,7 @@
 #include "../types/vec3f.h"
 #include "../types/quaternion.h"
 #include "../types/mat4x4f.h"
+#include "polygon.h"
 #include <math.h>
 
 /// A cube with self contained physics simulation.
@@ -14,7 +15,7 @@
 /// way that all forces can be calculated from the current physics
 /// state at any time. See Cube::integrate for details.
 
-class rigidBody
+class rigidBody : public polygon
 {
 public:
 
@@ -53,49 +54,22 @@ public:
 	vec3f getPos(void){return current.position;}
 	quaternion getOrientation(void) {return current.orientation;}
 
+	vec3f collideSAT(polygon* _poly);
+	void render(iRenderVisitor* _renderer);
+
     /// Default constructor.
 	
-	rigidBody()
-	{
-		current.size = 1;
-		current.mass = 1;
-		current.inverseMass = 1.0f / current.mass;
-		current.position = vec3f(2,0,0);
-		current.momentum = vec3f(0,0,-10);
-		current.orientation.identity();
-		current.angularMomentum = vec3f(0,0,0);
-		current.inertiaTensor = current.mass * current.size * current.size * 1.0f / 6.0f;
-		current.inverseInertiaTensor = 1.0f / current.inertiaTensor;
-		current.recalculate();
-		previous = current;
-	}
+	rigidBody();
 
     /// Update physics state.
 
-    void update(float t, float dt)
-    {
-        previous = current;
-        integrate(current, t, dt);
-		//if physics are 2d. do this:
-			current.position.k = 0;
-			current.orientation.i = 0;
-			current.orientation.j = 0;
-    }
+    void update(float t, float dt);
 
 private:
 
     /// Interpolate between two physics states.
 	
-	static state interpolate(const state &a, const state &b, float alpha)
-	{
-		state state = b;
-		state.position = a.position*(1-alpha) + b.position*alpha;
-		state.momentum = a.momentum*(1-alpha) + b.momentum*alpha;
-		state.orientation = slerp(a.orientation, b.orientation, alpha);
-		state.angularMomentum = a.angularMomentum*(1-alpha) + b.angularMomentum*alpha;
-		state.recalculate();
-		return state;
-	}
+	state interpolate(const state &a, const state &b, float alpha);
 
 	state previous;		///< previous physics state.
     state current;		///< current physics state.
@@ -118,53 +92,17 @@ private:
     /// Evaluate all derivative values for the physics state at time t.
     /// @param state the physics state of the cube.
 
-	static derivative evaluate(const state &_state, float t)
-	{
-		derivative output;
-		output.velocity = _state.velocity;
-		output.spin = _state.spin;
-		forces(_state, t, output.force, output.torque);
-		return output;
-	}
+	derivative evaluate(const state &_state, float t);
 	
     /// Evaluate derivative values for the physics state at future time t+dt 
     /// using the specified set of derivatives to advance dt seconds from the 
     /// specified physics state.
 
-	static derivative evaluate(state _state, float t, float dt, const derivative &_derivative)
-	{
-		_state.position += _derivative.velocity * dt;
-		_state.momentum += _derivative.force * dt;
-		_state.orientation +=  _derivative.spin * dt;
-		_state.angularMomentum += _derivative.torque * dt;
-		_state.recalculate();
-		
-		derivative output;
-		output.velocity = _state.velocity;
-		output.spin = _state.spin;
-		forces(_state, t+dt, output.force, output.torque);
-		return output;
-	}
-
+	derivative evaluate(state _state, float t, float dt, const derivative &_derivative);
     /// Integrate physics state forward by dt seconds.
     /// Uses an RK4 integrator to numerically integrate with error O(5).
 
-	static void integrate(state &_state, float t, float dt)
-	{
-		derivative a = evaluate(_state, t);
-		derivative b = evaluate(_state, t, dt*0.5f, a);
-		derivative c = evaluate(_state, t, dt*0.5f, b);
-		derivative d = evaluate(_state, t, dt, c);
-		
-		_state.position += 1.0f/6.0f * dt * (a.velocity + 2.0f*(b.velocity + c.velocity) + d.velocity);
-		_state.momentum += 1.0f/6.0f * dt * (a.force + 2.0f*(b.force + c.force) + d.force);
-
-		_state.orientation += (a.spin + (b.spin + c.spin)*2.0 + d.spin)*(1.0f/6.0f * dt);
-
-		_state.angularMomentum += 1.0f/6.0f * dt * (a.torque + 2.0f*(b.torque + c.torque) + d.torque);
-
-		_state.recalculate();
-	}	
+	void integrate(state &_state, float t, float dt);	
 
     /// Calculate force and torque for physics state at time t.
     /// Due to the way that the RK4 integrator works we need to calculate
@@ -173,27 +111,6 @@ private:
     /// its accuracy by detecting curvature in derivative values over the 
     /// timestep so we need our force values to supply the curvature.
 
-	static void forces(const state &_state, float t, vec3f &force, vec3f &torque)
-	{
-		// attract towards origin
-
-		force = -10 * _state.position;
-	
-		// sine force to add some randomness to the motion
-
-		force.i += 10 * sin(t*0.9f + 0.5f);
-		force.j += 11 * sin(t*0.5f + 0.4f);
-		force.k += 12 * sin(t*0.7f + 0.9f);
-
-		// sine torque to get some spinning action
-
-		torque.i = 1.0f * sin(t*0.9f + 0.5f);
-		torque.j = 1.1f * sin(t*0.5f + 0.4f);
-		torque.k = 1.2f * sin(t*0.7f + 0.9f);
-
-		// damping torque so we dont spin too fast
-
-		torque -= 0.2f * _state.angularVelocity;
-	}
+	void forces(const state &_state, float t, vec3f &force, vec3f &torque);
 };
 #endif//RIGIDBODY_H
