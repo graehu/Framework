@@ -11,6 +11,7 @@ packet::packet()
 	m_headerSize = m_end = 16;
     m_data = new unsigned char[m_headerSize];
     m_sizeAccumulator = 0;
+	m_dataEnd = 0;
 	//m_typeIttorator = 0;
     //m_currentDefID = 0;
 }
@@ -40,14 +41,6 @@ bool packet::setAlloc(unsigned int _alloc)
 	}
 	return true;
 }
-
-
-
-
-
-
-
-
 
 ///////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////

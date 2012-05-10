@@ -7,7 +7,7 @@ vec3f polygon::collideSAT(polygon* _poly)
 {
 	if(!_poly)return false;
 	std::vector<vec3f>* verts[] = {&m_vertices, &_poly->m_vertices};
-	vec3f MTV;
+	vec3f MTV;//Minimum Translation Vector. (to separate the bodied)
 	float  MinOverlap = -99999;
 	//this tests all of this poly's axes against the incoming poly and vice versa.
 	for(unsigned int i = 0; i < 2; i++)
@@ -34,16 +34,16 @@ vec3f polygon::collideSAT(polygon* _poly)
 			float d0 = min[0] - max[1]; //overlap 1
 			float d1 = min[1] - max[0]; //overlap 2
 			if(d0 > 0.0f || d1 > 0.0f) return false;
-			else if(d0 > MinOverlap || d1 > MinOverlap)
+			else if(d0 > -abs(MinOverlap) || d1 > -abs(MinOverlap))
 			{
 				MinOverlap = (d0>d1?d0:-d1);
-				MTV = normal*MinOverlap;
+				MTV = -(normal*MinOverlap);
 			}
 		}
 	}
-	char hi[64];
+	/*char hi[64];
 	sprintf(hi, "MTV = (%f,%f,%f)\n", MTV.i, MTV.j, MTV.k);
-	OutputDebugString(hi);
+	OutputDebugString(hi);*/
 	return MTV;
 }
 

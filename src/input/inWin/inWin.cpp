@@ -23,6 +23,8 @@ LRESULT CALLBACK WndProc (HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 				g_keys[input::e_down] = true;
 			else if(wParam == 'D') //d
 				g_keys[input::e_right] = true;
+			else if(wParam == 'R') //d
+				g_keys[input::e_respawn] = true;
 			break;
 		case WM_KEYUP:
 			if(wParam == 'W') //w
@@ -33,6 +35,8 @@ LRESULT CALLBACK WndProc (HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 				g_keys[input::e_down] = false;
 			else if(wParam == 'D') //d
 				g_keys[input::e_right] = false;
+			else if(wParam == 'R') //d
+				g_keys[input::e_respawn] = false;
 			break;
 		case WM_MOUSEMOVE:
 			break;

@@ -1,6 +1,7 @@
 #include "net.h"
 #include <cstdlib>
 
+
 using namespace net;
 
 network::network(unsigned short _protocolID, float _timeout , unsigned int _maxSequence) :
@@ -8,6 +9,7 @@ network::network(unsigned short _protocolID, float _timeout , unsigned int _maxS
 {
   m_packetSize = 256;
 }
+
 
 network::~network()
 {
@@ -19,35 +21,45 @@ bool network::init(bool _host, int _port)
 
   if(!start(_port))
     {
-      printf("could not start connection on port %d\n", _port);
+      myprintf("could not start connection on port %d\n", _port);
       return 1;
     }
       
   if(_host == false)
     {
       m_host = false;
-      address myAddress(127,0,0,1,8000); //this shit should be passed.
-      connect(myAddress);
-
+	  for(int i = 0; i < _port-8000; i++)
+	  {
+		address myAddress = address(127,0,0,1,8000+i); //this shit should be passed.
+		connect(myAddress);
+	  }
       ///telling the server about myself
     }
 
   if(_host == true)
       m_host = true;
-
-      
   return false;
+}
+
+packet* network::recievePacket(void)
+{
+	return connection::receivePacket(256);
+}
+
+void network::sendPacket(packet* _packet, float _deltaTime)
+{
+	for(int i = 0; i < getMailListSize(); i++)
+		connection::sendPacket(_packet, i, _deltaTime);
 }
 	  
 bool network::update(float _deltaTime)
 {
   connection::update(_deltaTime);
-
-
   /// ///////////////////////
   /// Packet read Section////
   /// ///////////////////////
 
+  /*
   while(receivePacket(m_packetSize) != 0)
   {
 	unsigned short packetSender = m_receivePacket.readKey();
@@ -133,12 +145,11 @@ bool network::update(float _deltaTime)
     m_entities[i]->move();
 
   }
-		
-  return false;
-		  
+		*/
+  return false;  
 }
 
-void network::initEntity(unsigned short _packetSender, unsigned short _accessKey)
+/*void network::initEntity(unsigned short _packetSender, unsigned short _accessKey)
 {
 
   while(_packetSender >= m_enUpdate.size())
@@ -149,7 +160,7 @@ void network::initEntity(unsigned short _packetSender, unsigned short _accessKey
    if(_accessKey == m_enUpdate[_packetSender].size())
     {
 
-      netEntity* nEntity = new netEntity;
+		netEntity* nEntity = new netEntity;
       m_entities.push_back(nEntity);
       if(m_host)printf("initialising entity\n");
       m_enUpdate[_packetSender].push_back(enInfo((m_entities.size()-1),e_updating));
@@ -178,29 +189,16 @@ void network::initEntity(unsigned short _packetSender, unsigned short _accessKey
 
 
     }
-}
+}*/
 /*
-void network::draw()
-{
-  m_renderer.beginScene();
-  for(int i = 0; i < m_entities.size(); i++)
-    {
-      m_renderer.draw(m_entities[i]->getXPos(),
-		    m_entities[i]->getYPos(),
-		    1,
-		    1);
-    }
-  m_renderer.endScene();
-}
-*/
 netEntity* network::getEntity(unsigned int _element)
 {
   if(_element < m_entities.size())
     return m_entities[_element];
 
   return 0;
-}
-
+}*/
+/*
 void network::addEntity(netEntity* _newEntity)
 {
 	if(m_host)
@@ -220,5 +218,4 @@ void network::addEntity(netEntity* _newEntity)
 		m_enUpdate[0].push_back(enInfo(0,e_updating));
 		m_entities.push_back(_newEntity);
 	}
-}
-
+}*/

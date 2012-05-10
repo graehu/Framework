@@ -4,9 +4,10 @@
 #include "stats.h"
 #include "flowControl.h"
 #include "socket.h" /// has address in it.
-//#include "packet.h"
-#include "../packet/readPacket.h"
-#include "../packet/writePacket.h"
+#include "../packet/packet.h"
+
+extern char message[];
+#define myprintf(a, ...) sprintf(message, a,  __VA_ARGS__); OutputDebugString(message);
 
 ///friendly user-data-group encapsulator
 
@@ -30,17 +31,13 @@ public:
     void connect(const address &_address);
 
     void update(float _deltaTime);
-    bool sendPacket(unsigned short _key, float _deltaTime);
-    int receivePacket(unsigned int _size);
+    bool sendPacket(packet* _packet, unsigned short _key, float _deltaTime);
+    packet* receivePacket(unsigned int _size);
     int getHeaderSize() const;
     unsigned short getMailListSize(void){return m_mailList.size();}
     unsigned int getBytesRead(void){return m_bytesRead;}
 
 protected:
-
-    //TODO make these two packets into a singleton, packet interface... thing.
-    readPacket m_receivePacket;
-    writePacket m_sendPacket;
 
     unsigned int m_port;
 

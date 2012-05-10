@@ -1,7 +1,6 @@
 #ifndef IRENDERABLE_H
 #define IRENDERABLE_H
 
-//class iRenderVisitor;
 #include "../iRenderVisitor.h"
 
 class iRenderable
@@ -14,6 +13,5 @@ class iRenderable
  private:
 
 };
-
 
 #endif//IRENDERABLE_H

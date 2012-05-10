@@ -6,7 +6,7 @@
 #include "../window/window.h"
 #include "../graphics/graphics.h"
 #include "../input/input.h"
-
+#include "../networking/net.h"
 
 class game
 {
@@ -25,10 +25,12 @@ class game
   graphics* m_graphics;
   window* m_window;
   input* m_input;
+  net::network* m_network;
 
  private:
 
   void init(void);
+
 
 };
 

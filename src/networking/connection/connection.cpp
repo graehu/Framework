@@ -4,6 +4,9 @@
 using namespace net;
 using namespace std;
 
+char message[32];
+
+
 connection::connection(unsigned short _protocolID, float _timeout, unsigned int _maxSequence)
 {
   InitializeSockets();
@@ -13,8 +16,7 @@ connection::connection(unsigned short _protocolID, float _timeout, unsigned int 
   m_running = false;
   m_mailList.clear();
   m_sendAccumulator = 0;
-  m_receivePacket.setAlloc(256);
-  m_sendPacket.setAlloc(256);
+
   m_bytesRead = 0;
 }
 
@@ -28,9 +30,9 @@ bool connection::start(int _port)
 {
   assert(!m_running);
   m_port = _port;
-  m_sendPacket.setAlloc(m_sendPacket.getHeaderSize());
-  m_receivePacket.setAlloc(m_receivePacket.getHeaderSize());
-  printf("start connection on port %d\n", _port);
+  myprintf("start connection on port %d\n", _port);
+  //sprintf(message, "start connection on port %d\n", _port);
+  //OutputDebugString(message);
   if (!m_socket.openSock(_port))
     return false;
   m_running = true;
@@ -40,7 +42,7 @@ bool connection::start(int _port)
 void connection::stop()
 {
   assert(m_running);
-  printf("stop connection\n");
+  myprintf("stop connection\n");
   m_mailList.empty();
   m_socket.closeSock();
   m_running = false;
@@ -48,7 +50,8 @@ void connection::stop()
 
 void connection::connect(const address & _address)
 {
-  printf("client trying: %d.%d.%d.%d:%d\n",
+
+  myprintf(message, "client trying: %d.%d.%d.%d:%d\n",
 	 _address.getA(),
 	 _address.getB(),
 	 _address.getC(),
@@ -130,15 +133,12 @@ void connection::update(float _deltaTime)
 
 	      /// i is this elements current position in the array, so if this was the first element
 	      /// i would be zero.
+		  unsigned char initData[6];
+		  dataUtils::instance().writeData(m_protocolID*2, &initData[0]);
+		  dataUtils::instance().writeData(m_mailList[i].second, &initData[2]);
+		  dataUtils::instance().writeData((unsigned short)i, &initData[4]);
+	      m_socket.send(m_mailList[i].first->m_address, initData, 6);
 
-	      ///Using writeData is a little hacky, but for now it will do.
-
-	      m_sendPacket.writeData((unsigned short)(m_protocolID*2),0);
-	      m_sendPacket.writeData((unsigned short)m_mailList[i].second,2);
-	      m_sendPacket.writeData((unsigned short)i,4);
-
-	      m_socket.send(m_mailList[i].first->m_address, m_sendPacket.getData(), 6);
-	      m_sendPacket.clearPacket();
             }
         }
 
@@ -151,7 +151,7 @@ void connection::update(float _deltaTime)
         {
 	  if (m_mailList[i].first->m_state == e_connecting)
             {
-	      printf
+	      myprintf
                 (
 		 "Timed-out connecting to: %d.%d.%d.%d:%d\n",
 		 m_mailList[i].first->m_address.getA(),
@@ -190,7 +190,7 @@ void connection::update(float _deltaTime)
             }
 	  else if ( m_mailList[i].first->m_state  == e_connected )
             {
-	      printf
+	      myprintf
                 (
 		 "Connection timed-out: %d.%d.%d.%d:%d\n",
 		 m_mailList[i].first->m_address.getA(),
@@ -211,11 +211,8 @@ void connection::update(float _deltaTime)
 
 }
 
-bool connection::sendPacket(unsigned short _key, float _deltaTime)
+bool connection::sendPacket(packet* _packet, unsigned short _key, float _deltaTime)
 {
-
-  ///it would be cool to somehow add FlowControl to this function.
-
   assert(m_running);
 
   if (m_mailList.size() == 0)
@@ -242,25 +239,22 @@ bool connection::sendPacket(unsigned short _key, float _deltaTime)
     {
 
       m_mailList[_key].first->m_sendAccumulator = 0;
+	  unsigned char* data = _packet->getData();
+	  dataUtils::instance().writeData(m_protocolID, &data[0]); 
+      dataUtils::instance().writeData(m_mailList[_key].second, &data[2]); 
+      dataUtils::instance().writeData(m_mailList[_key].first->m_stats.getLocalSequence(), &data[4]); 
+      dataUtils::instance().writeData(m_mailList[_key].first->m_stats.getRemoteSequence(), &data[8]); 
+	  dataUtils::instance().writeData(m_mailList[_key].first->m_stats.generateAckBits(), &data[12]);
+	  m_mailList[_key].first->m_stats.packetSent(_packet->getEnd());
 
-      //sexy new way (no need for a local packet!)
-      m_sendPacket.writeProtocolId(m_protocolID); ///short
-      m_sendPacket.writeKey(m_mailList[_key].second); /// send key ///short
-      m_sendPacket.writeSequence(m_mailList[_key].first->m_stats.getLocalSequence()); /// sequence
-      m_sendPacket.writeAck(m_mailList[_key].first->m_stats.getRemoteSequence()); /// ack
-      m_sendPacket.writeAckBits(m_mailList[_key].first->m_stats.generateAckBits()); /// acked bits
-      m_mailList[_key].first->m_stats.packetSent(m_sendPacket.getAlloc());
-
-      error = m_socket.send(m_mailList[_key].first->m_address, m_sendPacket.getData(), m_sendPacket.getEnd());
-      m_sendPacket.clearPacket(); /// clears the packet so as you can start pushing data in from the start again
-      //printf("sending packet\n");
+      error = m_socket.send(m_mailList[_key].first->m_address, data, _packet->getEnd());
     }
 
   return error;
 }
 
 
-int connection::receivePacket(unsigned int _size)
+packet* connection::receivePacket(unsigned int _size)
 {
   ////////////////////////////////////////////////////////////////
   /// NOTE                                                     ///
@@ -270,21 +264,23 @@ int connection::receivePacket(unsigned int _size)
   assert(m_running);
   address n_sender;
 
-  m_receivePacket.clearPacket();
-  m_receivePacket.setAlloc(_size);
-  unsigned char* packet = m_receivePacket.getData();
-  // push this directly into m_receivePacket.
-  int l_bytesRead = m_socket.receive(n_sender, packet, _size);
+  packet inPacket;
+
+  inPacket.clearPacket();
+  inPacket.setAlloc(_size);
+  unsigned char* packetData = inPacket.getData();
+
+  // push this directly into inPacket.
+  int l_bytesRead = m_socket.receive(n_sender, packetData, _size);
 
   if (l_bytesRead == 0)
     return 0;
 
-  m_receivePacket.setEnd(m_receivePacket.getHeaderSize()); /// only reading the mHeader for now
+  inPacket.setEnd(inPacket.getHeaderSize());
 
   unsigned short security = 0;
 
-  security = m_receivePacket.readProtocolId();
-
+  security = dataUtils::instance().readUShort(&packetData[0]);//protocal id check.
   if((security != m_protocolID) && (security != (unsigned short)(m_protocolID*2)))
     return 0;
 
@@ -292,14 +288,9 @@ int connection::receivePacket(unsigned int _size)
   if(security == (unsigned short)(m_protocolID*2))
     initPacket = true;
 
-  ///UNDER HEAVY DEVELOPMENT/////////////////////////////////////////////////////////////////////////////
-
   if(initPacket)
     {
-      //printf("Received init packet \n");
-	  security = dataUtils::instance().readUShort(&packet[2]);
-      //security = m_receivePacket.readUShort(2); ///the key they think i sent them.
-
+	  security = dataUtils::instance().readUShort(&packetData[2]);
       if(security < m_mailList.size())
 	{
 	  if(m_mailList[security].first->m_address == n_sender)
@@ -324,17 +315,17 @@ int connection::receivePacket(unsigned int _size)
 	      /// the one that belongs to this sender
 	      /// set his sent key to what it's telling you
 	      /// then check if it is sending the Receive key correctly
-		  security = dataUtils::instance().readUShort(&packet[4]);
-	      //security = m_receivePacket.readUShort(4);
+		  security = dataUtils::instance().readUShort(&packetData[4]);
+
 	      m_mailList[m_newConnKeys[i]].second = security;
-	      security = dataUtils::instance().readUShort(&packet[2]);
-	      //security = m_receivePacket.readUShort(2);
+	      security = dataUtils::instance().readUShort(&packetData[2]);
+
 
 	      if(security == m_newConnKeys[i])
                 {
 		  ///printf("client connected1\n");
 
-		  printf
+		  myprintf
                     (
 		     "Port: %i Connected to: %d.%d.%d.%d:%d\n",
 		     m_port,
@@ -366,8 +357,8 @@ int connection::receivePacket(unsigned int _size)
       ///if it is a new connection then give it a key if there is one spare in the key pool
       if(!m_keyPool.empty())
         {
-      security = dataUtils::instance().readUShort(&packet[4]);
-	  //security = m_receivePacket.readUShort(4);
+      security = dataUtils::instance().readUShort(&packetData[4]);
+
 	  m_mailList[m_keyPool.back()].first->m_state = e_connecting;
 	  m_mailList[m_keyPool.back()].first->m_address = n_sender;
 	  m_mailList[m_keyPool.back()].first->m_timeoutAccumulator = 0;
@@ -381,8 +372,8 @@ int connection::receivePacket(unsigned int _size)
         }
       /// printf("client connecting for first time \n");
 
-      security = dataUtils::instance().readUShort(&packet[4]);
-      //security = m_receivePacket.readUShort(4);
+      security = dataUtils::instance().readUShort(&packetData[4]);
+
 
       sender* n_mailer = new sender(m_maxSequence);
       n_mailer->m_address = n_sender;
@@ -395,8 +386,8 @@ int connection::receivePacket(unsigned int _size)
     }
   else
     {
-	  security = dataUtils::instance().readUShort(&packet[2]);
-      //security = m_receivePacket.readUShort(2);
+	  security = dataUtils::instance().readUShort(&packetData[2]);
+
 
       if(security > m_mailList.size())
 	return 0;
@@ -417,7 +408,7 @@ int connection::receivePacket(unsigned int _size)
 		  if(security == m_newConnKeys[i])
                     {
 
-		      printf
+		      myprintf
                         (
 			 "Port: %i Connected to: %d.%d.%d.%d:%d\n",
 			 m_port,
@@ -445,28 +436,18 @@ int connection::receivePacket(unsigned int _size)
                 }
             }
         }
+      
+      unsigned int packet_sequence = dataUtils::instance().readUInteger(&packetData[4]);
+      unsigned int packet_ack = dataUtils::instance().readUInteger(&packetData[8]);
+      unsigned int packet_ack_bits = dataUtils::instance().readUInteger(&packetData[12]);
 
-      /// unsigned short sendKey = m_receivePacket.readUShort(2); /// removed because i don't think it's needed anymore
-
-      unsigned int packet_sequence = dataUtils::instance().readUInteger(&packet[4]);
-      unsigned int packet_ack = dataUtils::instance().readUInteger(&packet[8]);
-      unsigned int packet_ack_bits = dataUtils::instance().readUInteger(&packet[12]);
-
-      //unsigned int packet_sequence = m_receivePacket.readUInteger(4);
-      //unsigned int packet_ack = m_receivePacket.readUInteger(8);
-      //unsigned int packet_ack_bits = m_receivePacket.readUInteger(12);
 
       m_mailList[security].first->m_stats.packetReceived(packet_sequence, l_bytesRead - 16); ///WHY DOES THIS SAY 14?!.... it doesn't anymore...
       m_mailList[security].first->m_stats.processAck(packet_ack, packet_ack_bits);
       m_mailList[security].first->m_timeoutAccumulator = 0;
-      //memcpy(data, &packet[mHeader], bytes_read - mHeader);
 
-
-      //m_receivePacket.setEnd(bytes_read);
-
-      m_bytesRead = l_bytesRead;
-
-      return l_bytesRead;
+	  inPacket.setDataEnd(l_bytesRead);
+      return &inPacket;
     }
 
   return 0;

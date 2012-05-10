@@ -11,6 +11,7 @@ enum keys
     e_down,
 	e_left,
 	e_right,
+	e_respawn,
     e_totalKeys
   };
 enum mouseButtons

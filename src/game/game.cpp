@@ -3,6 +3,7 @@
 #include "../physics/rigidBody.h"
 #include "../physics/polygon.h"
 #include <windows.h>
+#include <queue>
 #include <cassert>
 
 game::game()
@@ -19,72 +20,111 @@ void game::init(void)
   m_graphics->init();
   m_input = input::inputFactory();
   m_input->init();
+  m_network = new net::network(0xf00d, 1000);
 }
 
 void game::run(void)
 {
   init();
-  sprite mahSprite, tester, center;
-  center.m_position = vec3f(2,2);
-  center.m_fileName = tester.m_fileName = mahSprite.m_fileName = "assets/car.bmp";
-  mahSprite.m_position = vec3f(0.2f, 0.2f);
 
-  polygon polyOne;
-  polygon polyTwo;
+  for(int i = 0; m_network->init(i==0?1:0, 8000+i); i++){}
+  
+  std::queue<char> inputs;
+  for(int i = 0; i < 6; i++)
+	inputs.push(0);
+  
+  
+  polygon player, floor, wall1, wall2;
+  std::vector<rigidBody> test;
 
-  polyOne.m_vertices.push_back(vec3f(-1.0f,-1.0f));
-  polyOne.m_vertices.push_back(vec3f(-1.0f,1.0f));
-  polyOne.m_vertices.push_back(vec3f(1.0f,1.0f));
-  polyOne.m_vertices.push_back(vec3f(1.0f,-1.0f));
+  player.m_vertices.push_back(vec3f(-1.0f,-1.0f));
+  player.m_vertices.push_back(vec3f(-1.0f, 1.0f));
+  player.m_vertices.push_back(vec3f(1.0f,1.0f));
+  player.m_vertices.push_back(vec3f(1.0f,-1.0f));
 
-  polyTwo.m_vertices = polyOne.m_vertices;
+  floor.m_vertices.push_back(vec3f(-19.0f,-19.0f));
+  floor.m_vertices.push_back(vec3f(-19.0f,-14.0f));
+  floor.m_vertices.push_back(vec3f(19.0f,-14.0f));
+  floor.m_vertices.push_back(vec3f(19.0f,-19.0f));
 
-  rigidBody test[10];
-  for(unsigned int i = 0; i < 10; i++)
-	test[i].m_vertices = polyOne.m_vertices;
+  wall1.m_vertices.push_back(vec3f(-14.0f, -19.0f));
+  wall1.m_vertices.push_back(vec3f(-19.0f, -19.0f));
+  wall1.m_vertices.push_back(vec3f(-19.0f, 14.0f));
+  wall1.m_vertices.push_back(vec3f(-14.0f, 14.0f));
+
+  wall2.m_vertices.push_back(vec3f(14.0f, -19.0f));
+  wall2.m_vertices.push_back(vec3f(19.0f, -19.0f));
+  wall2.m_vertices.push_back(vec3f(19.0f, 14.0f));
+  wall2.m_vertices.push_back(vec3f(14.0f, 14.0f));
+
 
   float time = 0;
   float dt = 1.0f/30.0f;
-  
+  bool spawning = false;
 
   while(m_looping)
 	{
 	  if(m_input->update()) m_looping = false;
 
-	  for(unsigned int i = 0; i < 10; i++)
+
+	  for(int i = 0; i < test.size(); i++)
 	  {
 		  test[i].render(m_graphics->getRenderer());
-  		  test[i].update(time+i, dt);
+		  test[i].update(time, dt);
 	  }
 	  time += dt;
 
-	  polyTwo.render(m_graphics->getRenderer());
-	  polyOne.render(m_graphics->getRenderer());
-
+	  player.render(m_graphics->getRenderer());
 
 	  if(m_input->isKeyPressed(input::e_left))
-		  for(unsigned int i = 0; i < polyTwo.m_vertices.size(); i++)
-			  polyTwo.m_vertices[i].i -= 0.1f;
+		  for(unsigned int i = 0; i < player.m_vertices.size(); i++)
+			  player.m_vertices[i].i -= 0.1f;
 
 	  if(m_input->isKeyPressed(input::e_right))
-		  for(unsigned int i = 0; i < polyTwo.m_vertices.size(); i++)
-			  polyTwo.m_vertices[i].i += 0.1f;
+		  for(unsigned int i = 0; i < player.m_vertices.size(); i++)
+			  player.m_vertices[i].i += 0.1f;
 
 	  if(m_input->isKeyPressed(input::e_up))
-		  for(unsigned int i = 0; i < polyTwo.m_vertices.size(); i++)
-			  polyTwo.m_vertices[i].j += 0.1f;
+		  for(unsigned int i = 0; i < player.m_vertices.size(); i++)
+			  player.m_vertices[i].j += 0.1f;
 
 	  if(m_input->isKeyPressed(input::e_down))
-		  for(unsigned int i = 0; i < polyTwo.m_vertices.size(); i++)
-			  polyTwo.m_vertices[i].j -= 0.1f;
+		  for(unsigned int i = 0; i < player.m_vertices.size(); i++)
+			  player.m_vertices[i].j -= 0.1f;
 
+	  if(m_input->isKeyPressed(input::e_respawn) && spawning == false)
+	  {
+		  test.push_back(rigidBody());
+		  test[test.size()-1].m_vertices.push_back(vec3f(-0.75f,-0.75f));
+		  test[test.size()-1].m_vertices.push_back(vec3f(-0.75f,0.75f));
+		  test[test.size()-1].m_vertices.push_back(vec3f(0.75f,0.75f));
+		  test[test.size()-1].m_vertices.push_back(vec3f(0.75f,-0.75f));
+		  spawning = false;
+	  }else if(!m_input->isKeyPressed(input::e_respawn)) spawning = false;
 
-
-	  polyOne.collideSAT(&polyTwo);
-
+	  floor.render(m_graphics->getRenderer());
+	  wall1.render(m_graphics->getRenderer());
+	  wall2.render(m_graphics->getRenderer());
+	  for(int i = 0; i < test.size(); i++)
+	  {
+		  test[i].collideSAT(&wall2);
+		  test[i].collideSAT(&wall1);
+		  test[i].collideSAT(&floor);
+		  test[i].collideSAT(&player);
+	  }
+	  for(int i = 0; i < test.size(); i++)
+	  {
+		  for(int ii = 0; ii < test.size(); ii++)
+		  {
+			  if(i == ii) continue;
+			  test[i].collideSAT(&test[ii]);
+		  }
+	  }
+	  m_network->recievePacket();
+	  m_network->update(dt);
 	  m_graphics->render();
 	  
-	  Sleep(30);
+	 // Sleep(30);
 	}
 }
 
