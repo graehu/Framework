@@ -3,6 +3,7 @@
 
 int inSdl::init()
 {
+  
   return 0;
 }
 
@@ -12,15 +13,19 @@ bool inSdl::update(void)
     m_keys[i] = false;
 
   char* internalKeys = (char*)SDL_GetKeyState(NULL);
-    
-  if(internalKeys['w'])
+
+  if(internalKeys['w'] )
+    {
     m_keys[e_up] = true;
+    }
   if(internalKeys['a'])
     m_keys[e_left] = true;
   if(internalKeys['s'])
     m_keys[e_down] = true;
   if(internalKeys['d'])
     m_keys[e_right] = true;
+  if(internalKeys['r'])
+    m_keys[e_respawn] = true;
 
   	int cx,cy;
 	Uint8 ms = SDL_GetMouseState(&cx, &cy);
@@ -43,6 +48,8 @@ bool inSdl::update(void)
 	  {
 	    return true;
 	  }
+        // case SDL_KEYDOWN:
+        //   printf((char*)&event.key.which);
         }
     }
   return false;

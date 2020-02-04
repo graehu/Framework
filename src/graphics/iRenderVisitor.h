@@ -2,7 +2,7 @@
 #define IRENDERVISITOR_H
 
 
-class sprite;
+//class sprite;
 class camera;
 class polygon;
 //class Graph;
@@ -15,7 +15,7 @@ class iRenderVisitor
 {
  public:
 
-  virtual void visit(sprite* _sprite) = 0;
+  // virtual void visit(sprite* _sprite) = 0;
   virtual void visit(camera* _camera) = 0;
   virtual void visit(polygon* _poly) = 0;
   //virtual void visit(Graph* _graph) = 0;

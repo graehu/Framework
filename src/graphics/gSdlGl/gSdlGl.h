@@ -9,10 +9,7 @@
 #include <map>
 
 #include "../graphics.h"
-#include "../renderable/sprite/sprite.h"
-
-//#include "../resources/model/model.h"
-
+#include "../../types/mat4x4f.h"
 
 class gSdlGl : public graphics, public iRenderVisitor
 {
@@ -29,22 +26,25 @@ class gSdlGl : public graphics, public iRenderVisitor
 
   int init();
   int shutdown();
-  
+
   iRenderVisitor* getRenderer(void);
 
   //visitor section
-
-  void visit(sprite* _sprite);
-
+  void visit(class polygon* _poly);
+  void visit(class camera* _camera);
 
  protected:
 
 	 //void loadModelTextures(model* _model);
 	 void loadImage(char* _fileName);
-     void loadOptimisedImage(char* _fileName);
+   void loadOptimisedImage(char* _fileName);
 
 	 std::map<char*,std::pair<SDL_Surface, GLuint> > m_images;
-  //std::vector<model*> m_models;
+
+  //needed for cameras
+  mat4x4f m_projMat; // projectionMatrix; // Store the projection matrix
+  mat4x4f m_viewMat; // viewMatrix; // Store the view matrix
+  mat4x4f m_modelMat; // modelMatrix; // Store the model matrix
 
   SDL_Surface* m_windowSurface;
 

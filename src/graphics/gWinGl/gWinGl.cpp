@@ -1,9 +1,5 @@
 #include "gWinGl.h"
 
-
-
-
-
 #include <cassert>
 
 #include <windows.h>

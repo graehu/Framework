@@ -30,7 +30,7 @@ bool connection::start(int _port)
 {
   assert(!m_running);
   m_port = _port;
-  myprintf("start connection on port %d\n", _port);
+  printf("start connection on port %d\n", _port);
   //sprintf(message, "start connection on port %d\n", _port);
   //OutputDebugString(message);
   if (!m_socket.openSock(_port))
@@ -42,7 +42,7 @@ bool connection::start(int _port)
 void connection::stop()
 {
   assert(m_running);
-  myprintf("stop connection\n");
+  printf("stop connection\n");
   m_mailList.empty();
   m_socket.closeSock();
   m_running = false;
@@ -51,7 +51,7 @@ void connection::stop()
 void connection::connect(const address & _address)
 {
 
-  myprintf(message, "client trying: %d.%d.%d.%d:%d\n",
+  printf(message, "client trying: %d.%d.%d.%d:%d\n",
 	 _address.getA(),
 	 _address.getB(),
 	 _address.getC(),
@@ -151,7 +151,7 @@ void connection::update(float _deltaTime)
         {
 	  if (m_mailList[i].first->m_state == e_connecting)
             {
-	      myprintf
+	      printf
                 (
 		 "Timed-out connecting to: %d.%d.%d.%d:%d\n",
 		 m_mailList[i].first->m_address.getA(),
@@ -190,7 +190,7 @@ void connection::update(float _deltaTime)
             }
 	  else if ( m_mailList[i].first->m_state  == e_connected )
             {
-	      myprintf
+	      printf
                 (
 		 "Connection timed-out: %d.%d.%d.%d:%d\n",
 		 m_mailList[i].first->m_address.getA(),
@@ -325,7 +325,7 @@ packet* connection::receivePacket(unsigned int _size)
                 {
 		  ///printf("client connected1\n");
 
-		  myprintf
+		  printf
                     (
 		     "Port: %i Connected to: %d.%d.%d.%d:%d\n",
 		     m_port,
@@ -408,7 +408,7 @@ packet* connection::receivePacket(unsigned int _size)
 		  if(security == m_newConnKeys[i])
                     {
 
-		      myprintf
+		      printf
                         (
 			 "Port: %i Connected to: %d.%d.%d.%d:%d\n",
 			 m_port,

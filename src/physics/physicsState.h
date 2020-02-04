@@ -43,6 +43,7 @@ struct derivative
 {
 	vec3f velocity;                ///< velocity is the derivative of position.
 	vec3f force;                   ///< force in the derivative of momentum.
+
 	quaternion spin;                ///< spin is the derivative of the orientation quaternion.
 	vec3f torque;                  ///< torque is the derivative of angular momentum.
 };	

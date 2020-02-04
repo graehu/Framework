@@ -7,7 +7,9 @@
 #include "../packet/packet.h"
 
 extern char message[];
-#define myprintf(a, ...) sprintf(message, a,  __VA_ARGS__); OutputDebugString(message);
+#define myprintf(a, ...) 
+//sprintf(message, a,  __VA_ARGS__);
+//OutputDebugString(message);
 
 ///friendly user-data-group encapsulator
 

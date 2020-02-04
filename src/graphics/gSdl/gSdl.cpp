@@ -2,9 +2,9 @@
 #include <cassert>
 
 
-#pragma comment(lib, "SDL_image.lib")
-#pragma comment(lib, "SDL_draw.lib")
-#pragma comment(lib, "SDL_draw_static.lib")
+// #pragma comment(lib, "SDL_image.lib")
+// #pragma comment(lib, "SDL_draw.lib")
+// #pragma comment(lib, "SDL_draw_static.lib")
 
 int gSdl::init()
 {
@@ -31,7 +31,8 @@ int gSdl::update()
 void gSdl::visit(sprite* _sprite) //rendering a sprite :)
 {
   //you can use image->w to get the width of the image.
-	if(m_images.find(_sprite->m_fileName) == m_images.end())
+  char* sprite_file = (char*)&(*_sprite->m_fileName);
+	if(m_images.find(sprite_file) == m_images.end())
 		loadImage(_sprite->m_fileName);
 
   SDL_Surface* image = SDL_DisplayFormat(&m_images[_sprite->m_fileName]);
@@ -44,8 +45,8 @@ void gSdl::visit(sprite* _sprite) //rendering a sprite :)
   source.h = image->h;
 
   //screen space
-  destination.x = _sprite->m_x;
-  destination.y = _sprite->m_y;
+  destination.x = _sprite->m_position.i;
+  destination.y = _sprite->m_position.j;
   destination.w = image->w;
   destination.h = image->h;
 

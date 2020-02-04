@@ -1,15 +1,15 @@
 #include "game.h"
-#include "../graphics/renderable/sprite/sprite.h"
+//#include "../graphics/renderable/sprite/sprite.h"
 #include "../physics/rigidBody.h"
 #include "../physics/polygon.h"
-#include <windows.h>
+#include "../graphics/camera/camera.h"
+
 #include <queue>
 #include <cassert>
 
-game::game()
+game::game() : m_name("physics")
 {
   m_looping = true;
-  m_name = "physics";
 }
 
 void game::init(void)
@@ -21,19 +21,26 @@ void game::init(void)
   m_input = input::inputFactory();
   m_input->init();
   m_network = new net::network(0xf00d, 1000);
+  for(int i = 0; m_network->init(i==0?1:0, 8000+i); i++) { }
 }
 
 void game::run(void)
 {
   init();
 
-  for(int i = 0; m_network->init(i==0?1:0, 8000+i); i++){}
-  
+  //setup the camera and render once. (no movement in this game.)
+  camera game_cam;
+  game_cam.m_view.perspective(60.0f, (float)m_window->getWidth() / (float)m_window->getHeight(), 0.1f, 100.f);
+  mat4x4f translation;
+  translation.translate(0, 0, -32);
+  game_cam.m_view = translation*game_cam.m_view;
+  game_cam.render(m_graphics->getRenderer());
+
+
   std::queue<char> inputs;
   for(int i = 0; i < 6; i++)
-	inputs.push(0);
-  
-  
+    inputs.push(0);
+
   polygon player, floor, wall1, wall2;
   std::vector<rigidBody> test;
 
@@ -123,7 +130,6 @@ void game::run(void)
 	  m_network->recievePacket();
 	  m_network->update(dt);
 	  m_graphics->render();
-	  
 	 // Sleep(30);
 	}
 }

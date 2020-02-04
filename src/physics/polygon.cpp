@@ -1,5 +1,5 @@
 #include "polygon.h"
-#include <windows.h>
+//#include <windows.h>
 #include "../types/vec3f.h"
 
 

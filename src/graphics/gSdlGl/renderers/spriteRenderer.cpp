@@ -1,8 +1,5 @@
 #include "../gSdlGl.h"
 
-
-
-
 // this is how a an image is blited to a surface
 // This doesn't appear to have any of the sprite culling.
 // unimportant for the moment.

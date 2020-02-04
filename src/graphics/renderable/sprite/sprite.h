@@ -9,7 +9,7 @@
 class sprite : public iRenderable
 {
  public:
-  sprite(char* _filename = "null"){m_fileName = _filename;}
+  sprite(char* _filename) : m_fileName(_filename){}
   ~sprite(){}
 
   void render(iRenderVisitor* _renderer){_renderer->visit(this);}

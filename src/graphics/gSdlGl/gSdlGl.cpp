@@ -3,6 +3,7 @@
 //graphics libs
 #include <SDL/SDL_image.h>
 #include <SDL/SDL_opengl.h>
+#include "../../types/mat4x4f.h"
 
 
 #pragma comment(lib, "SDL_image.lib")
@@ -151,9 +152,19 @@ void gSdlGl::loadOptimisedImage(char* _fileName)
 
 int gSdlGl::render()
 {
+  glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+  glMultMatrixf(&m_projMat.elem[0][0]);
+
+	glMatrixMode(GL_MODELVIEW);// Select The Modelview Matrix
+	glLoadIdentity();// Reset The Modelview Matrix
+
+  mat4x4f m_model_view = m_viewMat*m_modelMat;
+  glMultMatrixf(&m_model_view.elem[0][0]);
 
   SDL_GL_SwapBuffers();
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);     // Clear The Screen And The Depth Buffer
+  //
   return 0;
 }
 

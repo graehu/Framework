@@ -1,4 +1,5 @@
 #include "wSdlGl.h"
+#include "../../types/mat4x4f.h"
 
 
 #pragma comment(lib, "SDLmain.lib")
@@ -38,22 +39,8 @@ int wSdlGl::init(int _width, int _height, char* _name)
 	glClear(GL_COLOR_BUFFER_BIT);
 	
 	//multiplys the current matrix by an ortho matrix
-	glOrtho(0.0f, _width, _height, 0.0f, -1.0f, 1.0f);
-	//
 	glViewport(0,0,_width,_height);
-
-
-	//load projection matrix mode... inorder to use gluPerspective which sets up a perspective projection matrix >.>
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-
-	//calculate aspect ratio
-	//TODO: find something to replace this call. It's the only use of Glut.
-	gluPerspective(45.0f,(GLfloat)_width/(GLfloat)_height, 1 ,4000.0f);
-
-	glMatrixMode(GL_MODELVIEW);// Select The Modelview Matrix
-	glLoadIdentity();// Reset The Modelview Matrix
-	
+  
 	glClearDepth(1.0f);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
