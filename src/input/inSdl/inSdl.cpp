@@ -1,6 +1,8 @@
 #include "inSdl.h"
 
-
+input::~input()
+{
+}
 int inSdl::init()
 {
   

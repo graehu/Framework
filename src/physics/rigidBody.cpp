@@ -15,7 +15,9 @@ rigidBody::rigidBody()
 	previous = current;
 }
 
-
+//TODO: this needs to be done differently.
+//      the physics engine should be the thing
+//      updating bodies and resolving collisions.
 void rigidBody::update(float t, float dt)
 {
 	previous = current;
@@ -128,8 +130,11 @@ vec3f rigidBody::collideSAT(polygon* _poly)
 vec3f rigidBody::collideSAT(rigidBody* _body)
 {
 	//Do interesting shaz here.
+        //This moves the body's verts so they can be collided in world space
+        //because i didn't want to store an offset with the polygon verts?
 	for(unsigned int i = 0; i < m_vertices.size(); i++)
 		m_vertices[i] = m_vertices[i] + current.position;
+	
 
 	for(unsigned int i = 0; i < _body->m_vertices.size(); i++)
 		_body->m_vertices[i] = _body->m_vertices[i]+_body->getPos();

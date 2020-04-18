@@ -4,6 +4,10 @@ Debug
 .settings
 hi.png
 .clangd/
-CMakeFiles/
-CMakeCache.txt
+*CMakeFiles/
+*CMakeCache.txt
+*.cmake
 *.*~
+*Makefile
+*.bin
+bin/

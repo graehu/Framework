@@ -24,5 +24,5 @@ set(CMAKE_BUILD_TYPE Debug)
 # it should just be linked wih libc++
 find_package(Threads)
 
-add_executable(rc_sample ${rc_sample_src})
-target_link_libraries(rc_sample ${CMAKE_THREAD_LIBS_INIT})
+add_executable(rc_sample.bin ${rc_sample_src})
+target_link_libraries(rc_sample.bin ${CMAKE_THREAD_LIBS_INIT})
