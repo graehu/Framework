@@ -2,7 +2,11 @@
 
 #include <cstdio>
 #include <cstdarg>
+#include <fstream>
+
 using namespace net;
+
+
 
 packet::packet()
 {
@@ -41,6 +45,29 @@ bool packet::setAlloc(unsigned int _alloc)
 	}
 	return true;
 }
+
+bool BasePacket::WriteFile(const char* _file_name)
+{
+  std::fstream l_file;
+  l_file.open(_file_name, std::ios_base::in);
+  if(l_file.fail())
+  {
+     return false;
+  }
+  l_file.seekg(0, l_file.end);
+  int file_length = l_file.tellg();
+  l_file.seekg(0, l_file.beg);
+  l_file.read((char*)(&GetData()[end]), file_length);
+  l_file.close();
+  end += file_length;
+  return true;
+}
+
+  
+
+
+
+
 
 ///////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////

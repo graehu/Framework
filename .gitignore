@@ -3,3 +3,7 @@ Debug
 .project
 .settings
 hi.png
+.clangd/
+CMakeFiles/
+CMakeCache.txt
+*.*~

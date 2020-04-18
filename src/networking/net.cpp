@@ -58,7 +58,6 @@ bool network::update(float _deltaTime)
   /// ///////////////////////
   /// Packet read Section////
   /// ///////////////////////
-
   /*
   while(receivePacket(m_packetSize) != 0)
   {

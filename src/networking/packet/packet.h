@@ -1,13 +1,12 @@
 #ifndef PACKET_H
 #define PACKET_H
 
+#include <cstddef>
 #include <cstring>
 #include <cstdio>
 #include <vector>
 
-
 #include "../utils/dataUtils.h"
-
 
 namespace net
 {
@@ -60,7 +59,142 @@ class packet
 	unsigned int m_sizeAccumulator;
 	unsigned int m_headerSize;   /// = 16;
 };
+  //
+  class BasePacket
+  {
+  public:
+    // Clears the packet of data
+    virtual void Clear(void) = 0;
+
+    // returns the size of the valid data in the packet.
+    virtual size_t GetSize() = 0;
+
+    // returns the size of the capacity of the packet, that can't grow.
+    virtual size_t GetCapacity() = 0;
+
+    // Get the packet data used by sockets
+    virtual unsigned char* GetData() = 0;
+
+    // Sets the length of the valid data in the packet.
+    virtual void SetLength(size_t a_length) = 0;
+    virtual void PrintDetails() = 0;
+
+    // Write the type data into the packet and
+    // shift the write point forward by type size
+    template <typename T>
+    void IterWrite(T& _type)
+    {
+      // printf("writing: %ld\n", sizeof(T));
+      memcpy(&GetData()[end], &_type, sizeof(T));
+      end += sizeof(T);
+      if(GetData()[end-1] == '\0')
+	{
+	  end--;
+	}
+    }
+
+    // Write the data into the packet and
+    // shift the write point forward by size
+    void IterWrite(const char* in, size_t size)
+    {
+      // printf("writing: %ld\n", sizeof(T));
+      memcpy(&GetData()[end], in, size);
+      end += size;
+      if(GetData()[end-1] == '\0')
+	{
+	  end--;
+	}
+    }
+
+    
+    // Read the type data out of the data and
+    // shift the read point forward by sizeof(_type)
+    template <typename T>
+    T IterRead(void)
+    {
+       //todo: make safe?
+      T temp = *((T*)&GetData()[end]);
+      end += sizeof(T);
+      return temp;
+    }
+     void IterRead(unsigned char& buffer, size_t read_length)
+     {
+	//todo: make safe?
+	memcpy(&buffer, &GetData()[end], read_length);
+	end += read_length;
+     }
+
+    // Write an std stream at current position
+    bool WriteFile(const char* _file_name);
+
+  protected:
+    // The end offset, how far it is to the end of valid data
+    size_t end;
+  };
+  
+  //allows for zero size header.
+  typedef int null_type[0];
+  //
+  template<size_t T_size, typename T_header = null_type>
+  class NewPacket : public BasePacket
+  {
+  public:
+    
+    // Clears the packet of data
+    void Clear(void){ end = sizeof(T_header); }
+
+    // returns the size of the valid data in the packet.
+    size_t GetSize() { return end; }
+
+    // returns the size of the capacity of the packet, that can't grow.
+    size_t GetCapacity() { return T_size; }
+
+    // Sets the size of the valid data in the packet.
+    void SetLength(size_t a_length)
+    {
+      end = a_length < T_size ? a_length : T_size;
+      data[end-1] = '\0';
+    }
+
+    // if valid is true, this prints the valid contents of the packet.
+    // else it prints the packet capacity
+    void PrintDetails()
+    {
+      printf("[packet] printing %ld bytes:\n", end);
+      printf("[packet_start]\n");
+      for(int i = 0; i < end; i++)
+	{
+	  printf("%c", data[i]);
+	}
+      printf("\n[packet_end]\n");
+    }    
+    // Get the packet data used by sockets
+    unsigned char* GetData() { return data; }
+    
+    // Write the header into the data
+    void WriteHeader(T_header _header)
+    {
+      memcpy(&data[0], &_header, sizeof(_header));
+    }
+
+    // Read the header from the data
+    void ReadHeader(T_header &_header)
+    {
+      T_header temp;
+      memcpy(&temp, &data[0], sizeof(_header));
+      _header = temp;
+    }
+
+
+  protected:
+    // The data, sent or recieved.
+    unsigned char data[T_size];
+    
+
+
+  };
 }
+
 #endif//PACKET_H
 
 

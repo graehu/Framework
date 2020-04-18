@@ -22,6 +22,16 @@ extern char message[];
 
 namespace net
 {
+  struct GameHeader
+  {
+    int16_t protocol_id;
+    int16_t sender_id;
+    int32_t current_id;
+    int32_t known_id;
+    int32_t ack_bits;
+  };
+  typedef NewPacket<256, GameHeader> GamePacket;
+
 class connection
 {
 public:

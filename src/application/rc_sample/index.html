@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title></title>
+    <style>
+      html, body {
+	  height: 100%;
+	  margin: 0;
+      }
+
+      body {
+	  background: darkgray;
+	  display: flex;
+	  align-items: center;
+	  justify-content: center;
+      }
+      canvas {
+	  border: 1px solid white;
+      }
+      .logbox {
+	  /*TODO: Make this work with padding instead. 
+	    but also fill the page.*/
+	  width:80%;
+	  height:80%;
+	  /* padding: 20px; */
+	  border-style: solid;
+	  align-items: left;
+	  align-content: left;
+	  overflow:scroll;
+      } 
+    </style>
+  </head>
+  <script type="module">
+    import {RCLib} from "./RCLib.js";
+    RCLib.Connect();
+    var log_div = document.createElement("div");
+    var log_list = document.createElement("ul");
+    log_list.style = "list-style-type: none;";
+    log_div.appendChild(log_list);
+    log_div.className = "logbox";
+    document.body.appendChild(log_div);
+    var previous_scroll_pos = 0;
+    var ResponseCB = function(message)
+    {
+	var list_elem = document.createElement("li");
+	list_elem.innerHTML = message;
+	log_list.appendChild(list_elem);
+	if(log_div.scrollTop >= previous_scroll_pos-50)
+	{
+	    // this works but the scroll bar doesn't quite look right.
+	    // seems to update a bit slower than the rest of the page.
+	    log_div.scrollTop = log_div.scrollHeight;
+	    previous_scroll_pos = log_div.scrollTop;
+	}
+    };
+    RCLib.ResponseCB = ResponseCB;
+  </script>
+  <body>
+  </body>
+</html>

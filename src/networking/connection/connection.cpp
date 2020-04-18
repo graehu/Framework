@@ -1,11 +1,14 @@
 #include "connection.h"
+#include <bits/stdint-intn.h>
+#include <cstdint>
+#include <iostream>
+
 #include "../utils/dataUtils.h"
 
 using namespace net;
 using namespace std;
 
 char message[32];
-
 
 connection::connection(unsigned short _protocolID, float _timeout, unsigned int _maxSequence)
 {
@@ -43,7 +46,7 @@ void connection::stop()
 {
   assert(m_running);
   printf("stop connection\n");
-  m_mailList.empty();
+  m_mailList.clear();
   m_socket.closeSock();
   m_running = false;
 }
@@ -133,10 +136,10 @@ void connection::update(float _deltaTime)
 
 	      /// i is this elements current position in the array, so if this was the first element
 	      /// i would be zero.
-		  unsigned char initData[6];
-		  dataUtils::instance().writeData(m_protocolID*2, &initData[0]);
-		  dataUtils::instance().writeData(m_mailList[i].second, &initData[2]);
-		  dataUtils::instance().writeData((unsigned short)i, &initData[4]);
+	      unsigned char initData[6];
+	      dataUtils::instance().writeData(m_protocolID*2, &initData[0]);
+	      dataUtils::instance().writeData(m_mailList[i].second, &initData[2]);
+	      dataUtils::instance().writeData((unsigned short)i, &initData[4]);
 	      m_socket.send(m_mailList[i].first->m_address, initData, 6);
 
             }
@@ -208,7 +211,6 @@ void connection::update(float _deltaTime)
         }
       m_mailList[i].first->m_stats.update(_deltaTime);
     }
-
 }
 
 bool connection::sendPacket(packet* _packet, unsigned short _key, float _deltaTime)
@@ -237,10 +239,16 @@ bool connection::sendPacket(packet* _packet, unsigned short _key, float _deltaTi
 
   if(sendAccumulator > (1.0f/sendRate))
     {
-
       m_mailList[_key].first->m_sendAccumulator = 0;
-	  unsigned char* data = _packet->getData();
-	  dataUtils::instance().writeData(m_protocolID, &data[0]); 
+      unsigned char* data = _packet->getData();
+      //Consider this.
+      // _packet->iterWrite<int16_t>(m_protocolID);
+      // _packet->iterWrite<int16_t>(m_mailList[_key].second);
+      // _packet->iterWrite<int32_t>(m_mailList[_key].first->m_stats.getLocalSequence());
+      // _packet->iterWrite<int32_t>(m_mailList[_key].first->m_stats.getRemoteSequence());
+      // _packet->iterWrite<int32_t>(m_mailList[_key].first->m_stats.generateAckBits());
+
+	  dataUtils::instance().writeData(m_protocolID, &data[0]);	  
       dataUtils::instance().writeData(m_mailList[_key].second, &data[2]); 
       dataUtils::instance().writeData(m_mailList[_key].first->m_stats.getLocalSequence(), &data[4]); 
       dataUtils::instance().writeData(m_mailList[_key].first->m_stats.getRemoteSequence(), &data[8]); 
@@ -248,6 +256,9 @@ bool connection::sendPacket(packet* _packet, unsigned short _key, float _deltaTi
 	  m_mailList[_key].first->m_stats.packetSent(_packet->getEnd());
 
       error = m_socket.send(m_mailList[_key].first->m_address, data, _packet->getEnd());
+
+
+      
     }
 
   return error;
@@ -282,7 +293,12 @@ packet* connection::receivePacket(unsigned int _size)
 
   security = dataUtils::instance().readUShort(&packetData[0]);//protocal id check.
   if((security != m_protocolID) && (security != (unsigned short)(m_protocolID*2)))
+  {
+    cout << "failed security" << endl;
     return 0;
+  }
+          cout << "passed security" << endl;
+
 
   bool initPacket = false;
   if(security == (unsigned short)(m_protocolID*2))

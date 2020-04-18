@@ -21,7 +21,7 @@ enum mouseButtons
 	e_middleClick, //scrolling has to be done in an event loop with sdl so meh.
 	e_totalButtons
 };
-
+  virtual ~input() = 0;
   virtual int init(void) = 0; //This functions should read What keys will be assigned to the commands above.
   virtual bool update(void) = 0;
   virtual bool isKeyPressed(keys _key) = 0;

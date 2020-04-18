@@ -1,4 +1,5 @@
 #include "game/game.h"
+#include "application/application.h"
 //#include <windows.h>
 
 
@@ -10,8 +11,10 @@
 //                      int       nCmdShow)
 int main()
 {
-  game netphysics;
-  netphysics.run();
+  {
+    application* l_app = application::mf_factory();
+    l_app->mf_run();
+  }
 
   return 0;
 }

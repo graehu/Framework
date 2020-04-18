@@ -1,6 +1,7 @@
 #ifndef SOCKET_H
 #define SOCKET_H
 
+#include <memory>
 #define PLATFORM_WINDOWS  1
 #define PLATFORM_MAC      2
 #define PLATFORM_UNIX     3
@@ -63,22 +64,36 @@ inline void ShutdownSockets()
 namespace net
 {
 
-class socket
-{
-public:
+  class socket
+  {
+  public:
+    enum Types
+      {
+       //m_socket = ::socket(PF_INET, SOCK_RAW, IPPROTO_RAW);
+       //eRawSocket, //Consider for a sniffer socket. 
+       eGameSocket, //fast packets over udp
+       eHttpSocket, //listen socket, for accept
+       eAcceptSocket //temp socket returned from accept
+      };
 
-	socket();
-	~socket();
-	bool openSock(unsigned short port);
-	void closeSock();
-	bool IsOpen() const;
-	bool send(const address & destination, const void * data, int size);
-	int receive(address & sender, void * data, int size);
+    socket(Types _types = eGameSocket);
+    ~socket();
+    bool Accept(address & _sender, socket & _accept_socket);
+    bool mf_set_nonblocking(bool blocking);
+      
+    bool openSock(unsigned short port);
+    void closeSock();
+    bool IsOpen() const;
+    bool send(const address & destination, const void * data, int size);
+    int receive(void * data, int size);
+    int receive(address & sender, void * data, int size);
+    void mf_set_keepalive(bool keep_alive);
 
-private:
-
-	int m_socket;
-};
+  private:
+    int m_socket;
+    Types m_type;
+    bool mv_keepalive;
+  };
 
 }
 

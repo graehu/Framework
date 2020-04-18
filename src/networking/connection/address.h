@@ -17,6 +17,8 @@ namespace net
     unsigned char getC() const;
     unsigned char getD() const;
     unsigned short getPort() const;
+    void PrintDetails() const;
+
 
     bool operator == (const address & other) const;
     bool operator != (const address & other) const;
