@@ -45,22 +45,34 @@ bool packet::setAlloc(unsigned int _alloc)
 	}
 	return true;
 }
-
-bool BasePacket::WriteFile(const char* _file_name)
+#define show_val(variable) printf(#variable": %d\n", variable);
+BasePacket::file_write_status BasePacket::WriteFile(const char* _file_name)
 {
   std::fstream l_file;
   l_file.open(_file_name, std::ios_base::in);
   if(l_file.fail())
   {
-     return false;
+     mf_file_btyes_written = 0;
+     return e_failed;
   }
   l_file.seekg(0, l_file.end);
-  int file_length = l_file.tellg();
-  l_file.seekg(0, l_file.beg);
-  l_file.read((char*)(&GetData()[end]), file_length);
+  int file_remaining = l_file.tellg();
+  file_remaining -= mf_file_btyes_written;
+  int read_length = GetCapacity() - end < file_remaining ? GetCapacity() - end : file_remaining;
+  l_file.seekg(mf_file_btyes_written, l_file.beg);
+  l_file.read((char*)(&GetData()[end]), read_length);
   l_file.close();
-  end += file_length;
-  return true;
+  end += read_length;
+  if (read_length == file_remaining)
+  {
+     mf_file_btyes_written = 0;
+     return e_complete;
+  }
+  else
+  {
+     mf_file_btyes_written += read_length;
+     return e_in_progress;
+  }
 }
 
   

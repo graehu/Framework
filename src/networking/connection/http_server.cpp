@@ -250,20 +250,41 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 			// not allowing ../, illegal access pattern.
 			lf_html_404();
 		     }
-		     else if (!lv_packet.WriteFile(lv_file_path.c_str()))
-		     {
-			// todo: this doesn't read well. Make this 200 and else a fail.
-			lf_html_404();
-			if (mv_logging)
-			{
-			   printf("sending: 404, %s not found\n", lv_request);
-			}
-		     }
 		     else
 		     {
-			if (mv_logging)
+			auto file_status = lv_packet.WriteFile(lv_file_path.c_str());
+			if(file_status == BasePacket::e_complete)
 			{
-			   printf("sending: 200, %s\n", lv_request);
+			   if (mv_logging)
+			   {
+			      printf("sending: 200, %s\n", lv_request);
+			   }  
+			}
+			else if(file_status == BasePacket::e_in_progress)
+			{
+			   //continuous send if files are bigger than the packets size.
+			   do
+			   {
+			      lv_packet.PrintDetails();
+			      lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize());
+			      lv_packet.Clear();
+			      file_status = lv_packet.WriteFile(lv_file_path.c_str());
+			      
+			   }
+			   while(file_status == BasePacket::e_in_progress);
+			   
+			   if (mv_logging)
+			   {
+			      printf("sending: 200, %s\n", lv_request);
+			   }
+			}
+			else if(file_status == BasePacket::e_failed)
+			{
+			   lf_html_404();
+			   if (mv_logging)
+			   {
+			      printf("sending: 404, %s not found\n", lv_request);
+			   }
 			}
 		     }
 		  }
@@ -345,7 +366,7 @@ void net::http_server::mf_ws_thread(const net::socket& from, const net::address&
 	 for (unsigned int i = 0; i < in_header.length; ++i)
 	 {
 	    // data[i] ^= mask[i%4]; below is equvivilant
-	    // thing [i & 3] is faster.
+	    // think [i & 3] is faster.
 	    data[i] ^= mask[i & 3];
 	    if (mv_logging)
 	    {

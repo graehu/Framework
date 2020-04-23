@@ -123,13 +123,19 @@ class packet
 	memcpy(&buffer, &GetData()[end], read_length);
 	end += read_length;
      }
-
+    enum file_write_status
+    {
+       e_failed = -1,
+       e_in_progress,
+       e_complete
+    };
     // Write an std stream at current position
-    bool WriteFile(const char* _file_name);
+    file_write_status WriteFile(const char* _file_name);
 
   protected:
     // The end offset, how far it is to the end of valid data
     size_t end;
+     int mf_file_btyes_written = 0;
   };
   
   //allows for zero size header.
