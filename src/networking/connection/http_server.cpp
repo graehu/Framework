@@ -17,11 +17,11 @@
 #include <chrono>
 
 #define show_val(variable) printf(#variable": %d\n", variable);
-
+#define if_logging(expression) if(mv_logging) { expression; }
 net::http_server::http_server(unsigned int port) :
    mv_handler(nullptr),
    mv_server_thread(nullptr),
-   mv_logging(true),
+   mv_logging(false),
    mv_running(true)
 {
    net::socket lv_listen_socket(net::socket::eHttpSocket);
@@ -265,7 +265,10 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 			   //continuous send if files are bigger than the packets size.
 			   do
 			   {
-			      lv_packet.PrintDetails();
+			      if(mv_logging)
+			      {
+				 lv_packet.PrintDetails();
+			      }
 			      lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize());
 			      lv_packet.Clear();
 			      file_status = lv_packet.WriteFile(lv_file_path.c_str());
@@ -288,7 +291,10 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 			}
 		     }
 		  }
-		  lv_packet.PrintDetails();
+		  if(mv_logging)
+		  {
+		     lv_packet.PrintDetails();   
+		  }
 		  lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize());
 	       }
 	       if (mv_logging)
@@ -333,7 +339,7 @@ void net::http_server::mf_ws_thread(const net::socket& from, const net::address&
    while (mv_running)
    {
       auto lv_ws_send =
-	 [&lv_packet, &ws_header, &lv_socket, &lv_address]
+	 [this, &lv_packet, &ws_header, &lv_socket, &lv_address]
 	 (const char *message,size_t size)
 	 {
 	    // todo: make sure the correct message size is written here.
@@ -341,7 +347,10 @@ void net::http_server::mf_ws_thread(const net::socket& from, const net::address&
 	    ws_header.length = size - 1;
 	    lv_packet.IterWrite(ws_header);
 	    lv_packet.IterWrite(message, size);
-	    lv_packet.PrintDetails();
+	    if(mv_logging)
+	    {
+	       lv_packet.PrintDetails();   
+	    }
 	    lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize());
 	 };
       // spin lock waiting for messages.
@@ -373,7 +382,10 @@ void net::http_server::mf_ws_thread(const net::socket& from, const net::address&
 	       printf("%c", data[i]);
 	    }
 	 }
-	 printf("\n");
+	 if (mv_logging)
+	 {
+	    printf("\n");   
+	 }
 	 if (mv_handler != nullptr)
 	 {
 	    mv_handler->mf_ws_response((const char *)&data[0], lv_ws_send);

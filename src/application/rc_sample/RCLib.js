@@ -95,7 +95,7 @@ function WSConnect()
 
 //find a way to make these readonly
 RCLib.Connect = function() { WSConnect(); };
-RCLib.Send = function(message) { WSSend(message); };
+RCLib.Send = function(message) { WSSendMessage(message); };
 //find a way to make this writable.
 RCLib.ResponseCB = function(message) { alert("mesage: "+message); };
 export {RCLib};

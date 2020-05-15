@@ -138,7 +138,7 @@ void socket::closeSock()
 {
    if (m_socket != 0)
    {
-     printf("closing socket...\n");
+     //printf("closing socket...\n");
 #if PLATFORM == PLATFORM_MAC || PLATFORM == PLATFORM_UNIX
       close(m_socket);
 #elif PLATFORM == PLATFORM_WINDOWS

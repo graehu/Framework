@@ -52,8 +52,24 @@
 	    log_div.scrollTop = log_div.scrollHeight;
 	    previous_scroll_pos = log_div.scrollTop;
 	}
-    };
+    };    
     RCLib.ResponseCB = ResponseCB;
+    var timer = 0.0;
+    var x = 0.4;
+    var y = 0.1;
+    function loop()
+    {
+	requestAnimationFrame(loop);
+	timer = timer + 1.0/30.0;
+	if(timer > 0.3)
+	{
+	    x += timer;
+	    y += timer;
+	    RCLib.Send("d:["+x+","+y+"]");
+	    timer = 0.0;
+	}
+    };
+    requestAnimationFrame(loop);
   </script>
   <body>
   </body>
