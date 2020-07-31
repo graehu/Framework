@@ -35,7 +35,7 @@ function WSSendMessage(message)
     }
     else
     {
-	alert('failing to send ' + msgid);
+	alert('failing to send ' + message);
     }
 }
 

@@ -21,17 +21,33 @@
 	  /*TODO: Make this work with padding instead. 
 	    but also fill the page.*/
 	  width:80%;
-	  height:80%;
+	  height:40%;
 	  /* padding: 20px; */
+	  position: absolute;
+	  top: 50px;
 	  border-style: solid;
 	  align-items: left;
 	  align-content: left;
 	  overflow:scroll;
+      }
+      .nipplebox {
+	  /*TODO: Make this work with padding instead. 
+	    but also fill the page.*/
+	  width:80%;
+	  height:40%;
+	  /* padding: 20px; */
+	  position: absolute;
+	  bottom: 50px;
+	  border-style: solid;
       } 
     </style>
+    <script>
+
+    </script>
   </head>
   <script type="module">
     import {RCLib} from "./RCLib.js";
+    import "./nipple.js";
     RCLib.Connect();
     var log_div = document.createElement("div");
     var log_list = document.createElement("ul");
@@ -39,6 +55,19 @@
     log_div.appendChild(log_list);
     log_div.className = "logbox";
     document.body.appendChild(log_div);
+
+    var nipple_div = document.createElement("div");
+    nipple_div.className = "nipplebox";
+    nipple_div.id = "nipplezone";
+    document.body.appendChild(nipple_div);
+    var nipple = nipplejs.create({
+        zone: document.getElementById('nipplezone'),
+	mode: 'static',
+	position: {left: '50%', top: '50%'},
+        color: 'blue'
+    });
+    var nip0 = nipple.get(0);
+    
     var previous_scroll_pos = 0;
     var ResponseCB = function(message)
     {
@@ -62,10 +91,17 @@
 	requestAnimationFrame(loop);
 	timer = timer + 1.0/30.0;
 	if(timer > 0.3)
-	{
-	    x += timer;
-	    y += timer;
-	    RCLib.Send("d:["+x+","+y+"]");
+        {
+
+            if(nip0 !== null && nip0 !== undefined)
+            {
+		if (typeof nip0.frontPosition !== 'undefined')
+		{
+                    x = nip0.frontPosition.x;
+	            y = -nip0.frontPosition.y;
+                    RCLib.Send("d:["+x+","+y+"]");
+		}
+            }
 	    timer = 0.0;
 	}
     };
