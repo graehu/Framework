@@ -1,0 +1,3 @@
+[submodule "tools/confply"]
+	path = tools/confply
+	url = git@github.com:graehu/confply.git
