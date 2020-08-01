@@ -28,7 +28,7 @@ source_files = [
     "../../networking/packet/writePacket.cpp",
     "../../networking/utils/dataUtils.cpp"
 ]
-warings = "all"
+warnings = "all"
 debug_info = True
 link_libraries = ["stdc++", "m", "SDLmain", "SDL", "SDL_image", "OpenGL", "GL"]
 standard = "c++17"

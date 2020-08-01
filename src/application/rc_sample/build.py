@@ -13,7 +13,7 @@ source_files = [
     "../../networking/utils/encode.cpp",
     "../../networking/utils/encrypt.cpp"
 ]
-warings = "all"
+warnings = ["all"]
 debug_info = True
 link_libraries = ["stdc++", "pthread"]
 standard = "c++17"
