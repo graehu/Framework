@@ -10,6 +10,12 @@
 # python tools/confply/confply.py --launcher build.py
 
 import sys
+import os
+
+# set current working directory and add confply to path
+# so we can import the launcher function
+
+os.chdir(os.path.dirname(__file__))
 sys.path.append("tools/confply")
 from confply import launcher
 
