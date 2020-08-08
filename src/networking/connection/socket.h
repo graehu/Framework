@@ -90,6 +90,8 @@ namespace net
     void mf_set_keepalive(bool keep_alive);
 
   private:
+    static int setup_signals();
+    static void handle_signal_action(int signal_number);
     int m_socket;
     Types m_type;
     bool mv_keepalive;

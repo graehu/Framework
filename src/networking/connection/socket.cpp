@@ -1,18 +1,57 @@
 #include "socket.h"
+#include <cerrno>
 #include <cstdio>
 #include <memory>
 #include <netinet/in.h>
+#include <sys/select.h>
 #include <sys/socket.h>
+#include <sys/signal.h>
 #include <unistd.h>
 #define show_val(variable) printf(#variable": %d\n", variable);
 #define show_str(variable) printf(#variable": %s\n", variable);
 using namespace net;
 
+int socket::setup_signals()
+{
+   static bool do_once = true;
+   if(do_once)
+   {
+      struct sigaction sa;
+      sa.sa_handler = socket::handle_signal_action;
+      if (sigaction(SIGINT, &sa, 0) != 0) {
+	 perror("sigaction()");
+	 return -1;
+      }
+      if (sigaction(SIGPIPE, &sa, 0) != 0) {
+	 perror("sigaction()");
+	 return -1;
+      }
+      do_once = false;
+      printf("set up signals handler\n");
+   }
+  
+  return 0;
+}
+void socket::handle_signal_action(int sig_number)
+{
+  if (sig_number == SIGINT) {
+    printf("SIGINT was caught!\n");
+    // shutdown_properly(EXIT_SUCCESS);
+  }
+  else if (sig_number == SIGPIPE) {
+    printf("SIGPIPE was caught!\n");
+    // shutdown_properly(EXIT_SUCCESS);
+  }
+}
 socket::socket(Types _type) :
    m_socket(0),
    m_type(_type),
    mv_keepalive(false)
 {
+   if(setup_signals() == -1)
+   {
+      printf("need to shutdown sockets, something bad happened");
+   }
 }
 socket::~socket()
 {
@@ -39,6 +78,8 @@ bool socket::openSock(unsigned short port)
       case eHttpSocket:
 	 printf("making web socket\n");
 	 m_socket = ::socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+	 break;
+      case eAcceptSocket:
 	 break;
    }
 
@@ -74,6 +115,8 @@ bool socket::openSock(unsigned short port)
       break;
       case eGameSocket:
 	 break;
+      case eAcceptSocket:
+	 break;
    } 
 
 	
@@ -108,6 +151,8 @@ bool socket::openSock(unsigned short port)
 	    return false;
 	 }
 	 break;
+      case eAcceptSocket:
+	 break;
    }
    printf("bound socket: %d\n", port);
    return true;
@@ -138,7 +183,7 @@ void socket::closeSock()
 {
    if (m_socket != 0)
    {
-     //printf("closing socket...\n");
+      printf("closing socket...\n");
 #if PLATFORM == PLATFORM_MAC || PLATFORM == PLATFORM_UNIX
       close(m_socket);
 #elif PLATFORM == PLATFORM_WINDOWS
@@ -163,13 +208,34 @@ bool socket::send(const address & destination, const void * data, int size)
 
    assert(destination.getAddress() != 0);
    assert(destination.getPort() != 0);
+   fd_set write_fds;
+   FD_ZERO(&write_fds);
+   FD_SET(STDOUT_FILENO, &write_fds);
+   FD_SET(m_socket, &write_fds);
+   int activity = ::select(m_socket+1, nullptr, &write_fds, nullptr, nullptr);
+   
+   if(activity != 0 && activity != -1)
+   {
+      if(FD_ISSET(m_socket, &write_fds))
+      {
+         sockaddr_in address;
+	 address.sin_family = AF_INET;
+	 address.sin_addr.s_addr = htonl(destination.getAddress());
+	 address.sin_port = htons((unsigned short) destination.getPort());
+	 int sent_bytes = sendto(m_socket, (const char*)data, size, 0, (sockaddr*)&address, sizeof(sockaddr_in));
+	 return sent_bytes == size;
+      }
+      else
+      {
+	 printf("hmm lets hope this doesn't happen too much..\n");
+      }
+   }
+   else
+   {
+      printf("I should shut down the socket.\n");  
+   }
+   return false;
 
-   sockaddr_in address;
-   address.sin_family = AF_INET;
-   address.sin_addr.s_addr = htonl(destination.getAddress());
-   address.sin_port = htons((unsigned short) destination.getPort());
-   int sent_bytes = sendto(m_socket, (const char*)data, size, 0, (sockaddr*)&address, sizeof(sockaddr_in));
-   return sent_bytes == size;
 }
 
 bool socket::Accept(address & sender, socket& _accept_socket)
@@ -178,17 +244,35 @@ bool socket::Accept(address & sender, socket& _accept_socket)
    {
       sockaddr_in from;
       socklen_t fromLength = sizeof(from);
-      int read_socket = ::accept(m_socket, (sockaddr*)&from, &fromLength);
-      if(read_socket <= 0)
+      fd_set read_fds;
+      FD_ZERO(&read_fds);
+      FD_SET(STDIN_FILENO, &read_fds);
+      FD_SET(m_socket, &read_fds);
+
+      int activity = ::select(m_socket+1, &read_fds, nullptr, nullptr, nullptr);
+
+      if(activity != 0 && activity != -1)
       {
-	 return false;
+	 if (FD_ISSET(m_socket, &read_fds))
+	 {
+	    int read_socket = ::accept(m_socket, (sockaddr*)&from, &fromLength);
+	    if(read_socket <= 0)
+	    {
+	       return false;
+	    }
+	    unsigned int nAddress = ntohl(from.sin_addr.s_addr);
+	    unsigned short nPort = ntohs(from.sin_port);
+	    sender = address(nAddress, nPort);
+	    _accept_socket.m_socket = read_socket;
+	    _accept_socket.m_type = eAcceptSocket;
+	    return true;
+	 }
       }
-      unsigned int nAddress = ntohl(from.sin_addr.s_addr);
-      unsigned short nPort = ntohs(from.sin_port);
-      sender = address(nAddress, nPort);
-      _accept_socket.m_socket = read_socket;
-      _accept_socket.m_type = eAcceptSocket;
-      return true;
+      else
+      {
+	 printf("I should shut down the socket.\n");  
+      }
+      return false;
    }
    else
    {
@@ -210,32 +294,68 @@ int socket::receive(address & sender, void * data, int size)
 
    sockaddr_in from;
    socklen_t fromLength = sizeof(from);
-   // show_val(data);
-   // show_val(size);
-   show_val(m_socket);
-   int received_bytes = recvfrom(m_socket, (char*)data, size, 0, (sockaddr*)&from, &fromLength);
-   read(m_socket, (char*)data, size);
-   if (received_bytes <= 0)
+   fd_set read_fds;
+   FD_ZERO(&read_fds);
+   FD_SET(STDIN_FILENO, &read_fds);
+   FD_SET(m_socket, &read_fds);
+
+   int activity = ::select(m_socket+1, &read_fds, nullptr, nullptr, nullptr);
+
+   if(activity != 0 && activity != -1)
    {
-      return 0;    
-   }
-   unsigned int nAddress = ntohl(from.sin_addr.s_addr);
-   unsigned short nPort = ntohs(from.sin_port);
-   sender = address(nAddress, nPort);
+      if (FD_ISSET(m_socket, &read_fds))
+      {
+	 int received_bytes = recvfrom(m_socket, (char*)data, size, 0, (sockaddr*)&from, &fromLength);
+	 read(m_socket, (char*)data, size);
+	 if (received_bytes <= 0)
+	 {
+	    return 0;    
+	 }
+	 unsigned int nAddress = ntohl(from.sin_addr.s_addr);
+	 unsigned short nPort = ntohs(from.sin_port);
+	 sender = address(nAddress, nPort);
    
-   return received_bytes;
+	 return received_bytes;
+      }
+      else
+      {
+	 printf("no read\n");
+      }
+   }
+   else
+   {
+      printf("I should shut down the socket.\n");  
+   }
+   return 0;
 }
 int socket::receive(void * data, int size)
 {
    assert(data);
    assert(size > 0);
    assert(IsOpen());
-   
-   int received_bytes = recv(m_socket, (char*)data, size, 0);
-   if (received_bytes <= 0)
+      fd_set read_fds;
+   FD_ZERO(&read_fds);
+   FD_SET(STDIN_FILENO, &read_fds);
+   FD_SET(m_socket, &read_fds);
+
+   int activity = ::select(m_socket+1, &read_fds, nullptr, nullptr, nullptr);
+
+   if(activity != 0 && activity != -1)
    {
-      return 0;    
+      if (FD_ISSET(m_socket, &read_fds))
+      {
+	 int received_bytes = recv(m_socket, (char*)data, size, 0);
+	 if (received_bytes <= 0)
+	 {
+	    return 0;    
+	 }
+	 return received_bytes;
+      }
+      else
+      {
+	 printf("no read\n");	 
+      }
    }
-   return received_bytes;
+   return 0;
 }
 
