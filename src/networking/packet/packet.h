@@ -4,9 +4,11 @@
 #include <cstddef>
 #include <cstring>
 #include <cstdio>
-#include <vector>
+#include <iosfwd>
+
 
 #include "../utils/dataUtils.h"
+
 
 namespace net
 {
@@ -63,6 +65,8 @@ class packet
   class BasePacket
   {
   public:
+     BasePacket();
+     ~BasePacket();
     // Clears the packet of data
     virtual void Clear(void) = 0;
 
@@ -71,6 +75,9 @@ class packet
 
     // returns the size of the capacity of the packet, that can't grow.
     virtual size_t GetCapacity() = 0;
+
+    // returns the amount of space remaining in the packet
+    size_t GetRemainingSpace() { return GetCapacity()-end; }
 
     // Get the packet data used by sockets
     virtual unsigned char* GetData() = 0;
@@ -112,30 +119,41 @@ class packet
     template <typename T>
     T IterRead(void)
     {
-       //todo: make safe?
+      //todo: make safe?
       T temp = *((T*)&GetData()[end]);
       end += sizeof(T);
       return temp;
     }
-     void IterRead(unsigned char& buffer, size_t read_length)
-     {
-	//todo: make safe?
-	memcpy(&buffer, &GetData()[end], read_length);
-	end += read_length;
-     }
-    enum file_write_status
+    void IterRead(unsigned char& buffer, size_t read_length)
     {
+      //todo: make safe?
+      memcpy(&buffer, &GetData()[end], read_length);
+      end += read_length;
+    }
+    enum file_write_status
+      {
        e_failed = -1,
        e_in_progress,
        e_complete
-    };
-    // Write an std stream at current position
-    file_write_status WriteFile(const char* _file_name);
+      };
+
+     // open the file and prepare to start reading into the packet
+     file_write_status OpenFile(const char* _file_name);
+     // Write an std stream at current position
+     file_write_status WriteFile(size_t max_write = 0);
+     // try close the file.
+     void CloseFile();
+     // Get file bytes written
+     int GetFileBytesToWrite() { return mf_file_size-mf_file_bytes_written;}
+     int GetFileBytesWritten() { return mf_file_bytes_written;}
+
 
   protected:
     // The end offset, how far it is to the end of valid data
-    size_t end;
-     int mf_file_btyes_written = 0;
+    size_t end = 0;
+    int mf_file_bytes_written = 0;
+    int mf_file_size = 0;
+    std::fstream* m_file;
   };
   
   //allows for zero size header.

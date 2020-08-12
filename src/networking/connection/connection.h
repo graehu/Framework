@@ -65,10 +65,10 @@ private:
     struct sender
     {
         sender(unsigned int max):
-			m_stats(max),
 			m_state(e_disconnected),
 			m_timeoutAccumulator(0),
-			m_sendAccumulator(0){};
+			m_sendAccumulator(0),
+			m_stats(max){};
 
         state m_state;
         float m_timeoutAccumulator;

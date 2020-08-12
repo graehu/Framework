@@ -5,6 +5,7 @@
 #include <netinet/in.h>
 #include <sys/select.h>
 #include <sys/socket.h>
+#include <sys/poll.h>
 #include <sys/signal.h>
 #include <unistd.h>
 #define show_val(variable) printf(#variable": %d\n", variable);
@@ -29,19 +30,21 @@ int socket::setup_signals()
       do_once = false;
       printf("set up signals handler\n");
    }
-  
   return 0;
 }
 void socket::handle_signal_action(int sig_number)
 {
-  if (sig_number == SIGINT) {
-    printf("SIGINT was caught!\n");
-    // shutdown_properly(EXIT_SUCCESS);
-  }
-  else if (sig_number == SIGPIPE) {
-    printf("SIGPIPE was caught!\n");
-    // shutdown_properly(EXIT_SUCCESS);
-  }
+   // if (sig_number == SIGINT)
+   // {
+   //   printf("SIGINT was caught!\n");
+   //   // shutdown_properly(EXIT_SUCCESS);
+   // }
+   // else 
+   if (sig_number == SIGPIPE)
+   {
+      printf("SIGPIPE was caught!\n");
+      // shutdown_properly(EXIT_SUCCESS);
+   }
 }
 socket::socket(Types _type) :
    m_socket(0),
@@ -132,13 +135,15 @@ bool socket::openSock(unsigned short port)
       closeSock();
       return false;
    }
-   if(!mf_set_nonblocking(true))
-   {
-      printf( "failed to set non-blocking socket\n" );
-      closeSock();
-      return false;
-   }
+   
+   // if(!mf_set_nonblocking(true))
+   // {
+   //    printf( "failed to set non-blocking socket\n" );
+   //    closeSock();
+   //    return false;
+   // }
 
+   
    switch(m_type)
    {
       case eGameSocket:
@@ -255,7 +260,7 @@ bool socket::Accept(address & sender, socket& _accept_socket)
       {
 	 if (FD_ISSET(m_socket, &read_fds))
 	 {
-	    int read_socket = ::accept(m_socket, (sockaddr*)&from, &fromLength);
+	    int read_socket = ::accept4(m_socket, (sockaddr*)&from, &fromLength, O_NONBLOCK);
 	    if(read_socket <= 0)
 	    {
 	       return false;
@@ -291,6 +296,21 @@ int socket::receive(address & sender, void * data, int size)
 #if PLATFORM == PLATFORM_WINDOWS
    typedef int socklen_t;
 #endif
+   //todo put this into a function.
+   struct timeval tv;
+   tv.tv_sec = 1;
+   tv.tv_usec = 0;
+   setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
+//todo add these to the function
+// // WINDOWS
+// DWORD timeout = timeout_in_seconds * 1000;
+// setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof timeout);
+
+// // MAC OS X (identical to Linux)
+// struct timeval tv;
+// tv.tv_sec = timeout_in_seconds;
+// tv.tv_usec = 0;
+// setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
 
    sockaddr_in from;
    socklen_t fromLength = sizeof(from);
@@ -305,17 +325,33 @@ int socket::receive(address & sender, void * data, int size)
    {
       if (FD_ISSET(m_socket, &read_fds))
       {
-	 int received_bytes = recvfrom(m_socket, (char*)data, size, 0, (sockaddr*)&from, &fromLength);
-	 read(m_socket, (char*)data, size);
-	 if (received_bytes <= 0)
+	 printf("try recvfrom\n");
+	 pollfd poll_fd;
+	 poll_fd.fd = m_socket; // your socket handler 
+	 poll_fd.events = POLLIN;
+	 int ret = poll(&poll_fd, 1, 1000); // 1 second for timeout
+	 if (ret > 0)
 	 {
-	    return 0;    
-	 }
-	 unsigned int nAddress = ntohl(from.sin_addr.s_addr);
-	 unsigned short nPort = ntohs(from.sin_port);
-	 sender = address(nAddress, nPort);
+	    int received_bytes = recvfrom(m_socket, (char*)data, size, 0, (sockaddr*)&from, &fromLength);
+	    read(m_socket, (char*)data, size);
+	    if (received_bytes <= 0)
+	    {
+	       return 0;    
+	    }
+	    unsigned int nAddress = ntohl(from.sin_addr.s_addr);
+	    unsigned short nPort = ntohs(from.sin_port);
+	    sender = address(nAddress, nPort);
    
-	 return received_bytes;
+	    return received_bytes;	    
+	 }
+	 else if(ret == 0)
+	 {
+	    printf("timed out on recieve!\n");
+	 }
+	 else
+	 {
+	    printf("an error occured!\n");
+	 }
       }
       else
       {
@@ -333,10 +369,16 @@ int socket::receive(void * data, int size)
    assert(data);
    assert(size > 0);
    assert(IsOpen());
-      fd_set read_fds;
+   fd_set read_fds;
    FD_ZERO(&read_fds);
    FD_SET(STDIN_FILENO, &read_fds);
    FD_SET(m_socket, &read_fds);
+   //todo put this into a function.
+   struct timeval tv;
+   tv.tv_sec = 1;
+   tv.tv_usec = 0;
+   setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
+   
 
    int activity = ::select(m_socket+1, &read_fds, nullptr, nullptr, nullptr);
 

@@ -6,73 +6,87 @@
 
 using namespace net;
 
-
-
-packet::packet()
-{
-	m_alloc = 0;
-	m_packing = false;
-	m_headerSize = m_end = 16;
-    m_data = new unsigned char[m_headerSize];
-    m_sizeAccumulator = 0;
-	m_dataEnd = 0;
-	//m_typeIttorator = 0;
-    //m_currentDefID = 0;
-}
-
-packet::~packet()
-{ ///this may require more later.
-    if(m_data != 0)
-	delete m_data;
-}
-
-
-bool packet::setAlloc(unsigned int _alloc)
-{
-	if(_alloc > m_alloc)
-	{
-		unsigned char* temp;
-		temp = m_data;
-		m_data = new unsigned char[_alloc];
-		if(temp != 0)
-		{
-            memcpy(&m_data[0], temp, m_end);
-            delete temp;
-		}
-		m_alloc = _alloc;
-
-		return false;
-	}
-	return true;
-}
 #define show_val(variable) printf(#variable": %d\n", variable);
-BasePacket::file_write_status BasePacket::WriteFile(const char* _file_name)
+
+BasePacket::BasePacket()
 {
-  std::fstream l_file;
-  l_file.open(_file_name, std::ios_base::in);
-  if(l_file.fail())
-  {
-     mf_file_btyes_written = 0;
-     return e_failed;
-  }
-  l_file.seekg(0, l_file.end);
-  int file_remaining = l_file.tellg();
-  file_remaining -= mf_file_btyes_written;
-  int read_length = GetCapacity() - end < file_remaining ? GetCapacity() - end : file_remaining;
-  l_file.seekg(mf_file_btyes_written, l_file.beg);
-  l_file.read((char*)(&GetData()[end]), read_length);
-  l_file.close();
-  end += read_length;
-  if (read_length == file_remaining)
-  {
-     mf_file_btyes_written = 0;
-     return e_complete;
-  }
-  else
-  {
-     mf_file_btyes_written += read_length;
-     return e_in_progress;
-  }
+   m_file = new std::fstream;
+}
+
+BasePacket::~BasePacket()
+{ ///this may require more later.
+   if(m_file != nullptr)
+   {
+      delete m_file;
+      m_file = nullptr;
+   }
+}
+BasePacket::file_write_status BasePacket::OpenFile(const char* _file_name)
+{
+   if (m_file == nullptr)
+   {
+      return e_failed;
+   }
+   if(!m_file->is_open())
+   {
+      m_file->open(_file_name, std::ios_base::in);
+      mf_file_bytes_written = 0;
+      m_file->seekg(0, m_file->end);
+      mf_file_size = m_file->tellg();
+      if(m_file->fail())
+      {
+	 return e_failed;
+      }
+      return e_in_progress;
+   }
+   else if(mf_file_bytes_written == mf_file_size)
+   {
+      return e_complete;
+   }
+   else
+   {
+      return e_in_progress;      
+   }
+}
+BasePacket::file_write_status BasePacket::WriteFile(size_t max_write)
+{
+   if(m_file != nullptr && m_file->is_open())
+   {
+      if(mf_file_bytes_written == mf_file_size)
+      {
+	 return e_complete;
+      }
+      int file_remaining = GetFileBytesToWrite();
+      int space_remaining = GetRemainingSpace();
+      if (max_write > 0)
+      {
+	 space_remaining = max_write < space_remaining ? max_write : space_remaining;
+      }
+      int read_length = space_remaining < file_remaining ? space_remaining : file_remaining;
+      m_file->seekg(mf_file_bytes_written, m_file->beg);
+      m_file->read((char*)(&GetData()[end]), read_length);
+      show_val(read_length);
+      end += read_length;
+      mf_file_bytes_written += read_length;
+      if (read_length == file_remaining)
+      {
+	 return e_complete;
+      }
+      else
+      {
+	 return e_in_progress;
+      }
+   }
+   return e_failed;
+}
+void BasePacket::CloseFile()
+{
+   if(m_file != nullptr && m_file->is_open())
+   {
+      m_file->close();
+      mf_file_bytes_written = 0;
+      mf_file_size = 0;
+   }
 }
 
   
