@@ -15,12 +15,14 @@
 #include <netinet/in.h>
 #include <string>
 #include <string_view>
+#include <sstream>
 #include <thread>
 #include <chrono>
 #include <type_traits>
 
 #define show_val(variable) printf(#variable": %d\n", variable);
 #define if_logging(expression) if(mv_logging) { expression; }
+
 net::http_server::http_server(unsigned int port) :
    mv_handler(nullptr),
    mv_server_thread(nullptr),
@@ -74,6 +76,9 @@ namespace net
    };
 }
 
+bool SendFile(const net::address& lv_address,  net::socket& lv_socket,  net::http_packet& lv_packet, int start, int end);
+bool mp4_response(net::http_packet& lv_packet, std::string request, int& start, int& end);
+
 void net::http_server::mf_server_thread(const socket& in_socket)
 {
    net::socket lv_listen_socket(in_socket);
@@ -91,55 +96,16 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 	    };
 	 lv_packet.IterWrite<decltype(lv_html_404)>(lv_html_404);
       };
-   enum content_types
-   {
-    e_none,
-    e_html,
-    e_javascript,
-    e_css,
-    e_mp4,
-   };
    auto lf_html_200 =
-     [&lv_packet](content_types type = e_none)
+      [&lv_packet]()
       {
 	 lv_packet.Clear();
-	 char lv_html_200[] = { "HTTP/2.0 200 OK\r\n" };
-	 lv_packet.IterWrite(lv_html_200);
-	 if(type != e_none)
-	   {
-	      char lv_content_type[] = { "Content-Type: " };
-	      lv_packet.IterWrite(lv_content_type);
-	      switch(type)
-	      {
-		 case e_html:
-		 {
-		    lv_packet.IterWrite("text/html;\r\n");
-		    // lv_packet.IterWrite("Transfer-Encoding: chunked");
-		 }
-		 break;
-		 case e_javascript:
-		 {
-		    lv_packet.IterWrite("text/javascript;");
-		 }
-		 break;
-		 case e_css:
-		 {
-		    lv_packet.IterWrite("text/css;");
-		 }
-		 break;
-		 case e_mp4:
-		 {
-		    lv_packet.IterWrite("video/mp4;");
-		 }
-		 break;
-		 case e_none:
-		 default:
-		    break;
-	      }
-	      lv_packet.IterWrite("Connection: Keep-Alive");
-	      char lv_ending[] = { "\r\n\r\n" };
-	      lv_packet.IterWrite(lv_ending);
-	   }
+	 lv_packet.IterWrite("HTTP/2.0 200 OK\r\n");
+	 lv_packet.IterWrite("Connection: Keep-Alive");
+	 lv_packet.IterWrite( "\r\n\r\n");
+	 // lv_packet.IterWrite("Content-Type: text/html;\r\n");
+	 // lv_packet.IterWrite("Content-Type: text/javascript;\r\n");
+	 // lv_packet.IterWrite("Content-Type: text/css;\r\n");
       };
 
    net::address lv_address;
@@ -151,6 +117,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
    while(mv_running)
    {
       int receive_attempts = 0;
+      printf("waiting to accept...\n");
       if(lv_listen_socket.Accept(lv_address, lv_socket))
       {
 	 if (mv_logging)
@@ -164,7 +131,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 	 bool lv_keep_alive = true;
 	 do
 	 {
-	    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+	    // std::this_thread::sleep_for(std::chrono::milliseconds(30));
 	    lv_packet.Clear();
 	    printf("try_recieve outside\n");
 	    int lv_bytes_read = lv_socket.receive(lv_packet.GetData(), lv_packet.GetCapacity());
@@ -188,6 +155,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 	       {
 		  lv_keep_alive = false;
 	       }
+	       //todo research keepalive... it seems pointless?
 	       lv_keep_alive = false;
 	       show_val(lv_keep_alive);
 
@@ -254,83 +222,10 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 		  
 		     const char *lv_request = get_request.length() == 0 ? "index.html" : get_request.c_str();
 		     std::string lv_request_view(lv_request);
-		     int partial_bytes = 0;
-		     bool is_partial = false;
-		     bool is_invalid_partial = false;
-		     bool chunk_encoded = false;
-		     if(lv_request_view.find(".js") != std::string::npos)
-		     {
-			lf_html_200(e_javascript);
-		     }
-		     else if (lv_request_view.find(".css") != std::string::npos)
-		     {
-			lf_html_200(e_css);
-		     }
-		     else if (lv_request_view.find(".mp4") != std::string::npos)
-		     {
-			char lv_range_str[] = { "Range: bytes=" };
-			auto partial = view.find(lv_range_str);
-			if(partial != std::string::npos)
-			{
-			   is_partial = true;
-			   auto lv_ending = view.find("\r\n", partial)-(partial+sizeof(lv_range_str)-1);
-			   auto number = view.substr(partial+sizeof(lv_range_str)-1, lv_ending);
-			   auto number_split = number.find("-");
-			   int lv_num_left = atoi(number.substr(0, number_split).c_str());
-			   int lv_num_right = atoi(number.substr(number_split+1, number.npos).c_str());
-			   partial_bytes = lv_num_right - lv_num_left;
-			
-			   int length = 1;
-			   int i = 1;
-			   if(partial_bytes > 99)
-			   {
-			      // chunk_encoded = true;
-			      while(length <= partial_bytes) {length*=10; i++;}
-			      char lv_num_buffer[i-1];
-			      lv_packet.IterWrite("HTTP/1.1 206 OK\r\n");
-			      lv_packet.IterWrite("Content-Type: video/mp4\r\n");
-			      // lv_packet.IterWrite("Transfer-Encoding: chunked\r\n");
-			      lv_packet.IterWrite("Connection: Keep-Alive\r\n");
-			      lv_packet.IterWrite("Accept-Ranges: bytes\r\n");
-			      lv_packet.IterWrite("Content-Ranges: bytes ");
-			      lv_packet.IterWrite(number.c_str(), number.length());
-			      //todo file size is hardcoded here
-			      lv_packet.IterWrite(" / 4936162\r\n");
-			      // lv_packet.IterWrite("Content-Length: ");
-			      // sprintf(lv_num_buffer, "%d", partial_bytes);
-			      lv_packet.IterWrite(lv_num_buffer, sizeof(lv_num_buffer));
-			      lv_packet.IterWrite("\r\n\r\n");
-			   }
-			   else
-			   {
-			      is_invalid_partial = true;
-			      lv_packet.IterWrite("HTTP/1.1 416 Range Not Satisfiable\r\n");
-			      lv_packet.IterWrite("Content-Type: video/mp4\r\n");
-			      lv_packet.IterWrite("Accept-Ranges: bytes\r\n");
-			      //todo file size is hardcoded here
-			      lv_packet.IterWrite("Content-Length: 4936162");
-			      lv_packet.IterWrite("\r\n\r\n");
-			   }
-
-			}
-			else
-			{
-			   lf_html_200(e_mp4);
-			}
-		     }
-		     else if (lv_request_view.find(".html") != std::string::npos)
-		     {		     
-			lf_html_200(e_html);
-			// chunk_encoded = true;
-		     }
-		     else
-		     {
-			lf_html_200();		     
-		     }
-
 		     bool lv_handled = false;
 		     if (mv_handler != nullptr)
 		     {
+			lf_html_200();		     
 			auto lv_get_response =
 			   [&lv_handled, &lv_packet]
 			   (const char *message, size_t size)
@@ -356,99 +251,54 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 			}
 			else
 			{
-			   // auto file_status = lv_packet.WriteFile(lv_file_path.c_str());
-			   // if(file_status == BasePacket::e_complete)
-			   // {
-			   //    if (mv_logging)
-			   //    {
-			   //       printf("sending: 200, %s\n", lv_request);
-			   //    }  
-			   // }
-			   // else if(file_status == BasePacket::e_in_progress)
-			   // {
-			   //continuous send if files are bigger than the packets size.
-			   if (!is_invalid_partial)
+			   int start = 0, end = 0;
+			   bool lv_send_file = true;
+			   lv_packet.OpenFile(lv_file_path.c_str());
+			   if(lv_request_view.find(".js") != std::string::npos)
 			   {
-			      auto file_status = lv_packet.OpenFile(lv_file_path.c_str());
-			      if(file_status == BasePacket::e_in_progress)
-			      {
-				 int bytes_written = 0;
-				 do
-				 {
-				    //todo: write size, then write file, then write \r\n
-				    //maybe detect chunk encoding? dunno. testing this for now.
-				    //hardcoding chunk size kinda.
-				    int bytes_to_write = lv_packet.GetFileBytesToWrite();
-				    bytes_written = lv_packet.GetFileBytesWritten();
-				    int space = lv_packet.GetRemainingSpace(); //reserving 8 bytes
-				    space -= chunk_encoded ? 8 : 0;
-				    int chunk_size = space > bytes_to_write ? bytes_to_write : space;
-				    if (is_partial)
-				    {
-				       chunk_size = partial_bytes < chunk_size ? partial_bytes : chunk_size;
-				    }
-				    int length = 1;
-				    int i = 1;
-				    while(length < chunk_size) {length*=10; i++;}
-				    char number[i-1];
-				    sprintf(number, "%d", chunk_size);
-				    if(chunk_encoded)
-				    {
-				       lv_packet.IterWrite(number, i-1);
-				       lv_packet.IterWrite("\r\n");				    
-				    }
-
-				    file_status = lv_packet.WriteFile(chunk_size);
-				    if(chunk_encoded)
-				    {
-				       lv_packet.IterWrite("\r\n");
-				    }
-				    if(file_status == BasePacket::e_complete)
-				    {
-				       if(chunk_encoded)
-				       {
-					  lv_packet.IterWrite("0\r\n");
-				       }
-				       lv_packet.IterWrite("\r\n\0");
-				    }
-				    if(mv_logging)
-				    {
-				       lv_packet.PrintDetails();
-				    }
-				    lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize());
-				    lv_packet.Clear();
-				    std::this_thread::sleep_for(std::chrono::milliseconds(30));
-				 }
-				 while(file_status == BasePacket::e_in_progress && (partial_bytes == 0 || bytes_written < partial_bytes));
-				 lv_packet.CloseFile();
-			      }
-			      else if(file_status == BasePacket::e_failed)
-			      {
-				 lf_html_404();
-				 if (mv_logging)
-				 {
-				    printf("sending: 404, %s not found\n", lv_request);
-				 }
-			      }
-			      else
-			      {
-				 if (mv_logging)
-				 {
-				    printf("sending: 200, %s\n", lv_request);
-				 }
-			      }
+			      	 lv_packet.Clear();
+				 lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
+				 lv_packet.IterWrite("Content-Type: text/javascript;\r\n");
+				 lv_packet.IterWrite("Connection: Keep-Alive");
+				 lv_packet.IterWrite( "\r\n\r\n");
 			   }
+			   else if (lv_request_view.find(".css") != std::string::npos)
+			   {
+			      lv_packet.Clear();
+			      lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
+			      lv_packet.IterWrite("Content-Type: text/css;\r\n");
+			      lv_packet.IterWrite("Connection: Keep-Alive");
+			      lv_packet.IterWrite( "\r\n\r\n");
+			   }
+			   else if (lv_request_view.find(".mp4") != std::string::npos)
+			   {
+			      lv_send_file = mp4_response(lv_packet, view, start, end);
+			   }
+			   else if (lv_request_view.find(".html") != std::string::npos)
+			   {
+			      lv_packet.Clear();
+			      lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
+			      lv_packet.IterWrite("Content-Type: text/html;\r\n");
+			      lv_packet.IterWrite("Connection: Keep-Alive");
+			      lv_packet.IterWrite( "\r\n\r\n");
+			   }
+			   if(lv_send_file)
+			   {
+			      printf("sending file\n");
+			      SendFile(lv_address, lv_socket, lv_packet, start, end);
+			   }
+			   lv_packet.CloseFile();
 			}
 		     }
 		     if(mv_logging)
 		     {
-			lv_packet.PrintDetails();   
+			lv_packet.PrintDetails();
 		     }
-		     if(lv_packet.GetRemainingSpace() != lv_packet.GetCapacity())
-		     {
-			lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize());
-			std::this_thread::sleep_for(std::chrono::milliseconds(30));
-		     }
+		  }
+		  if(lv_packet.GetSize() > 0)
+		  {
+		     lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize());
+		     lv_packet.Clear();
 		  }
 		  if (mv_logging)
 		  {
@@ -577,3 +427,122 @@ net::http_server::~http_server()
       delete ws_thread;
    }
 }
+template<typename T>
+T fromString(const std::string &str)
+{
+   std::istringstream in(str);
+   T t;
+   in >> t;
+   return t;
+
+}
+template<typename T> 
+std::string toString(const T &t)
+{
+   std::ostringstream out;
+   out << t;
+   return out.str();
+
+}
+
+// file handlers.
+bool SendFile(const net::address& lv_address,  net::socket& lv_socket,  net::http_packet& lv_packet, int start = 0, int end = 0)
+{
+   if(lv_packet.IsFileOpen())
+   {
+      if(end == 0 || end > lv_packet.GetFileSize())
+      {
+	 end = lv_packet.GetFileSize();
+      }
+      int bytes_to_write = end - start;
+      bool mv_logging = true;
+      int bytes_written = 0;
+      do
+      {
+	 int space = lv_packet.GetRemainingSpace(); //reserving 8 bytes
+	 int chunk_size = space > bytes_to_write ? bytes_to_write : space;
+	 bytes_written += lv_packet.WriteFile(start+bytes_written, end, chunk_size);
+	 if(mv_logging)
+	 {
+	    // add ranged print so you can just print headers?
+	    // lv_packet.PrintDetails();
+	 }
+	 lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize());
+	 lv_packet.Clear();
+      }
+      while(bytes_written < bytes_to_write);
+      printf("file sent!\n");
+      return true;
+   }
+   printf("file not open...\n");
+   return false;
+}
+bool mp4_response(net::http_packet& lv_packet, std::string request, int& start, int& end)
+{
+   if(lv_packet.IsFileOpen())
+   {
+      lv_packet.Clear();
+      std::string lv_file_size = toString(lv_packet.GetFileSize());
+      char lv_range_str[] = { "Range: bytes=" };
+      auto partial = request.find(lv_range_str);
+      if(partial != std::string::npos)
+      {
+	 auto lv_end_offset = request.find("\r\n", partial)-(partial+sizeof(lv_range_str)-1);
+	 std::string lv_partial_range = request.substr(partial+sizeof(lv_range_str)-1, lv_end_offset);
+	 auto lv_number_split = lv_partial_range.find("-");
+	 int lv_num_left = fromString<int>(lv_partial_range.substr(0, lv_number_split));
+	 int lv_num_right = fromString<int>(lv_partial_range.substr(lv_number_split+1, lv_partial_range.npos));
+	 int partial_bytes = (lv_num_right - lv_num_left)+1;
+	 std::string lv_content_length = toString(partial_bytes);
+	 if(partial_bytes > 8)
+	 {
+	    lv_packet.IterWrite("HTTP/1.1 206 OK\r\n");
+	    lv_packet.IterWrite("Content-Type: video/mp4\r\n");
+	    lv_packet.IterWrite("Connection: Keep-Alive\r\n");
+	    lv_packet.IterWrite("Accept-Ranges: bytes\r\n");
+	    lv_packet.IterWrite("Content-Ranges: bytes ");
+	    lv_packet.IterWrite(lv_partial_range.c_str(), lv_partial_range.length());
+	    lv_packet.IterWrite(" / ");
+	    lv_packet.IterWrite(lv_file_size.c_str(), lv_file_size.length());
+	    //todo: It should be fine to send content length, but it seems to make things worse?
+	    //      maybe there's an issue with the packet header attribute order.
+	    //      also, in theory, you can just reply 200 OK and send the file to denote
+	    //      a lack of support for partial content. (content-ranges)
+	    // lv_packet.IterWrite("\r\n");
+	    // lv_packet.IterWrite("Content-Length: ");
+	    // lv_packet.IterWrite(lv_content_length.c_str(), lv_content_length.length());
+	    lv_packet.IterWrite("\r\n\r\n");
+	    start = lv_num_left;
+	    end = lv_num_right;
+	    lv_packet.PrintDetails();
+	    return true;
+	 }
+	 else
+	 {
+	    lv_packet.IterWrite("HTTP/1.1 416 Range Not Satisfiable\r\n");
+	    lv_packet.IterWrite("Content-Type: video/mp4\r\n");
+	    lv_packet.IterWrite("Accept-Ranges: bytes\r\n");
+	    lv_packet.IterWrite("Content-Length: ");
+	    lv_packet.IterWrite(lv_file_size.c_str(), lv_file_size.length());
+	    lv_packet.IterWrite("\r\n\r\n");
+	    lv_packet.PrintDetails();
+	    return false;
+	 }
+      }
+      else
+      {
+	 lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
+	 lv_packet.IterWrite("Content-Type: video/mp4;");
+	 lv_packet.IterWrite("Connection: Keep-Alive");
+	 lv_packet.IterWrite("Content-Length: ");
+	 lv_packet.IterWrite(lv_file_size.c_str(), lv_file_size.length());
+	 lv_packet.IterWrite("\r\n\r\n");
+	 return true;
+      }
+   }
+   return false;
+}
+
+
+
+

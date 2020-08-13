@@ -130,28 +130,21 @@ class packet
       memcpy(&buffer, &GetData()[end], read_length);
       end += read_length;
     }
-    enum file_write_status
-      {
-       e_failed = -1,
-       e_in_progress,
-       e_complete
-      };
-
      // open the file and prepare to start reading into the packet
-     file_write_status OpenFile(const char* _file_name);
+     bool OpenFile(const char* _file_name);
+     // returns if file is open
+     bool IsFileOpen();
      // Write an std stream at current position
-     file_write_status WriteFile(size_t max_write = 0);
+     int WriteFile(size_t start = 0, size_t end = 0, size_t max_write = 0);
      // try close the file.
      void CloseFile();
      // Get file bytes written
-     int GetFileBytesToWrite() { return mf_file_size-mf_file_bytes_written;}
-     int GetFileBytesWritten() { return mf_file_bytes_written;}
+     int GetFileSize() { return mf_file_size; }
 
 
   protected:
     // The end offset, how far it is to the end of valid data
     size_t end = 0;
-    int mf_file_bytes_written = 0;
     int mf_file_size = 0;
     std::fstream* m_file;
   };

@@ -21,70 +21,57 @@ BasePacket::~BasePacket()
       m_file = nullptr;
    }
 }
-BasePacket::file_write_status BasePacket::OpenFile(const char* _file_name)
+bool BasePacket::OpenFile(const char* _file_name)
 {
    if (m_file == nullptr)
    {
-      return e_failed;
+      return false;
    }
    if(!m_file->is_open())
    {
       m_file->open(_file_name, std::ios_base::in);
-      mf_file_bytes_written = 0;
       m_file->seekg(0, m_file->end);
       mf_file_size = m_file->tellg();
       if(m_file->fail())
       {
-	 return e_failed;
+	 return false;
       }
-      return e_in_progress;
+      return true;
    }
-   else if(mf_file_bytes_written == mf_file_size)
-   {
-      return e_complete;
-   }
-   else
-   {
-      return e_in_progress;      
-   }
+   //todo return true if it's the same file, somehow.
+   return false;
 }
-BasePacket::file_write_status BasePacket::WriteFile(size_t max_write)
+bool BasePacket::IsFileOpen()
+{
+   return m_file->is_open();
+}
+int BasePacket::WriteFile(size_t _start, size_t _end, size_t max_write)
 {
    if(m_file != nullptr && m_file->is_open())
    {
-      if(mf_file_bytes_written == mf_file_size)
+      if (_end == 0 || _end > GetFileSize())
       {
-	 return e_complete;
+	 _end = GetFileSize();
       }
-      int file_remaining = GetFileBytesToWrite();
+      int bytes_to_write = _end - _start;
       int space_remaining = GetRemainingSpace();
       if (max_write > 0)
       {
 	 space_remaining = max_write < space_remaining ? max_write : space_remaining;
       }
-      int read_length = space_remaining < file_remaining ? space_remaining : file_remaining;
-      m_file->seekg(mf_file_bytes_written, m_file->beg);
+      int read_length = space_remaining < bytes_to_write ? space_remaining : bytes_to_write;
+      m_file->seekg(_start, m_file->beg);
       m_file->read((char*)(&GetData()[end]), read_length);
-      show_val(read_length);
       end += read_length;
-      mf_file_bytes_written += read_length;
-      if (read_length == file_remaining)
-      {
-	 return e_complete;
-      }
-      else
-      {
-	 return e_in_progress;
-      }
+      return read_length;
    }
-   return e_failed;
+   return -1;
 }
 void BasePacket::CloseFile()
 {
    if(m_file != nullptr && m_file->is_open())
    {
       m_file->close();
-      mf_file_bytes_written = 0;
       mf_file_size = 0;
    }
 }

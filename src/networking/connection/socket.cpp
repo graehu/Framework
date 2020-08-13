@@ -232,7 +232,8 @@ bool socket::send(const address & destination, const void * data, int size)
       }
       else
       {
-	 printf("hmm lets hope this doesn't happen too much..\n");
+	 //socket in use, that's probably fine
+	 // printf("hmm lets hope this doesn't happen too much..\n");
       }
    }
    else
@@ -260,7 +261,7 @@ bool socket::Accept(address & sender, socket& _accept_socket)
       {
 	 if (FD_ISSET(m_socket, &read_fds))
 	 {
-	    int read_socket = ::accept4(m_socket, (sockaddr*)&from, &fromLength, O_NONBLOCK);
+	    int read_socket = ::accept(m_socket, (sockaddr*)&from, &fromLength);
 	    if(read_socket <= 0)
 	    {
 	       return false;
