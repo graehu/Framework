@@ -339,6 +339,7 @@ int socket::receive(address & sender, void * data, int size)
 	 poll_fd.fd = m_socket; // your socket handler 
 	 poll_fd.events = POLLIN;
 	 int ret = poll(&poll_fd, 1, 1000); // 1 second for timeout
+	 printf("try post poll\n");
 	 if (ret > 0)
 	 {
 	    int received_bytes = recvfrom(m_socket, (char*)data, size, 0, (sockaddr*)&from, &fromLength);
@@ -397,12 +398,20 @@ int socket::receive(void * data, int size)
    {
       if (FD_ISSET(m_socket, &read_fds))
       {
-	 int received_bytes = recv(m_socket, (char*)data, size, 0);
-	 if (received_bytes <= 0)
+	 pollfd poll_fd;
+	 poll_fd.fd = m_socket; // your socket handler 
+	 poll_fd.events = POLLIN;
+	 int ret = poll(&poll_fd, 1, 1000); // 1 second for timeout
+	 if(ret > 0)
 	 {
-	    return 0;    
+	    int received_bytes = recv(m_socket, (char*)data, size, 0);
+		 
+	    if (received_bytes <= 0)
+	    {
+	       return 0;    
+	    }
+	    return received_bytes;
 	 }
-	 return received_bytes;
       }
       else
       {
