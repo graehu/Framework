@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <memory>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/poll.h>
@@ -215,11 +216,15 @@ bool socket::send(const address & destination, const void * data, int size)
 
    assert(destination.getAddress() != 0);
    assert(destination.getPort() != 0);
+   struct timeval tv;
+   tv.tv_sec = 0;
+   tv.tv_usec = 30;
    fd_set write_fds;
    FD_ZERO(&write_fds);
    FD_SET(STDOUT_FILENO, &write_fds);
    FD_SET(m_socket, &write_fds);
-   int activity = ::select(m_socket+1, nullptr, &write_fds, nullptr, nullptr);
+   
+   int activity = ::select(m_socket+1, nullptr, &write_fds, nullptr, &tv);
    
    if(activity != 0 && activity != -1)
    {
@@ -229,6 +234,13 @@ bool socket::send(const address & destination, const void * data, int size)
 	 address.sin_family = AF_INET;
 	 address.sin_addr.s_addr = htonl(destination.getAddress());
 	 address.sin_port = htons((unsigned short) destination.getPort());
+	 int flag = 1;
+	 int result = setsockopt(m_socket,            /* socket affected */
+				 IPPROTO_TCP,     /* set option at TCP level */
+				 TCP_NODELAY,     /* name of option */
+				 (char *) &flag,  /* the cast is historical cruft */
+				 sizeof(int));    /* length of option value */
+	    
 	 int sent_bytes = sendto(m_socket, (const char*)data, size, 0, (sockaddr*)&address, sizeof(sockaddr_in));
 	 return sent_bytes == size;
       }
@@ -250,6 +262,9 @@ bool socket::Accept(address & sender, socket& _accept_socket)
 {
    if(m_type == eHttpSocket)
    {
+      struct timeval tv;
+      tv.tv_sec = 30;
+      tv.tv_usec = 0;
       sockaddr_in from;
       socklen_t fromLength = sizeof(from);
       fd_set read_fds;
@@ -257,7 +272,7 @@ bool socket::Accept(address & sender, socket& _accept_socket)
       FD_SET(STDIN_FILENO, &read_fds);
       FD_SET(m_socket, &read_fds);
 
-      int activity = ::select(m_socket+1, &read_fds, nullptr, nullptr, nullptr);
+      int activity = ::select(m_socket+1, &read_fds, nullptr, nullptr, &tv);
 
       if(activity != 0 && activity != -1)
       {
@@ -279,9 +294,9 @@ bool socket::Accept(address & sender, socket& _accept_socket)
 	    return true;
 	 }
       }
-      else
+      else if(activity == -1)
       {
-	 printf("I should shut down the socket.\n");  
+	 printf("socket failed select: %s\n", strerror(errno));
       }
       return false;
    }
@@ -304,8 +319,8 @@ int socket::receive(address & sender, void * data, int size)
 #endif
    //todo put this into a function.
    struct timeval tv;
-   tv.tv_sec = 1;
-   tv.tv_usec = 0;
+   tv.tv_sec = 0;
+   tv.tv_usec = 30;
    if(setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv) < 0)
    {
       printf("couldn't set recieve timeout...\n");
@@ -328,13 +343,12 @@ int socket::receive(address & sender, void * data, int size)
    FD_SET(STDIN_FILENO, &read_fds);
    FD_SET(m_socket, &read_fds);
 
-   int activity = ::select(m_socket+1, &read_fds, nullptr, nullptr, nullptr);
+   int activity = ::select(m_socket+1, &read_fds, nullptr, nullptr, &tv);
 
    if(activity != 0 && activity != -1)
    {
       if (FD_ISSET(m_socket, &read_fds))
       {
-	 printf("try recvfrom\n");
 	 pollfd poll_fd;
 	 poll_fd.fd = m_socket; // your socket handler 
 	 poll_fd.events = POLLIN;
@@ -343,9 +357,10 @@ int socket::receive(address & sender, void * data, int size)
 	 if (ret > 0)
 	 {
 	    int received_bytes = recvfrom(m_socket, (char*)data, size, 0, (sockaddr*)&from, &fromLength);
-	    if (received_bytes <= 0)
+	    if (received_bytes < 0)
 	    {
-	       return 0;    
+	       printf("socket failed recvfrom: %s\n", strerror(errno));
+	       return 0;
 	    }
 	    unsigned int nAddress = ntohl(from.sin_addr.s_addr);
 	    unsigned short nPort = ntohs(from.sin_port);
@@ -367,9 +382,9 @@ int socket::receive(address & sender, void * data, int size)
 	 printf("no read\n");
       }
    }
-   else
+   else if(activity == -1)
    {
-      printf("I should shut down the socket.\n");  
+      printf("socket failed select: %s\n", strerror(errno));
    }
    return 0;
 }
@@ -384,16 +399,13 @@ int socket::receive(void * data, int size)
    FD_SET(m_socket, &read_fds);
    //todo put this into a function.
    struct timeval tv;
-   tv.tv_sec = 1;
-   tv.tv_usec = 0;
+   tv.tv_sec = 0;
+   tv.tv_usec = 30;
    if(setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv) < 0)
    {
       printf("couldn't set recieve timeout...\n");
    }
-   
-
-   int activity = ::select(m_socket+1, &read_fds, nullptr, nullptr, nullptr);
-
+   int activity = ::select(m_socket+1, &read_fds, nullptr, nullptr, &tv);
    if(activity != 0 && activity != -1)
    {
       if (FD_ISSET(m_socket, &read_fds))
@@ -402,12 +414,14 @@ int socket::receive(void * data, int size)
 	 poll_fd.fd = m_socket; // your socket handler 
 	 poll_fd.events = POLLIN;
 	 int ret = poll(&poll_fd, 1, 1000); // 1 second for timeout
+
 	 if(ret > 0)
 	 {
 	    int received_bytes = recv(m_socket, (char*)data, size, 0);
 		 
-	    if (received_bytes <= 0)
+	    if (received_bytes < 0)
 	    {
+	       printf("socket failed recv: %s\n", strerror(errno));
 	       return 0;    
 	    }
 	    return received_bytes;
@@ -417,6 +431,10 @@ int socket::receive(void * data, int size)
       {
 	 printf("no read\n");	 
       }
+   }
+   else if(activity == -1)
+   {
+      printf("socket failed select: %s\n", strerror(errno));
    }
    return 0;
 }

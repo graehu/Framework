@@ -84,7 +84,7 @@ void rc_sample::mf_run(void)
 {
    input* l_input = input::inputFactory();
    l_input->init();
-   net::http_server l_http_server(1337);
+   net::http_server l_http_server(8000);
    net::rc_handler lv_handler;
    l_http_server.mf_set_handler(&lv_handler);
    std::cout << "entering rc_sample loop\n";

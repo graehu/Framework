@@ -247,7 +247,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 		     bool lv_handled = false;
 		     if (mv_handler != nullptr)
 		     {
-			lf_html_200();		     
+			lf_html_200(); 
 			auto lv_get_response =
 			   [&lv_handled, &lv_packet]
 			   (const char *message, size_t size)
@@ -281,6 +281,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 			      lv_packet.Clear();
 			      lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
 			      lv_packet.IterWrite("Content-Type: text/javascript;\r\n");
+			      lv_packet.IterWrite("Content-Length: ");
 			      auto lv_content_length = toString(lv_packet.GetFileSize());
 			      lv_packet.IterWrite(lv_content_length.c_str(), lv_content_length.length());
 			      lv_packet.IterWrite("\r\n");
@@ -294,6 +295,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 			      lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
 			      lv_packet.IterWrite("Content-Type: text/css;\r\n");
 			      auto lv_content_length = toString(lv_packet.GetFileSize());
+			      lv_packet.IterWrite("Content-Length: ");
 			      lv_packet.IterWrite(lv_content_length.c_str(), lv_content_length.length());
 			      lv_packet.IterWrite("\r\n");
 			      lv_packet.IterWrite("Connection: Keep-Alive");
