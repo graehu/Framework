@@ -30,7 +30,7 @@ int socket::setup_signals()
       do_once = false;
       printf("set up signals handler\n");
    }
-  return 0;
+   return 0;
 }
 void socket::handle_signal_action(int sig_number)
 {
@@ -48,6 +48,7 @@ void socket::handle_signal_action(int sig_number)
 }
 socket::socket(Types _type) :
    m_socket(0),
+   m_port(0),
    m_type(_type),
    mv_keepalive(false)
 {
@@ -60,7 +61,8 @@ socket::~socket()
 {
    if(!mv_keepalive)
    {
-      closeSock();      
+      sleep(3);
+      closeSock();
    }
 }
 void socket::mf_set_keepalive(bool keep_alive)
@@ -70,16 +72,16 @@ void socket::mf_set_keepalive(bool keep_alive)
 bool socket::openSock(unsigned short port)
 {
    assert(!IsOpen());
-
+   m_port = port;
    // create socket
    switch(m_type)
    {
       case eGameSocket:
-	 printf("making game socket\n");
+	 printf("opening game socket\n");
 	 m_socket = ::socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	 break;
       case eHttpSocket:
-	 printf("making web socket\n");
+	 printf("opening http socket\n");
 	 m_socket = ::socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 	 break;
       case eAcceptSocket:
@@ -90,9 +92,9 @@ bool socket::openSock(unsigned short port)
    {
 #if PLATFORM == PLATFORM_WINDOWS
       int error = WSAGetLastError();
-      printf( "failed to create socket, error(%i)\n", error );
+      printf( "failed to open socket, error(%i)\n", error );
 #else
-      printf( "failed to create socket\n");
+      printf( "failed to open socket\n");
 #endif
       m_socket = 0;
       return false;
@@ -106,12 +108,12 @@ bool socket::openSock(unsigned short port)
 #if PLATFORM == PLATFORM_WINDOWS
 	 if(setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, (const char*)&on, sizeof(on)))
 	 {
-	    printf("error: failed to set feature levels\n");		    
+	    printf("error: failed to set feature levels on socket [%d]\n", m_socket);
 	 }
 #else
 	 if(setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, (void*)&on, sizeof(on)))
 	 {
-	    printf("error: failed to set feature levels\n");
+	    printf("error: failed to set feature levels on socket [%d]\n", m_socket);
 	 }
 #endif
       }
@@ -131,7 +133,7 @@ bool socket::openSock(unsigned short port)
 
    if (bind(m_socket, (const sockaddr*) &address, sizeof(sockaddr_in)) != 0)
    {
-      printf( "failed to bind socket\n" );
+      printf( "failed to bind socket [%d]\n", m_socket);
       closeSock();
       return false;
    }
@@ -159,7 +161,7 @@ bool socket::openSock(unsigned short port)
       case eAcceptSocket:
 	 break;
    }
-   printf("bound socket: %d\n", port);
+   printf("opened socket [%d] on port [%d]\n", m_socket, port);
    return true;
 }
 bool socket::mf_set_nonblocking(bool non_blocking)
@@ -188,7 +190,7 @@ void socket::closeSock()
 {
    if (m_socket != 0)
    {
-      printf("closing socket...\n");
+      printf("closing socket [%d] on port [%d]\n", m_socket, m_port);
 #if PLATFORM == PLATFORM_MAC || PLATFORM == PLATFORM_UNIX
       close(m_socket);
 #elif PLATFORM == PLATFORM_WINDOWS
@@ -270,7 +272,10 @@ bool socket::Accept(address & sender, socket& _accept_socket)
 	    unsigned short nPort = ntohs(from.sin_port);
 	    sender = address(nAddress, nPort);
 	    _accept_socket.m_socket = read_socket;
+	    _accept_socket.m_port = m_port;
 	    _accept_socket.m_type = eAcceptSocket;
+
+	    printf("opened socket [%d] on port [%d]\n", read_socket, m_port);
 	    return true;
 	 }
       }
@@ -301,7 +306,10 @@ int socket::receive(address & sender, void * data, int size)
    struct timeval tv;
    tv.tv_sec = 1;
    tv.tv_usec = 0;
-   setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
+   if(setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv) < 0)
+   {
+      printf("couldn't set recieve timeout...\n");
+   }
 //todo add these to the function
 // // WINDOWS
 // DWORD timeout = timeout_in_seconds * 1000;
@@ -334,7 +342,6 @@ int socket::receive(address & sender, void * data, int size)
 	 if (ret > 0)
 	 {
 	    int received_bytes = recvfrom(m_socket, (char*)data, size, 0, (sockaddr*)&from, &fromLength);
-	    read(m_socket, (char*)data, size);
 	    if (received_bytes <= 0)
 	    {
 	       return 0;    
@@ -378,7 +385,10 @@ int socket::receive(void * data, int size)
    struct timeval tv;
    tv.tv_sec = 1;
    tv.tv_usec = 0;
-   setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
+   if(setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv) < 0)
+   {
+      printf("couldn't set recieve timeout...\n");
+   }
    
 
    int activity = ::select(m_socket+1, &read_fds, nullptr, nullptr, nullptr);

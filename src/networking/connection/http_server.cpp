@@ -23,6 +23,23 @@
 #define show_val(variable) printf(#variable": %d\n", variable);
 #define if_logging(expression) if(mv_logging) { expression; }
 
+template<typename T>
+T fromString(const std::string &str)
+{
+   std::istringstream in(str);
+   T t;
+   in >> t;
+   return t;
+}
+template<typename T> 
+std::string toString(const T &t)
+{
+   std::ostringstream out;
+   out << t;
+   return out.str();
+}
+
+
 net::http_server::http_server(unsigned int port) :
    mv_handler(nullptr),
    mv_server_thread(nullptr),
@@ -76,7 +93,7 @@ namespace net
    };
 }
 
-bool SendFile(const net::address& lv_address,  net::socket& lv_socket,  net::http_packet& lv_packet, int start, int end);
+bool send_file(const net::address& lv_address,  net::socket& lv_socket,  net::http_packet& lv_packet, int start, int end);
 bool mp4_response(net::http_packet& lv_packet, std::string request, int& start, int& end);
 
 void net::http_server::mf_server_thread(const socket& in_socket)
@@ -91,7 +108,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 	 lv_packet.Clear();
 	 char lv_html_404[] =
 	    {
-	       "HTTP/1.0 404 resource not found\r\n"
+	       "HTTP/1.1 404 resource not found\r\n"
 	       "\r\n"
 	    };
 	 lv_packet.IterWrite<decltype(lv_html_404)>(lv_html_404);
@@ -100,7 +117,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
       [&lv_packet]()
       {
 	 lv_packet.Clear();
-	 lv_packet.IterWrite("HTTP/2.0 200 OK\r\n");
+	 lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
 	 lv_packet.IterWrite("Connection: Keep-Alive");
 	 lv_packet.IterWrite( "\r\n\r\n");
 	 // lv_packet.IterWrite("Content-Type: text/html;\r\n");
@@ -117,23 +134,28 @@ void net::http_server::mf_server_thread(const socket& in_socket)
    while(mv_running)
    {
       int receive_attempts = 0;
-      printf("waiting to accept...\n");
+      if(mv_logging)
+      {
+	 printf("----------------\n");
+	 printf("waiting to accept...\n");	    
+      }
       if(lv_listen_socket.Accept(lv_address, lv_socket))
       {
 	 if (mv_logging)
 	 {
-	    printf("----------------\n");
 	    printf("accepted: ");
 	    lv_address.PrintDetails();
 	    printf("\n");
 	 }
 	 bool lv_close_socket = true;
-	 bool lv_keep_alive = true;
+	 float lv_keep_alive = 1.5;
+	 std::chrono::high_resolution_clock lv_clock;
+	 auto lv_start_time = lv_clock.now();
 	 do
 	 {
 	    // std::this_thread::sleep_for(std::chrono::milliseconds(30));
 	    lv_packet.Clear();
-	    printf("try_recieve outside\n");
+	    // printf("try_recieve outside\n");
 	    int lv_bytes_read = lv_socket.receive(lv_packet.GetData(), lv_packet.GetCapacity());
 	    if (lv_bytes_read > 0)
 	    {
@@ -149,16 +171,16 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 	       auto get_loc = view.find("GET /");
 	       if (view.find("Connection: keep-alive") != std::string::npos || view.find("Connection: Keep-Alive") != std::string::npos)
 	       {
-		  lv_keep_alive = true;
+		  lv_keep_alive += 1.5;
+		  lv_start_time = lv_clock.now();
 	       }
 	       else
 	       {
-		  lv_keep_alive = false;
+		  //lv_keep_alive = false;
 	       }
 	       //todo research keepalive... it seems pointless?
-	       lv_keep_alive = false;
-	       show_val(lv_keep_alive);
-
+	       // lv_keep_alive = false;
+	       
 	       if (http_loc != std::string::npos && get_loc != std::string::npos)
 	       {
 		  lv_packet.Clear();
@@ -208,7 +230,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 		  
 		     // starting ws thread.
 		     lv_close_socket = false;
-		     lv_keep_alive = false;
+		     lv_keep_alive = 0;
 		     lv_socket.mf_set_keepalive(true);
 		     mv_ws_threads.push_back(new std::thread(&net::http_server::mf_ws_thread, this, lv_socket, lv_address));
 		     // sleep here because those objects are passed by ref and I don't want them to be destroyed.
@@ -256,36 +278,50 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 			   lv_packet.OpenFile(lv_file_path.c_str());
 			   if(lv_request_view.find(".js") != std::string::npos)
 			   {
-			      	 lv_packet.Clear();
-				 lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
-				 lv_packet.IterWrite("Content-Type: text/javascript;\r\n");
-				 lv_packet.IterWrite("Connection: Keep-Alive");
-				 lv_packet.IterWrite( "\r\n\r\n");
+			      lv_packet.Clear();
+			      lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
+			      lv_packet.IterWrite("Content-Type: text/javascript;\r\n");
+			      auto lv_content_length = toString(lv_packet.GetFileSize());
+			      lv_packet.IterWrite(lv_content_length.c_str(), lv_content_length.length());
+			      lv_packet.IterWrite("\r\n");
+			      lv_packet.IterWrite("Connection: Keep-Alive");
+			      lv_packet.IterWrite( "\r\n\r\n");
+			      lv_packet.PrintDetails();
 			   }
 			   else if (lv_request_view.find(".css") != std::string::npos)
 			   {
 			      lv_packet.Clear();
 			      lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
 			      lv_packet.IterWrite("Content-Type: text/css;\r\n");
+			      auto lv_content_length = toString(lv_packet.GetFileSize());
+			      lv_packet.IterWrite(lv_content_length.c_str(), lv_content_length.length());
+			      lv_packet.IterWrite("\r\n");
 			      lv_packet.IterWrite("Connection: Keep-Alive");
 			      lv_packet.IterWrite( "\r\n\r\n");
+			      lv_packet.PrintDetails();
 			   }
 			   else if (lv_request_view.find(".mp4") != std::string::npos)
 			   {
 			      lv_send_file = mp4_response(lv_packet, view, start, end);
+			      lv_keep_alive += 5;
 			   }
 			   else if (lv_request_view.find(".html") != std::string::npos)
 			   {
 			      lv_packet.Clear();
 			      lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
 			      lv_packet.IterWrite("Content-Type: text/html;\r\n");
+			      lv_packet.IterWrite("Content-Length: ");
+			      auto lv_content_length = toString(lv_packet.GetFileSize());
+			      lv_packet.IterWrite(lv_content_length.c_str(), lv_content_length.length());
+			      lv_packet.IterWrite("\r\n");
 			      lv_packet.IterWrite("Connection: Keep-Alive");
 			      lv_packet.IterWrite( "\r\n\r\n");
+			      lv_packet.PrintDetails();
 			   }
 			   if(lv_send_file)
 			   {
 			      printf("sending file\n");
-			      SendFile(lv_address, lv_socket, lv_packet, start, end);
+			      send_file(lv_address, lv_socket, lv_packet, start, end);
 			   }
 			   lv_packet.CloseFile();
 			}
@@ -306,17 +342,9 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 		  }
 	       }
 	    }
-	    else
-	    {
-	       if(mv_logging)
-	       {
-		  printf("failed to recieve\n");
-	       }
-	       receive_attempts++;
-	    }
-	    printf("escape...\n");
-	 }while(lv_keep_alive && receive_attempts < 5);
-
+	    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+	 }while(lv_keep_alive > std::chrono::duration<float>(lv_clock.now()-lv_start_time).count());
+	 printf("connection timedout: %f\n", std::chrono::duration<float>(lv_clock.now()-lv_start_time).count());
 	 if(lv_close_socket)
 	 {
 	    lv_socket.closeSock();
@@ -427,26 +455,8 @@ net::http_server::~http_server()
       delete ws_thread;
    }
 }
-template<typename T>
-T fromString(const std::string &str)
-{
-   std::istringstream in(str);
-   T t;
-   in >> t;
-   return t;
-
-}
-template<typename T> 
-std::string toString(const T &t)
-{
-   std::ostringstream out;
-   out << t;
-   return out.str();
-
-}
-
 // file handlers.
-bool SendFile(const net::address& lv_address,  net::socket& lv_socket,  net::http_packet& lv_packet, int start = 0, int end = 0)
+bool send_file(const net::address& lv_address,  net::socket& lv_socket,  net::http_packet& lv_packet, int start = 0, int end = 0)
 {
    if(lv_packet.IsFileOpen())
    {
@@ -467,11 +477,17 @@ bool SendFile(const net::address& lv_address,  net::socket& lv_socket,  net::htt
 	    // add ranged print so you can just print headers?
 	    // lv_packet.PrintDetails();
 	 }
+	 if (bytes_written == bytes_to_write)
+	 {
+	    // printf("file write complete, sending null terminator.\n");
+	    // lv_packet.IterWrite("\0");
+	 }
 	 lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize());
 	 lv_packet.Clear();
       }
       while(bytes_written < bytes_to_write);
-      printf("file sent!\n");
+      
+      printf("sent %d\n", bytes_written);
       return true;
    }
    printf("file not open...\n");
@@ -488,19 +504,36 @@ bool mp4_response(net::http_packet& lv_packet, std::string request, int& start, 
       if(partial != std::string::npos)
       {
 	 auto lv_end_offset = request.find("\r\n", partial)-(partial+sizeof(lv_range_str)-1);
+
 	 std::string lv_partial_range = request.substr(partial+sizeof(lv_range_str)-1, lv_end_offset);
+	 int lv_num_left = 0;
+	 int lv_num_right = 0;
+
 	 auto lv_number_split = lv_partial_range.find("-");
-	 int lv_num_left = fromString<int>(lv_partial_range.substr(0, lv_number_split));
-	 int lv_num_right = fromString<int>(lv_partial_range.substr(lv_number_split+1, lv_partial_range.npos));
+	 lv_num_left = fromString<int>(lv_partial_range.substr(0, lv_number_split));
+	 auto lv_num_right_str = lv_partial_range.substr(lv_number_split+1, lv_partial_range.npos);
+	 if (!lv_num_right_str.empty())
+	 {
+	    lv_num_right = fromString<int>(lv_num_right_str);	       
+	 }
+	 else
+	 {
+	    lv_num_right = fromString<int>(lv_file_size)-1;
+	    lv_partial_range.append(toString(lv_num_right));
+	 }
+
 	 int partial_bytes = (lv_num_right - lv_num_left)+1;
 	 std::string lv_content_length = toString(partial_bytes);
-	 if(partial_bytes > 8)
+	 if(partial_bytes > 0)
 	 {
-	    lv_packet.IterWrite("HTTP/1.1 206 OK\r\n");
+	    lv_packet.IterWrite("HTTP/1.1 206 Partial Content\r\n");
 	    lv_packet.IterWrite("Content-Type: video/mp4\r\n");
+	    lv_packet.IterWrite("Content-Length: ");
+	    lv_packet.IterWrite(lv_content_length.c_str(), lv_content_length.length());
+	    lv_packet.IterWrite("\r\n");
 	    lv_packet.IterWrite("Connection: Keep-Alive\r\n");
 	    lv_packet.IterWrite("Accept-Ranges: bytes\r\n");
-	    lv_packet.IterWrite("Content-Ranges: bytes ");
+	    lv_packet.IterWrite("Content-Range: bytes ");
 	    lv_packet.IterWrite(lv_partial_range.c_str(), lv_partial_range.length());
 	    lv_packet.IterWrite(" / ");
 	    lv_packet.IterWrite(lv_file_size.c_str(), lv_file_size.length());
@@ -508,12 +541,11 @@ bool mp4_response(net::http_packet& lv_packet, std::string request, int& start, 
 	    //      maybe there's an issue with the packet header attribute order.
 	    //      also, in theory, you can just reply 200 OK and send the file to denote
 	    //      a lack of support for partial content. (content-ranges)
-	    // lv_packet.IterWrite("\r\n");
-	    // lv_packet.IterWrite("Content-Length: ");
-	    // lv_packet.IterWrite(lv_content_length.c_str(), lv_content_length.length());
 	    lv_packet.IterWrite("\r\n\r\n");
+
 	    start = lv_num_left;
-	    end = lv_num_right;
+	    //byte ranges are inclusive! 0-1 = 2bytes
+	    end = lv_num_right+1;
 	    lv_packet.PrintDetails();
 	    return true;
 	 }
@@ -521,6 +553,7 @@ bool mp4_response(net::http_packet& lv_packet, std::string request, int& start, 
 	 {
 	    lv_packet.IterWrite("HTTP/1.1 416 Range Not Satisfiable\r\n");
 	    lv_packet.IterWrite("Content-Type: video/mp4\r\n");
+	    lv_packet.IterWrite("Connection: Keep-Alive\r\n");
 	    lv_packet.IterWrite("Accept-Ranges: bytes\r\n");
 	    lv_packet.IterWrite("Content-Length: ");
 	    lv_packet.IterWrite(lv_file_size.c_str(), lv_file_size.length());
@@ -532,11 +565,13 @@ bool mp4_response(net::http_packet& lv_packet, std::string request, int& start, 
       else
       {
 	 lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
-	 lv_packet.IterWrite("Content-Type: video/mp4;");
-	 lv_packet.IterWrite("Connection: Keep-Alive");
+	 lv_packet.IterWrite("Content-Type: video/mp4\r\n");
+	 lv_packet.IterWrite("Connection: Keep-Alive\r\n");
+	 lv_packet.IterWrite("Accept-Ranges: bytes\r\n");
 	 lv_packet.IterWrite("Content-Length: ");
 	 lv_packet.IterWrite(lv_file_size.c_str(), lv_file_size.length());
 	 lv_packet.IterWrite("\r\n\r\n");
+	 lv_packet.PrintDetails();
 	 return true;
       }
    }

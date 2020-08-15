@@ -88,11 +88,14 @@ namespace net
     int receive(void * data, int size);
     int receive(address & sender, void * data, int size);
     void mf_set_keepalive(bool keep_alive);
+     bool mf_get_keepalive() { return mv_keepalive; }
+     
 
   private:
     static int setup_signals();
     static void handle_signal_action(int signal_number);
     int m_socket;
+     int m_port;
     Types m_type;
     bool mv_keepalive;
   };
