@@ -235,13 +235,6 @@ bool socket::send(const address & destination, const void * data, int size)
 	 address.sin_family = AF_INET;
 	 address.sin_addr.s_addr = htonl(destination.getAddress());
 	 address.sin_port = htons((unsigned short) destination.getPort());
-	 int flag = 1;
-	 int result = setsockopt(m_socket,            /* socket affected */
-				 IPPROTO_TCP,     /* set option at TCP level */
-				 TCP_NODELAY,     /* name of option */
-				 (char *) &flag,  /* the cast is historical cruft */
-				 sizeof(int));    /* length of option value */
-	    
 	 int sent_bytes = sendto(m_socket, (const char*)data, size, 0, (sockaddr*)&address, sizeof(sockaddr_in));
 	 return sent_bytes == size;
       }

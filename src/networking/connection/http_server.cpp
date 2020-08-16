@@ -54,7 +54,8 @@ net::http_server::http_server(unsigned int port) :
 }
 namespace net
 {
-   typedef NewPacket<16384> http_packet;
+   typedef NewPacket<33068> http_packet;
+   // typedef NewPacket<16384> http_packet;
    // typedef NewPacket<8192> http_packet;
    // typedef NewPacket<1024> http_packet;
   // typedef NewPacket<512> http_packet;
@@ -283,7 +284,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 				 lv_packet.IterWrite("\r\n");
 				 lv_packet.IterWrite("Connection: Keep-Alive");
 				 lv_packet.IterWrite( "\r\n\r\n");
-				 lv_timeout += 1;
+				 lv_timeout = 0.25;
 				 lv_packet.PrintDetails();
 			      }
 			      else if (lv_request_view.find(".css") != std::string::npos)
@@ -296,14 +297,14 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 				 lv_packet.IterWrite("\r\n");
 				 lv_packet.IterWrite("Connection: Keep-Alive");
 				 lv_packet.IterWrite( "\r\n\r\n");
-				 lv_timeout += 1;
+				 lv_timeout = 0.25;
 				 lv_packet.PrintDetails();
 			      
 			      }
 			      else if (lv_request_view.find(".mp4") != std::string::npos)
 			      {
 				 lv_send_file = mp4_response(lv_packet, view, start, end);
-				 lv_timeout += 1;
+				 lv_timeout = 0;
 			      }
 			      else if (lv_request_view.find(".html") != std::string::npos)
 			      {
@@ -315,7 +316,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 				 lv_packet.IterWrite("\r\n");
 				 lv_packet.IterWrite("Connection: Keep-Alive");
 				 lv_packet.IterWrite( "\r\n\r\n");
-				 lv_timeout += 1;
+				 lv_timeout = 0.25;
 				 lv_packet.PrintDetails();
 			      }
 			      if(lv_send_file)
@@ -349,7 +350,6 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 	       printf("timeout in: %f secs\n", lv_until);
 	       lv_last_timeout = lv_timeout;
 	    }
-	    std::this_thread::sleep_for(std::chrono::milliseconds(30));
 	 }while(lv_timeout > std::chrono::duration<float>(lv_clock.now()-lv_start_time).count());
 	 printf("connection timedout: %f secs\n", std::chrono::duration<float>(lv_clock.now()-lv_start_time).count());
 	 if(lv_close_socket)
