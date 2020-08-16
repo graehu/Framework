@@ -284,7 +284,6 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 				 lv_packet.IterWrite("\r\n");
 				 lv_packet.IterWrite("Connection: Keep-Alive");
 				 lv_packet.IterWrite( "\r\n\r\n");
-				 lv_timeout = 0.25;
 				 lv_packet.PrintDetails();
 			      }
 			      else if (lv_request_view.find(".css") != std::string::npos)
@@ -297,14 +296,12 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 				 lv_packet.IterWrite("\r\n");
 				 lv_packet.IterWrite("Connection: Keep-Alive");
 				 lv_packet.IterWrite( "\r\n\r\n");
-				 lv_timeout = 0.25;
 				 lv_packet.PrintDetails();
 			      
 			      }
 			      else if (lv_request_view.find(".mp4") != std::string::npos)
 			      {
 				 lv_send_file = mp4_response(lv_packet, view, start, end);
-				 lv_timeout = 0;
 			      }
 			      else if (lv_request_view.find(".html") != std::string::npos)
 			      {
@@ -316,14 +313,37 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 				 lv_packet.IterWrite("\r\n");
 				 lv_packet.IterWrite("Connection: Keep-Alive");
 				 lv_packet.IterWrite( "\r\n\r\n");
-				 lv_timeout = 0.25;
 				 lv_packet.PrintDetails();
-			      }
+			      }			      
 			      if(lv_send_file)
 			      {
-				 printf("sending file\n");
-				 send_file(lv_address, lv_socket, lv_packet, start, end);
+
+				 printf("sending %s\n", lv_file_path.c_str());
+				 if(send_file(lv_address, lv_socket, lv_packet, start, end))
+				 {
+				    if(start == 0 && end == 0)
+				    {
+				       //todo: this assumes about a 500kbs download speed.
+				       //      try to drive this via some metric rather than
+				       //      with a static magic number.
+				       lv_timeout = ((float)(lv_packet.GetFileSize()))/500000.0;
+				    }
+				    else
+				    {
+				       lv_timeout = ((float)(end - start))/(500000.0);
+				    }
+				    lv_timeout += 1.0f/30.0f;
+				 }
+				 else
+				 {
+				    lv_timeout = 0;
+				 }
 			      }
+			      lv_start_time = lv_clock.now();
+			   }
+			   else
+			   {
+			      lf_html_404();
 			   }
 			   lv_packet.CloseFile();
 			}
@@ -378,10 +398,11 @@ void net::http_server::mf_ws_thread(const net::socket& from, const net::address&
    }
    lv_socket.mf_set_nonblocking(true);
    websocket_header ws_header;
-   while (mv_running)
+   bool lv_is_connected = true;
+   while (mv_running && lv_is_connected)
    {
       auto lv_ws_send =
-	 [this, &lv_packet, &ws_header, &lv_socket, &lv_address]
+	 [this, &lv_packet, &ws_header, &lv_socket, &lv_address, &lv_is_connected]
 	 (const char *message,size_t size)
 	 {
 	    // todo: make sure the correct message size is written here.
@@ -393,7 +414,11 @@ void net::http_server::mf_ws_thread(const net::socket& from, const net::address&
 	    {
 	       // lv_packet.PrintDetails();   
 	    }
-	    lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize());
+	    if(lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize()) == -1)
+	    {
+	       printf("websocket connection broken\n");
+	       lv_is_connected = false;
+	    };
 	 };
       // spin lock waiting for messages.
       lv_packet.Clear();
@@ -489,8 +514,14 @@ bool send_file(const net::address& lv_address,  net::socket& lv_socket,  net::ht
 	    // printf("file write complete, sending null terminator.\n");
 	    // lv_packet.IterWrite("\0");
 	 }
-	 lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize());
+	 if(lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize()) == -1)
+	 {
+	    printf("failed to send file.");
+	    lv_packet.Clear();
+	    return false;
+	 }
 	 lv_packet.Clear();
+	 std::this_thread::sleep_for(std::chrono::milliseconds(30));
       }
       while(bytes_written < bytes_to_write);
       printf("sent %d\n", bytes_written);
@@ -543,12 +574,7 @@ bool mp4_response(net::http_packet& lv_packet, std::string request, int& start, 
 	    lv_packet.IterWrite(lv_partial_range.c_str(), lv_partial_range.length());
 	    lv_packet.IterWrite(" / ");
 	    lv_packet.IterWrite(lv_file_size.c_str(), lv_file_size.length());
-	    //todo: It should be fine to send content length, but it seems to make things worse?
-	    //      maybe there's an issue with the packet header attribute order.
-	    //      also, in theory, you can just reply 200 OK and send the file to denote
-	    //      a lack of support for partial content. (content-ranges)
 	    lv_packet.IterWrite("\r\n\r\n");
-
 	    start = lv_num_left;
 	    //byte ranges are inclusive! 0-1 = 2bytes
 	    end = lv_num_right+1;

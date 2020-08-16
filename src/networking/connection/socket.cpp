@@ -35,12 +35,13 @@ int socket::setup_signals()
 }
 void socket::handle_signal_action(int sig_number)
 {
-   // if (sig_number == SIGINT)
-   // {
-   //   printf("SIGINT was caught!\n");
-   //   // shutdown_properly(EXIT_SUCCESS);
-   // }
-   // else 
+   if (sig_number == SIGINT)
+   {
+     printf("SIGINT was caught, killing program\n");
+     // shutdown_properly(EXIT_SUCCESS);
+     exit(0);
+   }
+   else 
    if (sig_number == SIGPIPE)
    {
       printf("SIGPIPE was caught!\n");
@@ -207,7 +208,7 @@ bool socket::IsOpen() const
    return m_socket != 0 || m_type == eAcceptSocket;
 }
 
-bool socket::send(const address & destination, const void * data, int size)
+int socket::send(const address & destination, const void * data, int size)
 {
    assert(data);
    assert(size > 0);
@@ -235,20 +236,15 @@ bool socket::send(const address & destination, const void * data, int size)
 	 address.sin_family = AF_INET;
 	 address.sin_addr.s_addr = htonl(destination.getAddress());
 	 address.sin_port = htons((unsigned short) destination.getPort());
-	 int sent_bytes = sendto(m_socket, (const char*)data, size, 0, (sockaddr*)&address, sizeof(sockaddr_in));
-	 return sent_bytes == size;
-      }
-      else
-      {
-	 //socket in use, that's probably fine
-	 // printf("hmm lets hope this doesn't happen too much..\n");
+	 int sent_bytes = sendto(m_socket, (const char*)data, size, MSG_NOSIGNAL, (sockaddr*)&address, sizeof(sockaddr_in));
+	 return sent_bytes;
       }
    }
    else
    {
       printf("I should shut down the socket.\n");  
    }
-   return false;
+   return 0;
 
 }
 

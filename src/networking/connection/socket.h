@@ -84,7 +84,7 @@ namespace net
     bool openSock(unsigned short port);
     void closeSock();
     bool IsOpen() const;
-    bool send(const address & destination, const void * data, int size);
+    int send(const address & destination, const void * data, int size);
     int receive(void * data, int size);
     int receive(address & sender, void * data, int size);
      void mf_set_keepalive(bool keep_alive);
