@@ -148,7 +148,8 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 	    printf("\n");
 	 }
 	 bool lv_close_socket = true;
-	 float lv_keep_alive = 1.5;
+	 float lv_timeout = 0.5;
+	 float lv_last_timeout = 0;
 	 std::chrono::high_resolution_clock lv_clock;
 	 auto lv_start_time = lv_clock.now();
 	 do
@@ -171,16 +172,9 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 	       auto get_loc = view.find("GET /");
 	       if (view.find("Connection: keep-alive") != std::string::npos || view.find("Connection: Keep-Alive") != std::string::npos)
 	       {
-		  lv_keep_alive += 1.5;
+		  lv_timeout = 0.5;
 		  lv_start_time = lv_clock.now();
 	       }
-	       else
-	       {
-		  //lv_keep_alive = false;
-	       }
-	       //todo research keepalive... it seems pointless?
-	       // lv_keep_alive = false;
-	       
 	       if (http_loc != std::string::npos && get_loc != std::string::npos)
 	       {
 		  lv_packet.Clear();
@@ -230,7 +224,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 		  
 		     // starting ws thread.
 		     lv_close_socket = false;
-		     lv_keep_alive = 0;
+		     lv_timeout = 0;
 		     lv_socket.mf_set_keepalive(true);
 		     mv_ws_threads.push_back(new std::thread(&net::http_server::mf_ws_thread, this, lv_socket, lv_address));
 		     // sleep here because those objects are passed by ref and I don't want them to be destroyed.
@@ -273,57 +267,62 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 			}
 			else
 			{
-			   int start = 0, end = 0;
-			   bool lv_send_file = true;
 			   lv_packet.OpenFile(lv_file_path.c_str());
-			   if(lv_request_view.find(".js") != std::string::npos)
+			   if(lv_packet.IsFileOpen())
 			   {
-			      lv_packet.Clear();
-			      lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
-			      lv_packet.IterWrite("Content-Type: text/javascript;\r\n");
-			      lv_packet.IterWrite("Content-Length: ");
+			      int start = 0, end = 0;
+			      bool lv_send_file = true;
 			      auto lv_content_length = toString(lv_packet.GetFileSize());
-			      lv_packet.IterWrite(lv_content_length.c_str(), lv_content_length.length());
-			      lv_packet.IterWrite("\r\n");
-			      lv_packet.IterWrite("Connection: Keep-Alive");
-			      lv_packet.IterWrite( "\r\n\r\n");
-			      lv_packet.PrintDetails();
-			   }
-			   else if (lv_request_view.find(".css") != std::string::npos)
-			   {
-			      lv_packet.Clear();
-			      lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
-			      lv_packet.IterWrite("Content-Type: text/css;\r\n");
-			      auto lv_content_length = toString(lv_packet.GetFileSize());
-			      lv_packet.IterWrite("Content-Length: ");
-			      lv_packet.IterWrite(lv_content_length.c_str(), lv_content_length.length());
-			      lv_packet.IterWrite("\r\n");
-			      lv_packet.IterWrite("Connection: Keep-Alive");
-			      lv_packet.IterWrite( "\r\n\r\n");
-			      lv_packet.PrintDetails();
-			   }
-			   else if (lv_request_view.find(".mp4") != std::string::npos)
-			   {
-			      lv_send_file = mp4_response(lv_packet, view, start, end);
-			      lv_keep_alive += 5;
-			   }
-			   else if (lv_request_view.find(".html") != std::string::npos)
-			   {
-			      lv_packet.Clear();
-			      lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
-			      lv_packet.IterWrite("Content-Type: text/html;\r\n");
-			      lv_packet.IterWrite("Content-Length: ");
-			      auto lv_content_length = toString(lv_packet.GetFileSize());
-			      lv_packet.IterWrite(lv_content_length.c_str(), lv_content_length.length());
-			      lv_packet.IterWrite("\r\n");
-			      lv_packet.IterWrite("Connection: Keep-Alive");
-			      lv_packet.IterWrite( "\r\n\r\n");
-			      lv_packet.PrintDetails();
-			   }
-			   if(lv_send_file)
-			   {
-			      printf("sending file\n");
-			      send_file(lv_address, lv_socket, lv_packet, start, end);
+			      if(lv_request_view.find(".js") != std::string::npos)
+			      {
+				 lv_packet.Clear();
+				 lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
+				 lv_packet.IterWrite("Content-Type: text/javascript;\r\n");
+				 lv_packet.IterWrite("Content-Length: ");
+				 lv_packet.IterWrite(lv_content_length.c_str(), lv_content_length.length());
+				 lv_packet.IterWrite("\r\n");
+				 lv_packet.IterWrite("Connection: Keep-Alive");
+				 lv_packet.IterWrite( "\r\n\r\n");
+				 lv_timeout += 1;
+				 lv_packet.PrintDetails();
+			      }
+			      else if (lv_request_view.find(".css") != std::string::npos)
+			      {
+				 lv_packet.Clear();
+				 lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
+				 lv_packet.IterWrite("Content-Type: text/css;\r\n");
+				 lv_packet.IterWrite("Content-Length: ");
+				 lv_packet.IterWrite(lv_content_length.c_str(), lv_content_length.length());
+				 lv_packet.IterWrite("\r\n");
+				 lv_packet.IterWrite("Connection: Keep-Alive");
+				 lv_packet.IterWrite( "\r\n\r\n");
+				 lv_timeout += 1;
+				 lv_packet.PrintDetails();
+			      
+			      }
+			      else if (lv_request_view.find(".mp4") != std::string::npos)
+			      {
+				 lv_send_file = mp4_response(lv_packet, view, start, end);
+				 lv_timeout += 1;
+			      }
+			      else if (lv_request_view.find(".html") != std::string::npos)
+			      {
+				 lv_packet.Clear();
+				 lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
+				 lv_packet.IterWrite("Content-Type: text/html;\r\n");
+				 lv_packet.IterWrite("Content-Length: ");
+				 lv_packet.IterWrite(lv_content_length.c_str(), lv_content_length.length());
+				 lv_packet.IterWrite("\r\n");
+				 lv_packet.IterWrite("Connection: Keep-Alive");
+				 lv_packet.IterWrite( "\r\n\r\n");
+				 lv_timeout += 1;
+				 lv_packet.PrintDetails();
+			      }
+			      if(lv_send_file)
+			      {
+				 printf("sending file\n");
+				 send_file(lv_address, lv_socket, lv_packet, start, end);
+			      }
 			   }
 			   lv_packet.CloseFile();
 			}
@@ -344,9 +343,15 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 		  }
 	       }
 	    }
+	    if(lv_timeout > lv_last_timeout)
+	    {
+	       float lv_until = lv_timeout - std::chrono::duration<float>(lv_clock.now()-lv_start_time).count();
+	       printf("timeout in: %f secs\n", lv_until);
+	       lv_last_timeout = lv_timeout;
+	    }
 	    std::this_thread::sleep_for(std::chrono::milliseconds(30));
-	 }while(lv_keep_alive > std::chrono::duration<float>(lv_clock.now()-lv_start_time).count());
-	 printf("connection timedout: %f\n", std::chrono::duration<float>(lv_clock.now()-lv_start_time).count());
+	 }while(lv_timeout > std::chrono::duration<float>(lv_clock.now()-lv_start_time).count());
+	 printf("connection timedout: %f secs\n", std::chrono::duration<float>(lv_clock.now()-lv_start_time).count());
 	 if(lv_close_socket)
 	 {
 	    lv_socket.closeSock();
@@ -488,7 +493,6 @@ bool send_file(const net::address& lv_address,  net::socket& lv_socket,  net::ht
 	 lv_packet.Clear();
       }
       while(bytes_written < bytes_to_write);
-      
       printf("sent %d\n", bytes_written);
       return true;
    }

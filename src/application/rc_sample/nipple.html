@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<html>
+  <head>
+    <title>Nipple Demo</title>
+    <style>
+      html, body {
+	  height: 100%;
+	  margin: 0;
+      }
+
+      body {
+	  background: darkgray;
+	  display: flex;
+	  align-items: center;
+	  justify-content: center;
+      }
+      canvas {
+	  border: 1px solid white;
+      }
+      .logbox {
+	  /*TODO: Make this work with padding instead. 
+	    but also fill the page.*/
+	  width:80%;
+	  height:40%;
+	  /* padding: 20px; */
+	  position: absolute;
+	  top: 50px;
+	  border-style: solid;
+	  align-items: left;
+	  align-content: left;
+	  overflow:scroll;
+      }
+      .nipplebox {
+	  /*TODO: Make this work with padding instead. 
+	    but also fill the page.*/
+	  width:80%;
+	  height:40%;
+	  /* padding: 20px; */
+	  position: absolute;
+	  bottom: 50px;
+	  border-style: solid;
+      } 
+    </style>
+    <h1>Nipple Demo</h1>
+  </head>
+  <script type="module">
+    import {RCLib} from "./RCLib.js";
+    import "./nipple.js";
+    RCLib.Connect();
+    var log_div = document.createElement("div");
+    var log_list = document.createElement("ul");
+    log_list.style = "list-style-type: none;";
+    log_div.appendChild(log_list);
+    log_div.className = "logbox";
+    document.body.appendChild(log_div);
+
+    var nipple_div = document.createElement("div");
+    nipple_div.className = "nipplebox";
+    nipple_div.id = "nipplezone";
+    document.body.appendChild(nipple_div);
+    var nipple = nipplejs.create({
+        zone: document.getElementById('nipplezone'),
+	mode: 'static',
+	position: {left: '50%', top: '50%'},
+        color: 'blue'
+    });
+    var nip0 = nipple.get(0);
+    
+    var previous_scroll_pos = 0;
+    var ResponseCB = function(message)
+    {
+	var list_elem = document.createElement("li");
+	list_elem.innerHTML = message;
+	log_list.appendChild(list_elem);
+	if(log_div.scrollTop >= previous_scroll_pos-50)
+	{
+	    // this works but the scroll bar doesn't quite look right.
+	    // seems to update a bit slower than the rest of the page.
+	    log_div.scrollTop = log_div.scrollHeight;
+	    previous_scroll_pos = log_div.scrollTop;
+	}
+    };    
+    RCLib.ResponseCB = ResponseCB;
+    var timer = 0.0;
+    var x = 0.4;
+    var y = 0.1;
+    function loop()
+    {
+	requestAnimationFrame(loop);
+	timer = timer + 1.0/30.0;
+	if(timer > 0.3)
+        {
+
+            if(nip0 !== null && nip0 !== undefined)
+            {
+		if (typeof nip0.frontPosition !== 'undefined')
+		{
+                    x = nip0.frontPosition.x;
+	            y = -nip0.frontPosition.y;
+                    RCLib.Send("d:["+x+","+y+"]");
+		}
+            }
+	    timer = 0.0;
+	}
+    };
+    requestAnimationFrame(loop);
+  </script>
+  <body>
+  </body>
+</html>

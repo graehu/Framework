@@ -87,15 +87,16 @@ namespace net
     bool send(const address & destination, const void * data, int size);
     int receive(void * data, int size);
     int receive(address & sender, void * data, int size);
-    void mf_set_keepalive(bool keep_alive);
+     void mf_set_keepalive(bool keep_alive);
      bool mf_get_keepalive() { return mv_keepalive; }
-     
+     void set_timeout(unsigned int miliseconds) { m_timeout = miliseconds;}
 
   private:
     static int setup_signals();
     static void handle_signal_action(int signal_number);
     int m_socket;
      int m_port;
+     unsigned int m_timeout;
     Types m_type;
     bool mv_keepalive;
   };

@@ -22,6 +22,7 @@ function WSOpen(e)
     WSSendBytes = 0;
     WSReceiveBytes = 0;
     WSIsOpen = 1;
+    RCLib.OpenCB(e);
 }
 
 function WSSendMessage(message)
@@ -35,25 +36,26 @@ function WSSendMessage(message)
     }
     else
     {
-	alert('failing to send ' + message);
+	console.log("WS not open, failed to send: " + message)
     }
 }
 
 function WSMessage(e)
 {
-    //alert("message: " + e.data);
     RCLib.ResponseCB(e.data);
 }
 
 function WSError(e)
 {
-    alert("WSError: " + e);
+    console.log("WSError: " + e);
+    RCLib.ErrorCB(e);
 }
 
 function WSClose(e)
 {
-    alert("WSClosed code: " + e.code); // + " "+ e.reason);
+    console.log("WSClosed code: " + e.code); // + " "+ e.reason);
     WSIsOpen = 0;
+    RCLib.CloseCB(e);
 }
 function WSConnect()
 {
@@ -72,7 +74,6 @@ function WSConnect()
 	{
 	    if(WS)
 	    {
-		alert("closing!");
 		WS.close();
 		WS = null;
 	    }
@@ -97,6 +98,10 @@ function WSConnect()
 RCLib.Connect = function() { WSConnect(); };
 RCLib.Send = function(message) { WSSendMessage(message); };
 //find a way to make this writable.
-RCLib.ResponseCB = function(message) { alert("mesage: "+message); };
+RCLib.ResponseCB = function(message) { console.loog("ws response: "+message); };
+RCLib.ErrorCB = function(message) { console.log("ws error: "+message); };
+RCLib.CloseCB = function(message) { console.log("ws close: "+message); };
+RCLib.OpenCB = function(message) { console.log("ws opened: "+message); };
+
 export {RCLib};
  

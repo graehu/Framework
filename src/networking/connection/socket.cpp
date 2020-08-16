@@ -50,6 +50,7 @@ void socket::handle_signal_action(int sig_number)
 socket::socket(Types _type) :
    m_socket(0),
    m_port(0),
+   m_timeout(30),
    m_type(_type),
    mv_keepalive(false)
 {
@@ -218,7 +219,7 @@ bool socket::send(const address & destination, const void * data, int size)
    assert(destination.getPort() != 0);
    struct timeval tv;
    tv.tv_sec = 0;
-   tv.tv_usec = 30;
+   tv.tv_usec = m_timeout;
    fd_set write_fds;
    FD_ZERO(&write_fds);
    FD_SET(STDOUT_FILENO, &write_fds);
@@ -263,7 +264,7 @@ bool socket::Accept(address & sender, socket& _accept_socket)
    if(m_type == eHttpSocket)
    {
       struct timeval tv;
-      tv.tv_sec = 30;
+      tv.tv_sec = 60;
       tv.tv_usec = 0;
       sockaddr_in from;
       socklen_t fromLength = sizeof(from);
@@ -320,7 +321,7 @@ int socket::receive(address & sender, void * data, int size)
    //todo put this into a function.
    struct timeval tv;
    tv.tv_sec = 0;
-   tv.tv_usec = 30;
+   tv.tv_usec = m_timeout;
    if(setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv) < 0)
    {
       printf("couldn't set recieve timeout...\n");
@@ -349,13 +350,13 @@ int socket::receive(address & sender, void * data, int size)
    {
       if (FD_ISSET(m_socket, &read_fds))
       {
-	 pollfd poll_fd;
-	 poll_fd.fd = m_socket; // your socket handler 
-	 poll_fd.events = POLLIN;
-	 int ret = poll(&poll_fd, 1, 1000); // 1 second for timeout
-	 printf("try post poll\n");
-	 if (ret > 0)
-	 {
+	 // pollfd poll_fd;
+	 // poll_fd.fd = m_socket; // your socket handler 
+	 // poll_fd.events = POLLIN;
+	 // int ret = poll(&poll_fd, 1, 1000); // 1 second for timeout
+	 // printf("try post poll\n");
+	 // if (ret > 0)
+	 // {
 	    int received_bytes = recvfrom(m_socket, (char*)data, size, 0, (sockaddr*)&from, &fromLength);
 	    if (received_bytes < 0)
 	    {
@@ -367,15 +368,15 @@ int socket::receive(address & sender, void * data, int size)
 	    sender = address(nAddress, nPort);
    
 	    return received_bytes;	    
-	 }
-	 else if(ret == 0)
-	 {
-	    printf("timed out on recieve!\n");
-	 }
-	 else
-	 {
-	    printf("an error occured!\n");
-	 }
+	 // }
+	 // else if(ret == 0)
+	 // {
+	 //    printf("timed out on recieve!\n");
+	 // }
+	 // else
+	 // {
+	 //    printf("an error occured!\n");
+	 // }
       }
       else
       {
@@ -400,7 +401,7 @@ int socket::receive(void * data, int size)
    //todo put this into a function.
    struct timeval tv;
    tv.tv_sec = 0;
-   tv.tv_usec = 30;
+   tv.tv_usec = m_timeout;
    if(setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv) < 0)
    {
       printf("couldn't set recieve timeout...\n");
@@ -410,13 +411,13 @@ int socket::receive(void * data, int size)
    {
       if (FD_ISSET(m_socket, &read_fds))
       {
-	 pollfd poll_fd;
-	 poll_fd.fd = m_socket; // your socket handler 
-	 poll_fd.events = POLLIN;
-	 int ret = poll(&poll_fd, 1, 1000); // 1 second for timeout
+	 // pollfd poll_fd;
+	 // poll_fd.fd = m_socket; // your socket handler 
+	 // poll_fd.events = POLLIN;
+	 // int ret = poll(&poll_fd, 1, 1000); // 1 second for timeout
 
-	 if(ret > 0)
-	 {
+	 // if(ret > 0)
+	 // {
 	    int received_bytes = recv(m_socket, (char*)data, size, 0);
 		 
 	    if (received_bytes < 0)
@@ -425,7 +426,7 @@ int socket::receive(void * data, int size)
 	       return 0;    
 	    }
 	    return received_bytes;
-	 }
+	 // }
       }
       else
       {
