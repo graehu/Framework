@@ -13,8 +13,10 @@ source_files = [
     "../../networking/utils/encode.cpp",
     "../../networking/utils/encrypt.cpp"
 ]
-warnings = ["all"]
-debug_info = True
+# warnings = ["all"]
+# debug_info = True
+# optimisation = 0
 link_libraries = ["stdc++", "pthread"]
 standard = "c++17"
 output_file = "rc_sample.bin"
+confply_log_config = False

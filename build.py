@@ -23,7 +23,8 @@ from confply import launcher
 aliases = {
     #'mycommand':'path/to/command.py'
     "rc_sample":"src/application/rc_sample/build.py",
-    "net_physics_sample":"src/application/net_physics_sample/build.py"
+    "net_physics_sample":"src/application/net_physics_sample/build.py",
+    "all": "src/application/rc_sample/build.py debug optimised; src/application/net_physics_sample/build.py"
 }
 
 if __name__ == "__main__":

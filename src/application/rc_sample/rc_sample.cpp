@@ -82,6 +82,14 @@ namespace net
 }
 void rc_sample::mf_run(void)
 {
+   std::cout << R"(
+                                                  .__          
+_______   ____        ___________    _____ ______ |  |   ____  
+\_  __ \_/ ___\      /  ___/\__  \  /     \\____ \|  | _/ __ \ 
+ |  | \/\  \___      \___ \  / __ \|  Y Y  \  |_> >  |_\  ___/ 
+ |__|    \___  >____/____  >(____  /__|_|  /   __/|____/\___  >
+             \/_____/    \/      \/      \/|__|             \/ 
+)" << std::endl;
    input* l_input = input::inputFactory();
    l_input->init();
    net::http_server l_http_server(8000);
