@@ -54,6 +54,7 @@ net::http_server::http_server(unsigned int port) :
 }
 namespace net
 {
+   //todo: test a smaller packet.
    typedef NewPacket<33068> http_packet;
    // typedef NewPacket<16384> http_packet;
    // typedef NewPacket<8192> http_packet;
@@ -100,7 +101,6 @@ int write_response_header(net::http_packet& lv_packet, std::string request, int&
 void net::http_server::mf_server_thread(const socket& in_socket)
 {
    net::socket lv_listen_socket(in_socket);
-   // net::socket listen_socketket(*mv_listen_socket);
    //Initialize some things
    net::http_packet lv_packet;
    auto lf_html_404 =
@@ -121,9 +121,6 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 	 lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
 	 lv_packet.IterWrite("Connection: Keep-Alive");
 	 lv_packet.IterWrite( "\r\n\r\n");
-	 // lv_packet.IterWrite("Content-Type: text/html;\r\n");
-	 // lv_packet.IterWrite("Content-Type: text/javascript;\r\n");
-	 // lv_packet.IterWrite("Content-Type: text/css;\r\n");
       };
 
    net::address lv_address;
@@ -155,9 +152,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 	 auto lv_start_time = lv_clock.now();
 	 do
 	 {
-	    // std::this_thread::sleep_for(std::chrono::milliseconds(30));
 	    lv_packet.Clear();
-	    // printf("try_recieve outside\n");
 	    int lv_bytes_read = lv_socket.receive(lv_packet.GetData(), lv_packet.GetCapacity());
 	    if (lv_bytes_read > 0)
 	    {
@@ -236,7 +231,6 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 		     //
 		     // Handle regular http get requests.
 		     //
-		  
 		     const char *lv_request = get_request.length() == 0 ? "index.html" : get_request.c_str();
 		     std::string lv_request_view(lv_request);
 		     bool lv_handled = false;
@@ -464,16 +458,6 @@ bool send_file(const net::address& lv_address,  net::socket& lv_socket,  net::ht
 	 int space = lv_packet.GetRemainingSpace(); //reserving 8 bytes
 	 int chunk_size = space > bytes_to_write ? bytes_to_write : space;
 	 bytes_written += lv_packet.WriteFile(start+bytes_written, end, chunk_size);
-	 if(mv_logging)
-	 {
-	    // add ranged print so you can just print headers?
-	    // lv_packet.PrintDetails();
-	 }
-	 if (bytes_written == bytes_to_write)
-	 {
-	    // printf("file write complete, sending null terminator.\n");
-	    // lv_packet.IterWrite("\0");
-	 }
 	 if(lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize()) == -1)
 	 {
 	    printf("failed to send file.");
@@ -543,7 +527,7 @@ int write_response_header(net::http_packet& lv_packet, std::string request, int&
 	 if(partial_bytes > 0)
 	 {
 	    lv_packet.IterWrite("HTTP/1.1 206 Partial Content\r\n");
-	    lv_packet.IterWrite(lv_content_type.c_str(), sizeof(lv_content_type));
+	    lv_packet.IterWrite(lv_content_type.c_str(), lv_content_type.length());
 	    lv_packet.IterWrite("Content-Length: ");
 	    lv_packet.IterWrite(lv_content_length.c_str(), lv_content_length.length());
 	    lv_packet.IterWrite("\r\n");
@@ -563,7 +547,7 @@ int write_response_header(net::http_packet& lv_packet, std::string request, int&
 	 else
 	 {
 	    lv_packet.IterWrite("HTTP/1.1 416 Range Not Satisfiable\r\n");
-	    lv_packet.IterWrite(lv_content_type.c_str(), sizeof(lv_content_type));
+	    lv_packet.IterWrite(lv_content_type.c_str(), lv_content_type.length());
 	    lv_packet.IterWrite("Connection: Keep-Alive\r\n");
 	    lv_packet.IterWrite("Accept-Ranges: bytes\r\n");
 	    lv_packet.IterWrite("Content-Length: ");
@@ -576,7 +560,7 @@ int write_response_header(net::http_packet& lv_packet, std::string request, int&
       else
       {
 	 lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
-	 lv_packet.IterWrite(lv_content_type.c_str(), sizeof(lv_content_type));
+	 lv_packet.IterWrite(lv_content_type.c_str(), lv_content_type.length());
 	 lv_packet.IterWrite("Connection: Keep-Alive\r\n");
 	 lv_packet.IterWrite("Accept-Ranges: bytes\r\n");
 	 lv_packet.IterWrite("Content-Length: ");
