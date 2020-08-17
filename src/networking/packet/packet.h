@@ -140,12 +140,15 @@ class packet
      void CloseFile();
      // Get file bytes written
      int GetFileSize() { return mf_file_size; }
+     // get file name/path
+     const char* GetFileName() { return mv_file_name; }
 
 
   protected:
     // The end offset, how far it is to the end of valid data
     size_t end = 0;
     int mf_file_size = 0;
+     const char* mv_file_name = nullptr;
     std::fstream* m_file;
   };
   

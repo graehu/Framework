@@ -31,11 +31,12 @@ bool BasePacket::OpenFile(const char* _file_name)
    {
       m_file->open(_file_name, std::ios_base::in);
       m_file->seekg(0, m_file->end);
-      mf_file_size = m_file->tellg();
       if(m_file->fail())
       {
 	 return false;
       }
+      mf_file_size = m_file->tellg();
+      mv_file_name = _file_name;
       return true;
    }
    //todo return true if it's the same file, somehow.
@@ -73,6 +74,7 @@ void BasePacket::CloseFile()
    {
       m_file->close();
       mf_file_size = 0;
+      mv_file_name = nullptr;
    }
 }
 

@@ -95,7 +95,7 @@ namespace net
 }
 
 bool send_file(const net::address& lv_address,  net::socket& lv_socket,  net::http_packet& lv_packet, int start, int end);
-bool mp4_response(net::http_packet& lv_packet, std::string request, int& start, int& end);
+int write_response_header(net::http_packet& lv_packet, std::string request, int& start, int& end);
 
 void net::http_server::mf_server_thread(const socket& in_socket)
 {
@@ -274,48 +274,8 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 			      int start = 0, end = 0;
 			      bool lv_send_file = true;
 			      auto lv_content_length = toString(lv_packet.GetFileSize());
-			      if(lv_request_view.find(".js") != std::string::npos)
-			      {
-				 lv_packet.Clear();
-				 lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
-				 lv_packet.IterWrite("Content-Type: text/javascript;\r\n");
-				 lv_packet.IterWrite("Content-Length: ");
-				 lv_packet.IterWrite(lv_content_length.c_str(), lv_content_length.length());
-				 lv_packet.IterWrite("\r\n");
-				 lv_packet.IterWrite("Connection: Keep-Alive");
-				 lv_packet.IterWrite( "\r\n\r\n");
-				 lv_packet.PrintDetails();
-			      }
-			      else if (lv_request_view.find(".css") != std::string::npos)
-			      {
-				 lv_packet.Clear();
-				 lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
-				 lv_packet.IterWrite("Content-Type: text/css;\r\n");
-				 lv_packet.IterWrite("Content-Length: ");
-				 lv_packet.IterWrite(lv_content_length.c_str(), lv_content_length.length());
-				 lv_packet.IterWrite("\r\n");
-				 lv_packet.IterWrite("Connection: Keep-Alive");
-				 lv_packet.IterWrite( "\r\n\r\n");
-				 lv_packet.PrintDetails();
-			      
-			      }
-			      else if (lv_request_view.find(".mp4") != std::string::npos)
-			      {
-				 lv_send_file = mp4_response(lv_packet, view, start, end);
-			      }
-			      else if (lv_request_view.find(".html") != std::string::npos)
-			      {
-				 lv_packet.Clear();
-				 lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
-				 lv_packet.IterWrite("Content-Type: text/html;\r\n");
-				 lv_packet.IterWrite("Content-Length: ");
-				 lv_packet.IterWrite(lv_content_length.c_str(), lv_content_length.length());
-				 lv_packet.IterWrite("\r\n");
-				 lv_packet.IterWrite("Connection: Keep-Alive");
-				 lv_packet.IterWrite( "\r\n\r\n");
-				 lv_packet.PrintDetails();
-			      }			      
-			      if(lv_send_file)
+			      int lv_response_code = write_response_header(lv_packet, view, start, end);
+			      if(lv_response_code == 200 || lv_response_code == 206)
 			      {
 
 				 printf("sending %s\n", lv_file_path.c_str());
@@ -530,11 +490,30 @@ bool send_file(const net::address& lv_address,  net::socket& lv_socket,  net::ht
    printf("file not open...\n");
    return false;
 }
-bool mp4_response(net::http_packet& lv_packet, std::string request, int& start, int& end)
+int write_response_header(net::http_packet& lv_packet, std::string request, int& start, int& end)
 {
    if(lv_packet.IsFileOpen())
    {
       lv_packet.Clear();
+      std::string lv_file_name(lv_packet.GetFileName());
+      std::string lv_content_type;
+      if(lv_file_name.find(".html") != std::string::npos)
+      {
+	 lv_content_type = "Content-Type: text/html\r\n";
+      }
+      else if(lv_file_name.find(".js") != std::string::npos)
+      {
+	 lv_content_type = "Content-Type: text/javascript\r\n";
+      }
+      else if (lv_file_name.find(".css") != std::string::npos)
+      {
+	 lv_content_type = "Content-Type: text/css;\r\n";
+      }
+      else if (lv_file_name.find(".mp4") != std::string::npos)
+      {
+	 lv_content_type = "Content-Type: video/mp4\r\n";
+      }
+      
       std::string lv_file_size = toString(lv_packet.GetFileSize());
       char lv_range_str[] = { "Range: bytes=" };
       auto partial = request.find(lv_range_str);
@@ -564,7 +543,7 @@ bool mp4_response(net::http_packet& lv_packet, std::string request, int& start, 
 	 if(partial_bytes > 0)
 	 {
 	    lv_packet.IterWrite("HTTP/1.1 206 Partial Content\r\n");
-	    lv_packet.IterWrite("Content-Type: video/mp4\r\n");
+	    lv_packet.IterWrite(lv_content_type.c_str(), sizeof(lv_content_type));
 	    lv_packet.IterWrite("Content-Length: ");
 	    lv_packet.IterWrite(lv_content_length.c_str(), lv_content_length.length());
 	    lv_packet.IterWrite("\r\n");
@@ -579,32 +558,32 @@ bool mp4_response(net::http_packet& lv_packet, std::string request, int& start, 
 	    //byte ranges are inclusive! 0-1 = 2bytes
 	    end = lv_num_right+1;
 	    lv_packet.PrintDetails();
-	    return true;
+	    return 206;
 	 }
 	 else
 	 {
 	    lv_packet.IterWrite("HTTP/1.1 416 Range Not Satisfiable\r\n");
-	    lv_packet.IterWrite("Content-Type: video/mp4\r\n");
+	    lv_packet.IterWrite(lv_content_type.c_str(), sizeof(lv_content_type));
 	    lv_packet.IterWrite("Connection: Keep-Alive\r\n");
 	    lv_packet.IterWrite("Accept-Ranges: bytes\r\n");
 	    lv_packet.IterWrite("Content-Length: ");
 	    lv_packet.IterWrite(lv_file_size.c_str(), lv_file_size.length());
 	    lv_packet.IterWrite("\r\n\r\n");
 	    lv_packet.PrintDetails();
-	    return false;
+	    return 416;
 	 }
       }
       else
       {
 	 lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
-	 lv_packet.IterWrite("Content-Type: video/mp4\r\n");
+	 lv_packet.IterWrite(lv_content_type.c_str(), sizeof(lv_content_type));
 	 lv_packet.IterWrite("Connection: Keep-Alive\r\n");
 	 lv_packet.IterWrite("Accept-Ranges: bytes\r\n");
 	 lv_packet.IterWrite("Content-Length: ");
 	 lv_packet.IterWrite(lv_file_size.c_str(), lv_file_size.length());
 	 lv_packet.IterWrite("\r\n\r\n");
 	 lv_packet.PrintDetails();
-	 return true;
+	 return 200;
       }
    }
    return false;
