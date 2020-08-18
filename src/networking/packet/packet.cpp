@@ -90,17 +90,43 @@ void BasePacket::CloseFile()
 ///////////////////////////////////////////////////////////////////////
 ///Code Graveyard
 
+packet::packet()
+{
+	m_alloc = 0;
+	m_packing = false;
+	m_headerSize = m_end = 16;
+    m_data = new unsigned char[m_headerSize];
+    m_sizeAccumulator = 0;
+	m_dataEnd = 0;
+	//m_typeIttorator = 0;
+    //m_currentDefID = 0;
+}
+
+packet::~packet()
+{ ///this may require more later.
+    if(m_data != 0)
+	delete m_data;
+}
 
 
+bool packet::setAlloc(unsigned int _alloc)
+{
+	if(_alloc > m_alloc)
+	{
+		unsigned char* temp;
+		temp = m_data;
+		m_data = new unsigned char[_alloc];
+		if(temp != 0)
+		{
+            memcpy(&m_data[0], temp, m_end);
+            delete temp;
+		}
+		m_alloc = _alloc;
 
-
-
-
-
-
-
-
-
+		return false;
+	}
+	return true;
+}
 
 /*
 bool packet::beginPacketData(unsigned int _packetDefID)
