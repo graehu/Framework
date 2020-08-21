@@ -41,7 +41,7 @@ namespace log
       return success;
    }
 // sets the topic, for the current thread.
-   bool set_thread_topic(const char* _topic)
+   bool set_topic(const char* _topic)
    {
       //todo: locks are a bit wide here.
       g_log_mutex.lock();
@@ -73,7 +73,7 @@ namespace log
       return success;
    }
    // sets the log level of a topic
-   bool set_topic_level(const char* _topic, level _level)
+   bool set_level(const char* _topic, level _level)
    {
       //don't think this needs a lock, but we'll see I guess?
       auto this_id = std::this_thread::get_id();
@@ -86,7 +86,13 @@ namespace log
       }
       return false;
    }
-// log severity info.
+   // gets the topic, for the current thread.
+   const char* get_topic()
+   {
+      auto this_id = std::this_thread::get_id();
+      return topics::m_thread_topic[this_id];
+   }
+   // log severity info.
    void info(const char* _message, ...)
    {
       va_list args;
@@ -109,5 +115,10 @@ namespace log
    {
       va_list args;
       topics::log(log::e_debug, _message, args);
+   }
+   void no_topic(const char* _message, ...)
+   {
+      va_list args;
+      printf(_message, args);
    }
 }
