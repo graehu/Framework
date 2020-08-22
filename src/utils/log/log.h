@@ -1,14 +1,26 @@
 #ifndef LOG_H
 #define LOG_H
+#include <cstdarg>
 #include <map>
 #include <memory>
 #include <thread>
 #include <iosfwd>
-/* class std::string; */
+
+
+#define log_int(variable) 
+#define log_float(variable) 
+#define log_str(variable)
+#define log_message(message)
+
+//limitting define leak.
+#ifdef LOG_MACROS
+#undef LOG_MACROS
+#endif//LOG_MACROS
+
 
 namespace log
 {
-   enum level {  e_none,  e_error,  e_warning,  e_info,  e_debug, e_nologging };
+   enum level {  e_no_logging,  e_error,  e_warning,  e_info,  e_debug, e_macro };
    // adds a topic to the global list.
    bool add_topic(const char* _topic);
    // sets the topic, for the current thread.
@@ -25,6 +37,8 @@ namespace log
    void error(const char* _message, ...);
    // log severity debug.
    void debug(const char* _message, ...);
+   // logging specifically only for macros defined in log_macros.h
+   void macro(const char* _message, ...);
    // log with no topic.
    void no_topic(const char* _message, ...);
 
@@ -46,7 +60,7 @@ namespace log
    class topic
    {
      public:
-      void log(level _level, const char* _message, ...);
+      void log(level _level, const char* _message, std::va_list);
       const char* literal() const { return m_topic.c_str(); }
       level m_level = e_info;
      private:
@@ -59,7 +73,7 @@ namespace log
    class topics
    {
      public:
-      static void log(level _level, const char* _message, ...);
+      static void log(level _level, const char* _message, std::va_list args);
      private:
       friend bool log::add_topic(const char* _topic);
       friend bool log::set_topic(const char* _topic);

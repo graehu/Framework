@@ -1,4 +1,5 @@
 #include "log.h"
+#include <cstdarg>
 #include <cstring>
 #include <memory>
 #include <string>
@@ -10,24 +11,21 @@ namespace log
    std::mutex g_log_mutex;
    std::map<const char*, std::unique_ptr<topic> > topics::m_topics;
    std::map<std::thread::id, const char*> topics::m_thread_topic;
-   void topics::log(level _level, const char* _message, ...)
+   void topics::log(level _level, const char* _message, std::va_list args)
    {
       auto this_id = std::this_thread::get_id();
       const char* thread_topic = m_thread_topic[this_id];
       if(thread_topic != nullptr)
       {
-	 va_list args;
 	 m_topics[thread_topic]->log(_level, _message, args);
       }
    }
-   void topic::log(level _level, const char* _message, ...)
+   void topic::log(level _level, const char* _message, va_list args)
    {
-      if (_level <= m_level)
+      if (_level <= m_level && _level > e_no_logging)
       {
-	 va_list args;
-	 char buff[1024];
-	 sprintf(buff, "[%s] %s\n", m_topic.c_str(), _message);
-	 printf(buff, _message, args);	 
+	 printf("\n[%s] ", m_topic.c_str());
+	 vprintf(_message, args);
       }
    }
 // adds a topic to the global list.
@@ -80,7 +78,6 @@ namespace log
       const char* thread_topic = topics::m_thread_topic[this_id];
       if(thread_topic != nullptr)
       {
-	 va_list args;
 	 topics::m_topics[thread_topic]->m_level = _level;
 	 return true;
       }
@@ -96,29 +93,46 @@ namespace log
    void info(const char* _message, ...)
    {
       va_list args;
+      va_start(args, _message);
       topics::log(log::e_info, _message, args);
+      va_end(args);
    }
 // log severity warning.
    void warning(const char* _message, ...)
    {
       va_list args;
+      va_start(args, _message);
       topics::log(log::e_warning, _message, args);
+      va_end(args);
    }
 // log severity error.
    void error(const char* _message, ...)
    {
       va_list args;
+      va_start(args, _message);
       topics::log(log::e_error, _message, args);
+      va_end(args);
    }
 // log severity debug.
    void debug(const char* _message, ...)
    {
       va_list args;
+      va_start(args, _message);
       topics::log(log::e_debug, _message, args);
+      va_end(args);
+   }
+   void macro(const char* _message, ...)
+   {
+      va_list args;
+      va_start(args, _message);
+      topics::log(log::e_debug, _message, args);
+      va_end(args);
    }
    void no_topic(const char* _message, ...)
    {
       va_list args;
-      printf(_message, args);
+      va_start(args, _message);
+      vprintf(_message, args);
+      va_end(args);
    }
 }
