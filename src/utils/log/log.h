@@ -66,22 +66,22 @@ namespace log
       }
       
      private:
-      friend class scope_topic;
+      friend class scope;
       static bool add_topic_internal(topic* _topic);
       static bool set_topic_internal(std::uint32_t _hash);
       static bool set_level_internal(std::uint32_t _hash, log::level _level);
       static std::map<std::uint32_t, std::unique_ptr<topic>> m_topics;
       static std::map<std::thread::id, std::uint32_t > m_thread_topic;
    };
-   class scope_topic
+   class scope
    {
    public:
-      scope_topic(const char* _topic)
+      scope(uint32_t _hash)
       {
 	 m_last_hash = topics::hash();
-	 topics::set(_topic);
+	 topics::set_topic_internal(_hash);
       }
-      ~scope_topic()
+      ~scope()
       {
 	 topics::set_topic_internal(m_last_hash);
       }
