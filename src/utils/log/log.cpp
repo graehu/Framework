@@ -1,4 +1,5 @@
 #include "log.h"
+#include <bits/stdint-uintn.h>
 #include <cstdarg>
 #include <cstring>
 #include <memory>
@@ -9,13 +10,13 @@
 namespace log
 {
    std::mutex g_log_mutex;
-   std::map<const char*, std::unique_ptr<topic> > topics::m_topics;
-   std::map<std::thread::id, const char*> topics::m_thread_topic;
-   void topics::log(level _level, const char* _message, std::va_list args)
+   std::map<std::uint32_t, std::unique_ptr<topic> > topics::m_topics;
+   std::map<std::thread::id, std::uint32_t> topics::m_thread_topic;
+   void topics::log(log::level _level, const char* _message, std::va_list args)
    {
       auto this_id = std::this_thread::get_id();
-      const char* thread_topic = m_thread_topic[this_id];
-      if(thread_topic != nullptr)
+      auto thread_topic = m_thread_topic[this_id];
+      if(thread_topic != 0)
       {
 	 m_topics[thread_topic]->log(_level, _message, args);
       }
@@ -24,22 +25,24 @@ namespace log
    {
       if (_level <= m_level && _level > e_no_logging)
       {
-	 printf("\n[%s] ", m_topic.c_str());
+	 //todo: put the \n on the end of the string.
+	 //      wrong way for ease of use atm.
+	 printf("\n[%s] ", m_name);
 	 vprintf(_message, args);
       }
    }
 // adds a topic to the global list.
-   bool add_topic(const char* _topic)
+   bool topics::add_topic_internal(topic* _topic)
    {
       bool success = false;
-      std::unique_ptr<topic> emplace_topic(new topic(_topic));
       g_log_mutex.lock();
-      success = topics::m_topics.emplace(emplace_topic->literal(), emplace_topic.release()).second;
+      auto hash = _topic->hash();
+      success = topics::m_topics.emplace(hash, _topic).second;
       g_log_mutex.unlock();
       return success;
    }
 // sets the topic, for the current thread.
-   bool set_topic(const char* _topic)
+   bool topics::set_topic_internal(std::uint32_t _hash)
    {
       //todo: locks are a bit wide here.
       g_log_mutex.lock();
@@ -48,7 +51,7 @@ namespace log
       auto topic_it = topics::m_topics.end();
       for(auto it = topics::m_topics.begin(); it != topics::m_topics.end(); it++)
       {
-	 if(std::strcmp(it->second->literal(), _topic) == 0)
+	 if(it->second->hash() == _hash)
 	 {
 	    topic_it = it;
 	    break;
@@ -59,11 +62,11 @@ namespace log
 	 auto thread_it = topics::m_thread_topic.find(this_id);
 	 if(thread_it != topics::m_thread_topic.end())
 	 {
-	    thread_it->second = topic_it->second->literal();
+	    thread_it->second = topic_it->second->hash();
 	 }
 	 else
 	 {
-	    topics::m_thread_topic.insert({this_id, topic_it->second->literal()});
+	    topics::m_thread_topic.insert({this_id, topic_it->second->hash()});
 	 }
 	 success = true;
       }
@@ -71,23 +74,39 @@ namespace log
       return success;
    }
    // sets the log level of a topic
-   bool set_level(const char* _topic, level _level)
+   bool topics::set_level_internal(std::uint32_t _hash, log::level _level)
    {
       //don't think this needs a lock, but we'll see I guess?
-      auto this_id = std::this_thread::get_id();
-      const char* thread_topic = topics::m_thread_topic[this_id];
-      if(thread_topic != nullptr)
+      auto it = topics::m_topics.find(_hash);
+      if(it != topics::m_topics.end())
       {
-	 topics::m_topics[thread_topic]->m_level = _level;
+	 it->second->m_level = _level;
 	 return true;
       }
       return false;
    }
    // gets the topic, for the current thread.
-   const char* get_topic()
+   const char* topics::get()
    {
       auto this_id = std::this_thread::get_id();
-      return topics::m_thread_topic[this_id];
+      auto hash = topics::m_thread_topic[this_id];
+      auto it = topics::m_topics.find(hash);
+      if(it != topics::m_topics.end())
+      {
+	 return it->second->name();
+      }
+      return nullptr;
+   }
+   std::uint32_t topics::hash()
+   {
+      auto this_id = std::this_thread::get_id();
+      auto hash = topics::m_thread_topic[this_id];
+      auto it = topics::m_topics.find(hash);
+      if(it != topics::m_topics.end())
+      {
+	 return it->second->hash();
+      }
+      return 0;
    }
    // log severity info.
    void info(const char* _message, ...)
