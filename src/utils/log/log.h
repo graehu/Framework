@@ -49,18 +49,18 @@ namespace log
    {
      public:
       static void log(level _level, const char* _message, std::va_list args);
-      template<typename T> static bool add(T _topic)
+      template<typename T> static bool add(T& _topic)
       {
 	 auto hash = hash::i32(_topic, sizeof(T));
 	 return topics::add_topic_internal(new topic(_topic, hash));
       }
-      template<typename T> static bool set(T _topic)
+      template<typename T> static bool set(T& _topic)
       {
 	 return topics::set_topic_internal(hash::i32(_topic, sizeof(T)));
       }
       static const char* get();
       static uint32_t hash();
-      template<typename T> static bool level(T _topic, log::level _level)
+      template<typename T> static bool level(T& _topic, log::level _level)
       {
 	 return topics::set_level_internal(hash::i32(_topic, sizeof(T)), _level);
       }
