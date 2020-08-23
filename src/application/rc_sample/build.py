@@ -11,7 +11,8 @@ source_files = [
     "../../networking/connection/socket.cpp",
     "../../networking/packet/packet.cpp",
     "../../networking/utils/encode.cpp",
-    "../../networking/utils/encrypt.cpp"
+    "../../networking/utils/encrypt.cpp",
+    "../../utils/log/log.cpp",
 ]
 # warnings = ["all"]
 # debug_info = True
