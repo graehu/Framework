@@ -13,6 +13,7 @@ source_files = [
     "../../networking/utils/encode.cpp",
     "../../networking/utils/encrypt.cpp",
     "../../utils/log/log.cpp",
+    "../../utils/commandline.cpp"
 ]
 # warnings = ["all"]
 # debug_info = True

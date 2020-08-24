@@ -1,5 +1,7 @@
 #include "address.h"
 #include "stdio.h"
+#include "../../utils/log/log.h"
+
 using namespace net;
 
 address::address()
@@ -52,12 +54,12 @@ unsigned short address::getPort() const
 
 void address::PrintDetails() const
 {
-    printf("%d.%d.%d.%d:%d",
+   log::info("%d.%d.%d.%d:%d",
 	 getA(),
 	 getB(),
 	 getC(),
 	 getD(),
-	 getPort() );
+	 getPort());
 }
 
 bool address::operator == (const address & other) const

@@ -1,12 +1,11 @@
 #include "packet.h"
+#include "../../utils/log/log.h"
 
 #include <cstdio>
 #include <cstdarg>
 #include <fstream>
 
 using namespace net;
-
-#define show_val(variable) printf(#variable": %d\n", variable);
 
 BasePacket::BasePacket()
 {
@@ -78,6 +77,13 @@ void BasePacket::CloseFile()
    }
 }
 
+void BasePacket::PrintDetails()
+{
+   log::info("[packet] printing %ld bytes:", end);
+   log::info("[packet_start]\n");
+   log::no_topic("%.*s", end, GetData());
+   log::info("[packet_end]");
+}    
   
 
 

@@ -25,10 +25,9 @@ namespace log
    {
       if (_level <= m_level && _level > e_no_logging)
       {
-	 //todo: put the \n on the end of the string.
-	 //      wrong way for ease of use atm.
-	 printf("\n[%s] ", m_name);
+	 printf("[%s] ", m_name);
 	 vprintf(_message, args);
+	 printf("\n");
       }
    }
 // adds a topic to the global list.

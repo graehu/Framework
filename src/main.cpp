@@ -1,5 +1,6 @@
-#include "game/game.h"
 #include "application/application.h"
+#include "utils/commandline.h"
+
 //#include <windows.h>
 
 
@@ -9,12 +10,11 @@
 //                      HINSTANCE hPrevInstance,
 //                      LPSTR    lpCmdLine,
 //                      int       nCmdShow)
-int main()
+int main(int argc, char *argv[])
 {
-  {
-    application* l_app = application::mf_factory();
-    l_app->mf_run();
-  }
-
-  return 0;
+   commandline::arg_count = argc;
+   commandline::arg_variables = argv;
+   application* l_app = application::mf_factory();
+   l_app->mf_run();
+   return 0; 
 }

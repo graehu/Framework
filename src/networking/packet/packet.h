@@ -84,7 +84,6 @@ class packet
 
     // Sets the length of the valid data in the packet.
     virtual void SetLength(size_t a_length) = 0;
-    virtual void PrintDetails() = 0;
 
     // Write the type data into the packet and
     // shift the write point forward by type size
@@ -142,6 +141,9 @@ class packet
      int GetFileSize() { return mf_file_size; }
      // get file name/path
      const char* GetFileName() { return mv_file_name; }
+     // if valid is true, this prints the valid contents of the packet.
+     // else it prints the packet capacity
+     void PrintDetails();
 
 
   protected:
@@ -176,18 +178,6 @@ class packet
       data[end-1] = '\0';
     }
 
-    // if valid is true, this prints the valid contents of the packet.
-    // else it prints the packet capacity
-    void PrintDetails()
-    {
-      printf("[packet] printing %ld bytes:\n", end);
-      printf("[packet_start]\n");
-      for(int i = 0; i < end; i++)
-	{
-	  printf("%c", data[i]);
-	}
-      printf("\n[packet_end]\n");
-    }    
     // Get the packet data used by sockets
     unsigned char* GetData() { return data; }
     

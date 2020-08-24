@@ -1,4 +1,5 @@
 #include "socket.h"
+#include "../../utils/log/log.h"
 #include <cerrno>
 #include <cstdio>
 #include <memory>
@@ -9,8 +10,7 @@
 #include <sys/poll.h>
 #include <sys/signal.h>
 #include <unistd.h>
-#define show_val(variable) printf(#variable": %d\n", variable);
-#define show_str(variable) printf(#variable": %s\n", variable);
+
 using namespace net;
 
 int socket::setup_signals()
@@ -29,7 +29,7 @@ int socket::setup_signals()
 	 return -1;
       }
       do_once = false;
-      printf("set up signals handler\n");
+      log::info("set up signals handler");
    }
    return 0;
 }
@@ -37,14 +37,14 @@ void socket::handle_signal_action(int sig_number)
 {
    if (sig_number == SIGINT)
    {
-     printf("SIGINT was caught, killing program\n");
+      log::info("SIGINT was caught, killing program");
      // shutdown_properly(EXIT_SUCCESS);
      exit(0);
    }
    else 
    if (sig_number == SIGPIPE)
    {
-      printf("SIGPIPE was caught!\n");
+      log::info("SIGPIPE was caught!");
       // shutdown_properly(EXIT_SUCCESS);
    }
 }
@@ -57,7 +57,7 @@ socket::socket(Types _type) :
 {
    if(setup_signals() == -1)
    {
-      printf("need to shutdown sockets, something bad happened");
+      log::info("need to shutdown sockets, something bad happened");
    }
 }
 socket::~socket()
@@ -80,11 +80,11 @@ bool socket::openSock(unsigned short port)
    switch(m_type)
    {
       case eGameSocket:
-	 printf("opening game socket\n");
+	 log::info("opening game socket");
 	 m_socket = ::socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	 break;
       case eHttpSocket:
-	 printf("opening http socket\n");
+	 log::info("opening http socket");
 	 m_socket = ::socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 	 break;
       case eAcceptSocket:
@@ -95,9 +95,9 @@ bool socket::openSock(unsigned short port)
    {
 #if PLATFORM == PLATFORM_WINDOWS
       int error = WSAGetLastError();
-      printf( "failed to open socket, error(%i)\n", error );
+      log::info( "failed to open socket, error(%i)", error );
 #else
-      printf( "failed to open socket\n");
+      log::info( "failed to open socket");
 #endif
       m_socket = 0;
       return false;
@@ -111,12 +111,12 @@ bool socket::openSock(unsigned short port)
 #if PLATFORM == PLATFORM_WINDOWS
 	 if(setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, (const char*)&on, sizeof(on)))
 	 {
-	    printf("error: failed to set feature levels on socket [%d]\n", m_socket);
+	    log::info("error: failed to set feature levels on socket [%d]", m_socket);
 	 }
 #else
 	 if(setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, (void*)&on, sizeof(on)))
 	 {
-	    printf("error: failed to set feature levels on socket [%d]\n", m_socket);
+	    log::info("error: failed to set feature levels on socket [%d]", m_socket);
 	 }
 #endif
       }
@@ -136,14 +136,14 @@ bool socket::openSock(unsigned short port)
 
    if (bind(m_socket, (const sockaddr*) &address, sizeof(sockaddr_in)) != 0)
    {
-      printf( "failed to bind socket [%d]\n", m_socket);
+      log::info( "failed to bind socket [%d]", m_socket);
       closeSock();
       return false;
    }
    
    // if(!mf_set_nonblocking(true))
    // {
-   //    printf( "failed to set non-blocking socket\n" );
+   //    log::info( "failed to set non-blocking socket" );
    //    closeSock();
    //    return false;
    // }
@@ -157,14 +157,14 @@ bool socket::openSock(unsigned short port)
 	 //TODO: do something about this random limit here.
 	 if(listen(m_socket, 8) < 0)
 	 {
-	    printf("failed to listen on socket\n");
+	    log::info("failed to listen on socket");
 	    return false;
 	 }
 	 break;
       case eAcceptSocket:
 	 break;
    }
-   printf("opened socket [%d] on port [%d]\n", m_socket, port);
+   log::info("opened socket [%d] on port [%d]", m_socket, port);
    return true;
 }
 bool socket::mf_set_nonblocking(bool non_blocking)
@@ -193,7 +193,7 @@ void socket::closeSock()
 {
    if (m_socket != 0)
    {
-      printf("closing socket [%d] on port [%d]\n", m_socket, m_port);
+      log::info("closing socket [%d] on port [%d]", m_socket, m_port);
 #if PLATFORM == PLATFORM_MAC || PLATFORM == PLATFORM_UNIX
       close(m_socket);
 #elif PLATFORM == PLATFORM_WINDOWS
@@ -242,7 +242,7 @@ int socket::send(const address & destination, const void * data, int size)
    }
    else
    {
-      printf("I should shut down the socket.\n");  
+      log::info("I should shut down the socket.");  
    }
    return 0;
 
@@ -280,19 +280,19 @@ bool socket::Accept(address & sender, socket& _accept_socket)
 	    _accept_socket.m_port = m_port;
 	    _accept_socket.m_type = eAcceptSocket;
 
-	    printf("opened socket [%d] on port [%d]\n", read_socket, m_port);
+	    log::info("opened socket [%d] on port [%d]", read_socket, m_port);
 	    return true;
 	 }
       }
       else if(activity == -1)
       {
-	 printf("socket failed select: %s\n", strerror(errno));
+	 log::info("socket failed select: %s", strerror(errno));
       }
       return false;
    }
    else
    {
-      printf("tried to accept on non http socket.\n");
+      log::info("tried to accept on non http socket.");
    }
    return false;
 }
@@ -313,7 +313,7 @@ int socket::receive(address & sender, void * data, int size)
    tv.tv_usec = m_timeout;
    if(setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv) < 0)
    {
-      printf("couldn't set recieve timeout...\n");
+      log::info("couldn't set recieve timeout...");
    }
 //todo add these to the function
 // // WINDOWS
@@ -343,13 +343,13 @@ int socket::receive(address & sender, void * data, int size)
 	 // poll_fd.fd = m_socket; // your socket handler 
 	 // poll_fd.events = POLLIN;
 	 // int ret = poll(&poll_fd, 1, 1000); // 1 second for timeout
-	 // printf("try post poll\n");
+	 // log::info("try post poll");
 	 // if (ret > 0)
 	 // {
 	    int received_bytes = recvfrom(m_socket, (char*)data, size, 0, (sockaddr*)&from, &fromLength);
 	    if (received_bytes < 0)
 	    {
-	       printf("socket failed recvfrom: %s\n", strerror(errno));
+	       log::info("socket failed recvfrom: %s", strerror(errno));
 	       return 0;
 	    }
 	    unsigned int nAddress = ntohl(from.sin_addr.s_addr);
@@ -360,21 +360,21 @@ int socket::receive(address & sender, void * data, int size)
 	 // }
 	 // else if(ret == 0)
 	 // {
-	 //    printf("timed out on recieve!\n");
+	 //    log::info("timed out on recieve!");
 	 // }
 	 // else
 	 // {
-	 //    printf("an error occured!\n");
+	 //    log::info("an error occured!");
 	 // }
       }
       else
       {
-	 printf("no read\n");
+	 log::info("no read");
       }
    }
    else if(activity == -1)
    {
-      printf("socket failed select: %s\n", strerror(errno));
+      log::info("socket failed select: %s", strerror(errno));
    }
    return 0;
 }
@@ -393,7 +393,7 @@ int socket::receive(void * data, int size)
    tv.tv_usec = m_timeout;
    if(setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv) < 0)
    {
-      printf("couldn't set recieve timeout...\n");
+      log::info("couldn't set recieve timeout...");
    }
    int activity = ::select(m_socket+1, &read_fds, nullptr, nullptr, &tv);
    if(activity != 0 && activity != -1)
@@ -411,7 +411,7 @@ int socket::receive(void * data, int size)
 		 
 	    if (received_bytes < 0)
 	    {
-	       printf("socket failed recv: %s\n", strerror(errno));
+	       log::info("socket failed recv: %s", strerror(errno));
 	       return 0;    
 	    }
 	    return received_bytes;
@@ -419,12 +419,12 @@ int socket::receive(void * data, int size)
       }
       else
       {
-	 printf("no read\n");	 
+	 log::info("no read");
       }
    }
    else if(activity == -1)
    {
-      printf("socket failed select: %s\n", strerror(errno));
+      log::info("socket failed select: %s", strerror(errno));
    }
    return 0;
 }

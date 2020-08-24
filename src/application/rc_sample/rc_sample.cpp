@@ -1,6 +1,8 @@
 #include "rc_sample.h"
 #include "../../networking/connection/http_server.h"
 #include "../../input/input.h"
+#include "../../utils/log/log.h"
+#include "../../utils/commandline.h"
 //STD includes
 #include <chrono>
 #include <cstdio>
@@ -40,10 +42,7 @@ namespace net
 	    const char delimiter[] = { "," };
 	    std::size_t lv_pos = 0;
 	    std::string token;
-	    
 	    std::vector<float> lv_dir;
-	    //None of this prints at the moment for some reason. The js is trying to send things.
-
 	    while ((lv_pos = lv_floats.find(delimiter)) != std::string::npos)
 	    {
 	       token = lv_floats.substr(0, lv_pos);
@@ -51,18 +50,8 @@ namespace net
 	       lv_dir.push_back(std::stof(token));
 	    }
 	    lv_dir.push_back(std::stof(lv_floats));
-	    std::cout << "recieved: ";
-	    for(auto num : lv_dir)
-	    {
-	       std::cout << num << " ";
-	    }
-	    std::cout << "\n";
+	    log::info("read as: x: %f y: %f", lv_dir[0], lv_dir[1]);
 	 }
-	 // if(strcmp(data, "d: ") == 0)
-	 // {
-	 //    printf("handling: %s\n", data);
-	 //    callback("hi there", sizeof("hi there"));
-	 // }
       }
       void mf_ws_send(http_server::handler::send_callback callback) override
       {
@@ -82,20 +71,32 @@ namespace net
 }
 void rc_sample::mf_run(void)
 {
-   std::cout << R"(
+   log::no_topic(R"(
                                                   .__          
 _______   ____        ___________    _____ ______ |  |   ____  
 \_  __ \_/ ___\      /  ___/\__  \  /     \\____ \|  | _/ __ \ 
  |  | \/\  \___      \___ \  / __ \|  Y Y  \  |_> >  |_\  ___/ 
  |__|    \___  >____/____  >(____  /__|_|  /   __/|____/\___  >
              \/_____/    \/      \/      \/|__|             \/ 
-)" << std::endl;
+)""\n");
+   commandline::parse(commandline::arg_count, commandline::arg_variables);
+   if(commandline::params::is_set("something"))
+   {
+      log::info("something is set!");
+      auto val = commandline::params::get<int>("something", 0);
+      if(val.first)
+      {
+	 log::info("it's set to: %d", val.second);
+      }
+   }
+   log::topics::add("rc_sample");
+   log::topics::set("rc_sample");
    input* l_input = input::inputFactory();
    l_input->init();
    net::http_server l_http_server(8000);
    net::rc_handler lv_handler;
    l_http_server.mf_set_handler(&lv_handler);
-   std::cout << "entering rc_sample loop\n";
+   log::info("entering rc_sample loop");
    bool l_looping = true;
    while(l_looping)
    {
@@ -103,5 +104,5 @@ _______   ____        ___________    _____ ______ |  |   ____
       std::this_thread::sleep_for(std::chrono::milliseconds(30));
    }
    delete l_input;
-   std::cout << "ending rc_sample loop\n";
+   log::info("ending rc_sample loop");
 }
