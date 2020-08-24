@@ -5,6 +5,7 @@
 #include <memory>
 #include <map>
 #include <vector>
+#include "string_helpers.h"
 #include "hasher.h"
 
 namespace commandline
@@ -15,16 +16,30 @@ namespace commandline
    class params
    {
    public:
-      template<typename T> static bool is_set(T& _topic)
+      template<typename T> static bool is_set(T& _flag)
       {
-	 auto hash = hash::i32(_topic, sizeof(T)-1);
+	 auto hash = hash::i32(_flag, sizeof(T)-1);
 	 auto it = m_params.find(hash);
 	 return it != m_params.end();
+      }
+      template<typename R, typename T> static std::pair<bool, R> get(T& _flag, int _index)
+      {
+	 auto hash = hash::i32(_flag, sizeof(T)-1);
+	 auto it = m_params.find(hash);
+	 bool success = false;
+	 if(it != m_params.end())
+	 {
+	    if(_index < it->second->m_args.size())
+	    {
+	       return std::pair<bool, R>(true, std::from_string<R>(it->second->m_args[_index]));
+	    }
+	 }
+	 return std::pair<bool, R>(false, R());
       }
    private:
       class param
       {
-      private:
+      public:
 	 friend void commandline::parse(int argc, char *argv[]);
 	 const char* m_name = nullptr;
 	 std::vector<const char*> m_args;
