@@ -64,29 +64,33 @@ namespace log
       {
 	 return topics::set_level_internal(hash::i32(_topic, sizeof(T)), _level);
       }
-      
      private:
-      friend class scope;
+      friend class scope_topic;
       static bool add_topic_internal(topic* _topic);
       static bool set_topic_internal(std::uint32_t _hash);
       static bool set_level_internal(std::uint32_t _hash, log::level _level);
       static std::map<std::uint32_t, std::unique_ptr<topic>> m_topics;
       static std::map<std::thread::id, std::uint32_t > m_thread_topic;
    };
-   class scope
+   class scope_topic
    {
    public:
-      scope(uint32_t _hash)
+      scope_topic(uint32_t _hash)
       {
 	 m_last_hash = topics::hash();
 	 topics::set_topic_internal(_hash);
       }
-      ~scope()
+      ~scope_topic()
       {
 	 topics::set_topic_internal(m_last_hash);
       }
    private:
       uint32_t  m_last_hash;
    };
+   template<typename T> static  scope_topic scope(T& _topic)
+   {
+      auto hash = hash::i32(_topic, sizeof(T));
+      return scope_topic(hash);
+   }
 }
 #endif//LOG_H
