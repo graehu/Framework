@@ -38,6 +38,7 @@ public:
       }
       return std::pair<bool, R>(false, R());
    }
+   static void print();
 private:
    class param
    {
