@@ -1,4 +1,4 @@
-#include "commandline.h"
+#include "params.h"
 #include "log/log.h"
 #include "log/log_macros.h"
 #include "hasher.h"
