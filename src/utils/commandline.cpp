@@ -5,10 +5,9 @@
 #include <bits/c++config.h>
 #include <cstdint>
 #include <cstring>
-
+std::map<std::uint32_t, std::unique_ptr<params::param>> params::m_params;
 namespace commandline
 {
-   std::map<std::uint32_t, std::unique_ptr<params::param>> params::m_params;
    int arg_count = 0;
    char** arg_variables = nullptr;
    void parse(int argc, char *argv[])
@@ -59,5 +58,9 @@ namespace commandline
 	 }
 	 params::m_params.emplace(hash, current.release());
       }
+   }
+   void parse()
+   {
+      parse(arg_count, arg_variables);
    }
 }

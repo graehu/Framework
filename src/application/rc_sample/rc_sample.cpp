@@ -71,6 +71,8 @@ namespace net
 }
 void rc_sample::mf_run(void)
 {
+   log::topics::add("rc_sample");
+   log::topics::set("rc_sample");
    log::no_topic(R"(
                                                   .__          
 _______   ____        ___________    _____ ______ |  |   ____  
@@ -79,24 +81,23 @@ _______   ____        ___________    _____ ______ |  |   ____
  |__|    \___  >____/____  >(____  /__|_|  /   __/|____/\___  >
              \/_____/    \/      \/      \/|__|             \/ 
 )""\n");
-   commandline::parse(commandline::arg_count, commandline::arg_variables);
-   if(commandline::params::is_set("something"))
+   commandline::parse();
+   int port = 8000;
+   if(params::exists("port"))
    {
-      log::info("something is set!");
-      auto val = commandline::params::get<int>("something", 0);
+      auto val = params::get<int>("port", 0);
       if(val.first)
       {
-	 log::info("it's set to: %d", val.second);
+	 log::info("port set: %d", val.second);
+	 port = val.second;
       }
    }
-   log::topics::add("rc_sample");
-   log::topics::set("rc_sample");
    input* l_input = input::inputFactory();
    l_input->init();
-   net::http_server l_http_server(8000);
+   net::http_server l_http_server(port);
    net::rc_handler lv_handler;
    l_http_server.mf_set_handler(&lv_handler);
-   log::info("entering rc_sample loop");
+   log::info("entering loop");
    bool l_looping = true;
    while(l_looping)
    {
@@ -104,5 +105,5 @@ _______   ____        ___________    _____ ______ |  |   ____
       std::this_thread::sleep_for(std::chrono::milliseconds(30));
    }
    delete l_input;
-   log::info("ending rc_sample loop");
+   log::info("ending loop");
 }
