@@ -18,13 +18,24 @@ namespace commandline
 class params
 {
 public:
+   template<typename T> static bool add(T& _flag, std::vector<const char*> _args)
+   {
+      auto hash = hash::i32(_flag, sizeof(T)-1);
+      auto it = m_params.find(hash);
+      if(it == m_params.end())
+      {
+	 auto new_param = new param(_flag, _args);
+	 params::m_params.emplace(hash, new_param);
+      }
+      return false;
+   }
    template<typename T> static bool exists(T& _flag)
    {
       auto hash = hash::i32(_flag, sizeof(T)-1);
       auto it = m_params.find(hash);
       return it != m_params.end();
    }
-   template<typename R, typename T> static std::pair<bool, R> get(T& _flag, int _index)
+   template<typename R, typename T> static std::pair<bool, R> get_value(T& _flag, int _index)
    {
       auto hash = hash::i32(_flag, sizeof(T)-1);
       auto it = m_params.find(hash);
@@ -43,7 +54,8 @@ private:
    class param
    {
    public:
-      friend void commandline::parse(int argc, char *argv[]);
+      param(){}
+      param(const char* _name, std::vector<const char*> _args) : m_name(_name), m_args(_args) {}
       const char* m_name = nullptr;
       std::vector<const char*> m_args;
    };

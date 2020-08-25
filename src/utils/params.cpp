@@ -28,7 +28,22 @@ namespace commandline
 	    {
 	       std::size_t len = std::strlen(current->m_name);
 	       std::uint32_t hash = hash::i32(current->m_name, len);
-	       params::m_params.emplace(hash, current.release());
+	       auto it = params::m_params.find(hash);
+	       if(it == params::m_params.end())
+	       {
+		  params::m_params.emplace(hash, current.release());
+	       }
+	       else
+	       {
+		  if(current->m_args.size() == it->second->m_args.size())
+		  {
+		     it->second->m_args = current->m_args;
+		  }
+		  else
+		  {
+		     log::debug("wrong args used for %s", current->m_name);
+		  }
+	       }
 	       current = std::make_unique<params::param>();
 	       current->m_name = ++argv[i];
 	    }
@@ -42,7 +57,22 @@ namespace commandline
       {
 	 std::size_t len = std::strlen(current->m_name);
 	 std::uint32_t hash = hash::i32(current->m_name, len);
-	 params::m_params.emplace(hash, current.release());
+	 auto it = params::m_params.find(hash);
+	 if(it == params::m_params.end())
+	 {
+	    params::m_params.emplace(hash, current.release());
+	 }
+	 else
+	 {
+	    if(current->m_args.size() == it->second->m_args.size())
+	    {
+	       it->second->m_args = current->m_args;
+	    }
+	    else
+	    {
+	       log::debug("wrong args used for %s", current->m_name);
+	    }
+	 }
       }
       params::print();
    }

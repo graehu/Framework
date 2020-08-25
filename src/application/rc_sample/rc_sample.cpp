@@ -11,9 +11,9 @@
 #include <cstring>
 #include <string>
 
-
 application* application::mf_factory()
 {
+   params::add("port", {"8000"});
    return new rc_sample();
 }
 namespace net
@@ -85,7 +85,7 @@ _______   ____        ___________    _____ ______ |  |   ____
    int port = 8000;
    if(params::exists("port"))
    {
-      auto val = params::get<int>("port", 0);
+      auto val = params::get_value<int>("port", 0);
       if(val.first)
       {
 	 log::info("port set: %d", val.second);
