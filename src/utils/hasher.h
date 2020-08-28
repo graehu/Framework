@@ -1,7 +1,6 @@
 #ifndef HASHER_H
 #define HASHER_H
 #include <cstdint>
-#include <cstring>
 
 namespace hash
 {
@@ -13,7 +12,7 @@ namespace hash
       return ((count ? i32(s, count - 1) : 2166136261u) ^ s[count]) * 16777619u;
    }
    template <typename T>
-   constexpr std::uint32_t i32(T& s)
+   constexpr std::uint32_t i32(T&& s)
    {
       return i32(s, sizeof(T)-1);
    }
@@ -25,12 +24,17 @@ namespace hash
       char* m_names[m_max_names];
       std::uint32_t m_hashes[m_max_names];
       char m_path[m_max_len];
+      std::uint32_t m_hash;
    };
-   template <typename T>
-   constexpr path make_path(T& _path, std::uint32_t _len, char _separator = '.')
+   constexpr path make_path(const char* _path, std::uint32_t _len, char _separator = '.')
    {
-      path out;
-      memcpy(out.m_path, _path, _len);
+      path out = {};
+      for(int i = 0; i < _len; i++)
+      {
+	 out.m_path[i] = _path[i];
+      }
+      out.m_path[_len] = '\0';
+      out.m_hash = i32(out.m_path, _len);
       int starts[path::m_max_names] = {0};
       starts[0] = 0;
       for(int i = 0; i < _len; i++)
@@ -51,7 +55,7 @@ namespace hash
       return out;
    }
    template <typename T>
-   constexpr path make_path(T& _path, char _separator = '.')
+   constexpr path make_path(T&& _path, char _separator = '.')
    {
       auto len = sizeof(T)-1;
       return make_path(_path, len, _separator);

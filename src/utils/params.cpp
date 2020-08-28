@@ -31,16 +31,17 @@ namespace commandline
 	    else
 	    {
 	       std::size_t len = std::strlen(current->m_name);
-	       if(params::exists(current->m_name, len))
+	       auto param_path = hash::make_path(current->m_name, len);
+	       if(params::exists(param_path))
 	       {
-		  if(!params::set_args(current->m_name, len, current->m_args))
+		  if(!params::set_args(param_path, current->m_args))
 		  {
 		     log::debug("wrong args used for %s", current->m_name);
 		  }
 	       }
 	       else
 	       {
-		  if(!params::add(current->m_name, len, current->m_args))
+		  if(!params::add(param_path, current->m_args))
 		  {
 		     log::debug("something went wrong adding %s", current->m_name);
 		  }
@@ -57,16 +58,17 @@ namespace commandline
       if(current->m_name != nullptr)
       {
 	 std::size_t len = std::strlen(current->m_name);
-	 if(params::exists(current->m_name, len))
+	 auto param_path = hash::make_path(current->m_name, len);
+	 if(params::exists(param_path))
 	 {
-	    if(!params::set_args(current->m_name, len, current->m_args))
+	    if(!params::set_args(param_path, current->m_args))
 	    {
 	       log::debug("wrong args used for %s", current->m_name);
 	    }
 	 }
 	 else
 	 {
-	    if(!params::add(current->m_name, len, current->m_args))
+	    if(!params::add(param_path, current->m_args))
 	    {
 	       log::debug("something went wrong adding %s", current->m_name);
 	    }

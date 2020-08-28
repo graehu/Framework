@@ -20,7 +20,7 @@ public:
    // adds the param at path with args if it doesn't exist already.
    // usage: params::add("path.to.param", {"1", "2", "3"})
    template<typename T>
-   static bool add(T& _path, param_args _args)
+   static bool add(T&& _path, param_args _args)
    {
       if(!exists(_path))
       {
@@ -33,56 +33,52 @@ public:
    
    // adds the param at path with args if it doesn't exist already.
    // usage: params::add(var, len, {"1", "2", "3"})
-   template<typename T>
-   static bool add(T& _path, uint32_t _len,  param_args _args)
+   static bool add(hash::path& _path,  param_args _args)
    {
       if(!exists(_path))
       {
-	 hash::path* in_path = new hash::path(hash::make_path(_path, _len));
-	 m_paths.emplace(hash::i32(_path), in_path);
+	 hash::path* in_path = new hash::path(_path);
+	 m_paths.emplace(in_path->m_hash, in_path);
 	 return m_params.add(*in_path, _args);
       }
       return false;
    }
    
    // returns true if the param at path exists
-   // usage: params::exists("path.to.param", len)
+   // usage: params::exists("path.to.param")
    template<typename T>
-   static bool exists(T& _path)
+   static bool exists(T&& _path)
    {
       return m_paths.find(hash::i32(_path)) != m_paths.end();
    }
    
    // returns true if the param at path exists
-   // usage: params::exists(var, len)
-   template<typename T>
-   static bool exists(T& _path, std::uint32_t _len)
+   // usage: params::exists(var)
+   static bool exists(hash::path& _path)
    {
-      return m_paths.find(hash::i32(_path, _len)) != m_paths.end();
+      return m_paths.find(_path.m_hash) != m_paths.end();
    }
    
    // sets the arguments at the path
    // usage: params::set_args("path.to.param", {"1", "2", "3"})
    template<typename T>
-   static bool set_args(T& _path, param_args _args)
+   static bool set_args(T&& _path, param_args _args)
    {
       auto in_path = hash::make_path(_path);
       return m_params.set_args(in_path, _args);
    }
    
    // sets the arguments at the path
-   // usage: params::set_args(var, len, {"1", "2", "3"})
-   template<typename T>
-   static bool set_args(T& _path, std::uint32_t _len, param_args _args)
+   // usage: params::set_args(var, {"1", "2", "3"})
+   static bool set_args(hash::path& _path, param_args _args)
    {
-      auto in_path = hash::make_path(_path, _len);
-      return m_params.set_args(in_path, _args);
+      return m_params.set_args(_path, _args);
    }
-   
+
    // gets a value at path of index.
    // usage: params::get_args("path.to.param", 0);
    template<typename T>
-   static const char* get_value(T& _path, int index)
+   static const char* get_value(T&& _path, int index)
    {
       auto hash = hash::make_path(_path);
       return m_params.get_value(hash, index);
@@ -98,14 +94,14 @@ public:
    // gets the arguenents at path.
    // usage: params::get_args("path.to.param");
    template<typename T>
-   static param_args get_args(T& _path)
+   static param_args get_args(T&& _path)
    {
       auto hash = hash::make_path(_path);
       return m_params.get_args(hash);
    }
    
    // gets the arguenents at path.
-   // usage: params::get_args(hash::make_path(var, len));
+   // usage: params::get_args(hash::make_path(var));
    static param_args get_args(hash::path& _path)
    {
       return m_params.get_args(_path);
