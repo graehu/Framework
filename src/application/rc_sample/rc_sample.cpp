@@ -14,7 +14,16 @@
 
 application* application::mf_factory()
 {
+   log::no_topic(R"(
+                                                  .__          
+_______   ____        ___________    _____ ______ |  |   ____  
+\_  __ \_/ ___\      /  ___/\__  \  /     \\____ \|  | _/ __ \ 
+ |  | \/\  \___      \___ \  / __ \|  Y Y  \  |_> >  |_\  ___/ 
+ |__|    \___  >____/____  >(____  /__|_|  /   __/|____/\___  >
+             \/_____/    \/      \/      \/|__|             \/ 
+)""\n");
    params::add("rc.port", {"8000"});
+   commandline::parse();
    return new rc_sample();
 }
 namespace net
@@ -73,16 +82,8 @@ namespace net
 void rc_sample::mf_run(void)
 {
    log::topics::add("rc_sample");
-   log::scope("rc_sample");
-   log::no_topic(R"(
-                                                  .__          
-_______   ____        ___________    _____ ______ |  |   ____  
-\_  __ \_/ ___\      /  ___/\__  \  /     \\____ \|  | _/ __ \ 
- |  | \/\  \___      \___ \  / __ \|  Y Y  \  |_> >  |_\  ___/ 
- |__|    \___  >____/____  >(____  /__|_|  /   __/|____/\___  >
-             \/_____/    \/      \/      \/|__|             \/ 
-)""\n");
-   commandline::parse();
+   auto topic = log::scope("rc_sample");
+   log::info("----------------");
    int port = 8000;
    auto val = params::get_value("rc.port", 0);
    if(val != nullptr)
@@ -92,10 +93,10 @@ _______   ____        ___________    _____ ______ |  |   ____
    }
    input* l_input = input::inputFactory();
    l_input->init();
+   log::info("entering loop");
    net::http_server l_http_server(port);
    net::rc_handler lv_handler;
    l_http_server.mf_set_handler(&lv_handler);
-   log::info("entering loop");
    bool l_looping = true;
    while(l_looping)
    {

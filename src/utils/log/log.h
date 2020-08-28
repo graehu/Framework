@@ -1,7 +1,6 @@
 #ifndef LOG_H
 #define LOG_H
 #include "../hasher.h"
-#include <bits/stdint-uintn.h>
 #include <cstdarg>
 #include <cstdint>
 #include <map>
@@ -49,20 +48,20 @@ namespace log
    {
      public:
       static void log(level _level, const char* _message, std::va_list args);
-      template<typename T> static bool add(T& _topic)
+      template<typename T> static bool add(T&& _topic)
       {
-	 auto hash = hash::i32(_topic, sizeof(T));
+	 auto hash = hash::i32(_topic);
 	 return topics::add_topic_internal(new topic(_topic, hash));
       }
-      template<typename T> static bool set(T& _topic)
+      template<typename T> static bool set(T&& _topic)
       {
-	 return topics::set_topic_internal(hash::i32(_topic, sizeof(T)));
+	 return topics::set_topic_internal(hash::i32(_topic));
       }
       static const char* get();
       static uint32_t hash();
-      template<typename T> static bool level(T& _topic, log::level _level)
+      template<typename T> static bool level(T&& _topic, log::level _level)
       {
-	 return topics::set_level_internal(hash::i32(_topic, sizeof(T)), _level);
+	 return topics::set_level_internal(hash::i32(_topic), _level);
       }
      private:
       friend class scope_topic;
@@ -87,9 +86,9 @@ namespace log
    private:
       uint32_t  m_last_hash;
    };
-   template<typename T> static  scope_topic scope(T& _topic)
+   template<typename T> static  scope_topic scope(T&& _topic)
    {
-      auto hash = hash::i32(_topic, sizeof(T));
+      auto hash = hash::i32(_topic);
       return scope_topic(hash);
    }
 }

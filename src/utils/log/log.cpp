@@ -1,17 +1,30 @@
 #include "log.h"
-#include <bits/stdint-uintn.h>
+#include <cstdint>
 #include <cstdarg>
 #include <cstring>
 #include <memory>
 #include <string>
+#include "../string_helpers.h"
 #include <mutex>
+#include "../params.h"
+#include <unordered_map>
 #include <iostream>
+
 
 namespace log
 {
    std::mutex g_log_mutex;
    std::map<std::uint32_t, std::unique_ptr<topic> > topics::m_topics;
    std::map<std::thread::id, std::uint32_t> topics::m_thread_topic;
+
+   static std::unordered_map<std::string,log::level> const to_level = {
+      {"no_logs", level::e_no_logging},
+      {"debug", level::e_debug},
+      {"info", level::e_info},
+      {"error", level::e_error},
+      {"macro", level::e_macro},
+      {"warning", level::e_warning}
+   };
    void topics::log(log::level _level, const char* _message, std::va_list args)
    {
       auto this_id = std::this_thread::get_id();
@@ -37,6 +50,19 @@ namespace log
       g_log_mutex.lock();
       auto hash = _topic->hash();
       success = topics::m_topics.emplace(hash, _topic).second;
+      std::string log_level = "log.";
+      log_level += _topic->m_name;
+      log_level += ".level";
+      auto path = hash::make_path(log_level.c_str(), log_level.length());
+      auto value = params::get_value(path, 0);
+      if(value != nullptr)
+      {
+	 auto new_level = to_level.find(value);
+	 if(new_level != to_level.end())
+	 {
+	    _topic->m_level = new_level->second;
+	 }
+      }
       g_log_mutex.unlock();
       return success;
    }

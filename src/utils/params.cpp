@@ -2,13 +2,11 @@
 #include "log/log.h"
 #include "log/log_macros.h"
 #include "hasher.h"
-#include <bits/c++config.h>
 #include <cstdint>
 #include <cstring>
 #include <string>
-#include <functional>
 
-auto params_topic = log::topics::add("params");
+
 std::map<std::uint32_t, std::unique_ptr<hash::path>> params::m_paths;
 params::param params::m_params;
 
@@ -74,6 +72,7 @@ namespace commandline
 	    }
 	 }
       }
+      auto params_topic = log::topics::add("params");
       params::print();
    }
    void parse()
@@ -83,7 +82,6 @@ namespace commandline
 }
 void params::print()
 {
-   log::topics::level("params", log::e_debug);
    auto topic = log::scope("params");
    log::debug("----------------");
    log::debug("printing params:");

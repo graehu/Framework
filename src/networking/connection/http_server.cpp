@@ -92,7 +92,7 @@ int write_response_header(net::http_packet& lv_packet, std::string request, int&
 
 void net::http_server::mf_server_thread(const socket& in_socket)
 {
-   log::topics::set("http_server");
+   auto topic = log::scope("http_server");
    net::socket lv_listen_socket(in_socket);
    //Initialize some things
    net::http_packet lv_packet;
@@ -118,25 +118,24 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 
    net::address lv_address;
    net::socket lv_socket;
-   if(mv_logging)
-   {
-      log::info("starting http server");
-   }
+   log::debug("----------------");
+   log::debug("starting http server");
+
+   bool print_waiting = true;
    while(mv_running)
    {
       int receive_attempts = 0;
-      if(mv_logging)
+      if(print_waiting)
       {
-	 log::info("----------------");
-	 log::info("waiting to accept...");	    
+	 log::debug("----------------");
+	 log::debug("waiting to accept...");
+	 print_waiting = false;
       }
       if(lv_listen_socket.Accept(lv_address, lv_socket))
       {
-	 if (mv_logging)
-	 {
-	    log::info("accepted: ");
-	    lv_address.PrintDetails();
-	 }
+	 print_waiting = true;
+	 log::debug("accepted: ");
+	 lv_address.PrintDetails();
 	 bool lv_close_socket = true;
 	 float lv_timeout = 0.5;
 	 float lv_last_timeout = 0;
@@ -150,10 +149,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 	    {
 	       receive_attempts = 0;
 	       lv_packet.SetLength(lv_bytes_read);
-	       if (mv_logging)
-	       {
-		  lv_packet.PrintDetails();
-	       }
+	       lv_packet.PrintDetails();
 	       // todo: this should be a string_view but emacs wont stop complaining.
 	       std::string view((char*)lv_packet.GetData());
 	       auto http_loc = view.find("HTTP/");
@@ -168,10 +164,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 		  lv_packet.Clear();
 		  // todo: fix this
 		  std::string get_request = view.substr(get_loc + 5, http_loc - 6);
-		  if (mv_logging)
-		  {
-		     log::info("get: /%s", get_request.c_str());
-		  }
+		  log::debug("get: /%s", get_request.c_str());
 		  //
 		  if (get_request.compare("ws") == 0)
 		  {
@@ -203,10 +196,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 		     unsigned char packet_end[] = {"\r\n\r\n"};
 		     lv_packet.IterWrite(packet_end);
 		     //
-		     if (mv_logging)
-		     {
-			log::info("sending: websocket upgrade");
-		     }
+		     log::debug("sending: websocket upgrade");
 		     lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize());
 		     lv_packet.Clear();
 		  
@@ -264,7 +254,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 			      if(lv_response_code == 200 || lv_response_code == 206)
 			      {
 
-				 log::info("sending %s", lv_file_path.c_str());
+				 log::debug("sending %s", lv_file_path.c_str());
 				 if(send_file(lv_address, lv_socket, lv_packet, start, end))
 				 {
 				    if(start == 0 && end == 0)
@@ -294,30 +284,24 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 			   lv_packet.CloseFile();
 			}
 		     }
-		     if(mv_logging)
-		     {
-			lv_packet.PrintDetails();
-		     }
+		     lv_packet.PrintDetails();
 		  }
 		  if(lv_packet.GetSize() > 0)
 		  {
 		     lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize());
 		     lv_packet.Clear();
 		  }
-		  if (mv_logging)
-		  {
-		     log::info("----------------");
-		  }
+		  log::debug("----------------");
 	       }
 	    }
 	    if(lv_timeout > lv_last_timeout)
 	    {
 	       float lv_until = lv_timeout - std::chrono::duration<float>(lv_clock.now()-lv_start_time).count();
-	       log::info("timeout in: %f secs", lv_until);
+	       log::debug("timeout in: %f secs", lv_until);
 	       lv_last_timeout = lv_timeout;
 	    }
 	 }while(lv_timeout > std::chrono::duration<float>(lv_clock.now()-lv_start_time).count());
-	 log::info("connection timedout: %f secs", std::chrono::duration<float>(lv_clock.now()-lv_start_time).count());
+	 log::debug("connection timedout: %f secs", std::chrono::duration<float>(lv_clock.now()-lv_start_time).count());
 	 if(lv_close_socket)
 	 {
 	    lv_socket.closeSock();
@@ -325,24 +309,18 @@ void net::http_server::mf_server_thread(const socket& in_socket)
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(30));
    }
-   if(mv_logging)
-   {
-      log::info("ending http server");      
-   }
+   log::debug("ending http server");
 }
 
 void net::http_server::mf_ws_thread(const net::socket& from, const net::address& to)
 {
-   log::topics::set("websocket");
+   auto topic = log::scope("websocket");
    // This thread is pointless if there is no
    // handler set.
    net::socket lv_socket(from);
    net::address lv_address(to);
    net::http_packet lv_packet;
-   if (mv_logging)
-   {
-      log::info("begin websocket thread");
-   }
+   log::debug("begin websocket thread");
    lv_socket.mf_set_nonblocking(true);
    websocket_header ws_header;
    bool lv_is_connected = true;
@@ -357,13 +335,9 @@ void net::http_server::mf_ws_thread(const net::socket& from, const net::address&
 	    ws_header.length = size - 1;
 	    lv_packet.IterWrite(ws_header);
 	    lv_packet.IterWrite(message, size);
-	    if(mv_logging)
-	    {
-	       // lv_packet.PrintDetails();   
-	    }
 	    if(lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize()) == -1)
 	    {
-	       log::info("websocket connection broken");
+	       log::debug("websocket connection broken");
 	       lv_is_connected = false;
 	    };
 	 };
@@ -372,38 +346,26 @@ void net::http_server::mf_ws_thread(const net::socket& from, const net::address&
       int lv_bytes_read = lv_socket.receive(lv_packet.GetData(), lv_packet.GetCapacity());
       if (lv_bytes_read > 0)
       {
-	 if (mv_logging)
-	 {
-	    log::info("------");
-	 }
+	 log::debug("------");
 	 auto in_header = lv_packet.IterRead<websocket_header>();
 	 unsigned char mask[4];
 	 unsigned char data[in_header.length + 1];
 	 data[in_header.length] = '\0';
 	 lv_packet.IterRead(mask[0], 4);
 	 lv_packet.IterRead(data[0], in_header.length);
-	 if (mv_logging)
-	 {
-	    log::info("client_sends: ");
-	 }
+	 log::debug("client_sends: ");
 	 for (unsigned int i = 0; i < in_header.length; ++i)
 	 {
 	    // data[i] ^= mask[i%4]; below is equvivilant
 	    // think [i & 3] is faster.
 	    data[i] ^= mask[i & 3];
 	 }
-	 if (mv_logging)
-	 {
-	    log::info("%s", data);
-	 }
+	 log::debug("%s", data);
 	 if (mv_handler != nullptr)
 	 {
 	    mv_handler->mf_ws_response((const char *)&data[0], lv_ws_send);
 	 }
-	 if (mv_logging)
-	 {
-	    log::info("------");
-	 }
+	 log::debug("------");
       }
       if (mv_handler != nullptr)
       {
@@ -439,7 +401,6 @@ bool send_file(const net::address& lv_address,  net::socket& lv_socket,  net::ht
 	 end = lv_packet.GetFileSize();
       }
       int bytes_to_write = end - start;
-      bool mv_logging = true;
       int bytes_written = 0;
       do
       {
@@ -448,7 +409,7 @@ bool send_file(const net::address& lv_address,  net::socket& lv_socket,  net::ht
 	 bytes_written += lv_packet.WriteFile(start+bytes_written, end, chunk_size);
 	 if(lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize()) == -1)
 	 {
-	    log::info("failed to send file.");
+	    log::debug("failed to send file.");
 	    lv_packet.Clear();
 	    return false;
 	 }
@@ -456,10 +417,10 @@ bool send_file(const net::address& lv_address,  net::socket& lv_socket,  net::ht
 	 std::this_thread::sleep_for(std::chrono::milliseconds(30));
       }
       while(bytes_written < bytes_to_write);
-      log::info("sent %d", bytes_written);
+      log::debug("sent %d", bytes_written);
       return true;
    }
-   log::info("file not open...");
+   log::debug("file not open...");
    return false;
 }
 int write_response_header(net::http_packet& lv_packet, std::string request, int& start, int& end)
