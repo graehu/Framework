@@ -3,6 +3,7 @@
 #include "../../input/input.h"
 #include "../../utils/log/log.h"
 #include "../../utils/params.h"
+#include "../../utils/string_helpers.h"
 //STD includes
 #include <chrono>
 #include <cstdio>
@@ -13,7 +14,7 @@
 
 application* application::mf_factory()
 {
-   params::add("port", {"8000"});
+   params::add("rc.port", {"8000"});
    return new rc_sample();
 }
 namespace net
@@ -72,7 +73,7 @@ namespace net
 void rc_sample::mf_run(void)
 {
    log::topics::add("rc_sample");
-   log::topics::set("rc_sample");
+   log::scope("rc_sample");
    log::no_topic(R"(
                                                   .__          
 _______   ____        ___________    _____ ______ |  |   ____  
@@ -83,14 +84,11 @@ _______   ____        ___________    _____ ______ |  |   ____
 )""\n");
    commandline::parse();
    int port = 8000;
-   if(params::exists("port"))
+   auto val = params::get_value("rc.port", 0);
+   if(val != nullptr)
    {
-      auto val = params::get_value<int>("port", 0);
-      if(val.first)
-      {
-	 log::info("port set: %d", val.second);
-	 port = val.second;
-      }
+      log::info("port set: %s", val);
+      port = std::from_string<int>(val);
    }
    input* l_input = input::inputFactory();
    l_input->init();

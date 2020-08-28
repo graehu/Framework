@@ -1,11 +1,9 @@
-#ifndef COMMANDINE_H
-#define COMMANDINE_H
+#ifndef PARAMS_H
+#define PARAMS_H
 #include <cstdint>
-#include <stdio.h>
 #include <memory>
 #include <map>
 #include <vector>
-#include "string_helpers.h"
 #include "hasher.h"
 
 namespace commandline
@@ -15,52 +13,129 @@ namespace commandline
    void parse(int argc, char *argv[]);
    void parse();
 }
+using param_args = std::vector<const char*>;
 class params
 {
 public:
-   template<typename T> static bool add(T& _flag, std::vector<const char*> _args)
+   // adds the param at path with args if it doesn't exist already.
+   // usage: params::add("path.to.param", {"1", "2", "3"})
+   template<typename T>
+   static bool add(T& _path, param_args _args)
    {
-      auto hash = hash::i32(_flag, sizeof(T)-1);
-      auto it = m_params.find(hash);
-      if(it == m_params.end())
+      if(!exists(_path))
       {
-	 auto new_param = new param(_flag, _args);
-	 params::m_params.emplace(hash, new_param);
+	 hash::path* in_path = new hash::path(hash::make_path(_path));
+	 m_paths.emplace(hash::i32(_path), in_path);
+	 return m_params.add(*in_path, _args);
       }
       return false;
    }
-   template<typename T> static bool exists(T& _flag)
+   
+   // adds the param at path with args if it doesn't exist already.
+   // usage: params::add(var, len, {"1", "2", "3"})
+   template<typename T>
+   static bool add(T& _path, uint32_t _len,  param_args _args)
    {
-      auto hash = hash::i32(_flag, sizeof(T)-1);
-      auto it = m_params.find(hash);
-      return it != m_params.end();
-   }
-   template<typename R, typename T> static std::pair<bool, R> get_value(T& _flag, int _index)
-   {
-      auto hash = hash::i32(_flag, sizeof(T)-1);
-      auto it = m_params.find(hash);
-      bool success = false;
-      if(it != m_params.end())
+      if(!exists(_path))
       {
-	 if(_index < it->second->m_args.size())
-	 {
-	    return std::pair<bool, R>(true, std::from_string<R>(it->second->m_args[_index]));
-	 }
+	 hash::path* in_path = new hash::path(hash::make_path(_path, _len));
+	 m_paths.emplace(hash::i32(_path), in_path);
+	 return m_params.add(*in_path, _args);
       }
-      return std::pair<bool, R>(false, R());
+      return false;
    }
+   
+   // returns true if the param at path exists
+   // usage: params::exists("path.to.param", len)
+   template<typename T>
+   static bool exists(T& _path)
+   {
+      return m_paths.find(hash::i32(_path)) != m_paths.end();
+   }
+   
+   // returns true if the param at path exists
+   // usage: params::exists(var, len)
+   template<typename T>
+   static bool exists(T& _path, std::uint32_t _len)
+   {
+      return m_paths.find(hash::i32(_path, _len)) != m_paths.end();
+   }
+   
+   // sets the arguments at the path
+   // usage: params::set_args("path.to.param", {"1", "2", "3"})
+   template<typename T>
+   static bool set_args(T& _path, param_args _args)
+   {
+      auto in_path = hash::make_path(_path);
+      return m_params.set_args(in_path, _args);
+   }
+   
+   // sets the arguments at the path
+   // usage: params::set_args(var, len, {"1", "2", "3"})
+   template<typename T>
+   static bool set_args(T& _path, std::uint32_t _len, param_args _args)
+   {
+      auto in_path = hash::make_path(_path, _len);
+      return m_params.set_args(in_path, _args);
+   }
+   
+   // gets a value at path of index.
+   // usage: params::get_args("path.to.param", 0);
+   template<typename T>
+   static const char* get_value(T& _path, int index)
+   {
+      auto hash = hash::make_path(_path);
+      return m_params.get_value(hash, index);
+   }
+   
+   // gets a value at path of index.
+   // usage: params::get_args(hash::make_path(var, len), 0);
+   static const char* get_value(hash::path& _path, int index)
+   {
+      return m_params.get_value(_path, index);
+   }
+   
+   // gets the arguenents at path.
+   // usage: params::get_args("path.to.param");
+   template<typename T>
+   static param_args get_args(T& _path)
+   {
+      auto hash = hash::make_path(_path);
+      return m_params.get_args(hash);
+   }
+   
+   // gets the arguenents at path.
+   // usage: params::get_args(hash::make_path(var, len));
+   static param_args get_args(hash::path& _path)
+   {
+      return m_params.get_args(_path);
+   }
+   //
    static void print();
 private:
+   
    class param
    {
    public:
       param(){}
-      param(const char* _name, std::vector<const char*> _args) : m_name(_name), m_args(_args) {}
+      param(const char* _name, param_args _args) : m_name(_name), m_args(_args) {}
+      // Adds a param at the path
+      bool add(hash::path& _path, param_args _args, int _depth = 0);
+      // Gets a value at the path and index
+      const char* get_value(hash::path& _path, int index, int _depth = 0);
+      // Gets the arguements at the path
+      param_args get_args(hash::path& _path, int _depth = 0);
+      // Sets the arguments at the path
+      bool set_args(hash::path& _path, param_args _args, int _depth = 0);
+      //
+      std::uint32_t m_hash = 0;
       const char* m_name = nullptr;
-      std::vector<const char*> m_args;
+      param_args m_args;
+      std::map<std::uint32_t, std::unique_ptr<param>> m_params;
    };
    friend void commandline::parse(int argc, char *argv[]);
-   static std::map<std::uint32_t, std::unique_ptr<param>> m_params;
+   static std::map<std::uint32_t, std::unique_ptr<hash::path>> m_paths;
+   static param m_params;
 };
 
-#endif//COMMANDLINE_H
+#endif//PARAMS_H
