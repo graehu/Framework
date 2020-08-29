@@ -110,6 +110,21 @@ namespace log
       }
       return false;
    }
+   log::level topics::get_level_internal(std::uint32_t _hash)
+   {
+      auto it = topics::m_topics.find(_hash);
+      if(it != topics::m_topics.end())
+      {
+	 return it->second->m_level;
+      }
+      return e_no_logging;
+   }
+   log::level topics::get_level_internal()
+   {
+      auto this_id = std::this_thread::get_id();
+      auto hash = topics::m_thread_topic[this_id];
+      return get_level_internal(hash);
+   }
    // gets the topic, for the current thread.
    const char* topics::get()
    {

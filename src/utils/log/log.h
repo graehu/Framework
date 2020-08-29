@@ -59,15 +59,25 @@ namespace log
       }
       static const char* get();
       static uint32_t hash();
-      template<typename T> static bool level(T&& _topic, log::level _level)
+      template<typename T> static bool set_level(T&& _topic, log::level _level)
       {
 	 return topics::set_level_internal(hash::i32(_topic), _level);
+      }
+      template<typename T> static log::level get_level(T&& _topic)
+      {
+	 return topics::get_level_internal(hash::i32(_topic));
+      }
+      static log::level get_level()
+      {
+	 return topics::get_level_internal();
       }
      private:
       friend class scope_topic;
       static bool add_topic_internal(topic* _topic);
       static bool set_topic_internal(std::uint32_t _hash);
       static bool set_level_internal(std::uint32_t _hash, log::level _level);
+      static log::level get_level_internal(std::uint32_t _hash);
+      static log::level get_level_internal();
       static std::map<std::uint32_t, std::unique_ptr<topic>> m_topics;
       static std::map<std::thread::id, std::uint32_t > m_thread_topic;
    };

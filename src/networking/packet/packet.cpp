@@ -79,10 +79,13 @@ void BasePacket::CloseFile()
 
 void BasePacket::PrintDetails()
 {
-   log::info("[packet] printing %ld bytes:", end);
-   log::info("[packet_start]\n");
-   log::no_topic("%.*s", end, GetData());
-   log::info("[packet_end]");
+   log::debug("[packet] printing %ld bytes:", end);
+   log::debug("[packet_start]\n");
+   if(log::topics::get_level() == log::e_debug)
+   {
+       log::no_topic("%.*s", end, GetData());  
+   }
+   log::debug("[packet_end]");
 }    
   
 

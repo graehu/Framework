@@ -29,7 +29,6 @@ int socket::setup_signals()
 	 return -1;
       }
       do_once = false;
-      log::info("set up signals handler");
    }
    return 0;
 }
@@ -37,14 +36,14 @@ void socket::handle_signal_action(int sig_number)
 {
    if (sig_number == SIGINT)
    {
-      log::info("SIGINT was caught, killing program");
+      log::debug("SIGINT was caught, killing program");
      // shutdown_properly(EXIT_SUCCESS);
      exit(0);
    }
    else 
    if (sig_number == SIGPIPE)
    {
-      log::info("SIGPIPE was caught!");
+      log::debug("SIGPIPE was caught!");
       // shutdown_properly(EXIT_SUCCESS);
    }
 }
@@ -57,7 +56,7 @@ socket::socket(Types _type) :
 {
    if(setup_signals() == -1)
    {
-      log::info("need to shutdown sockets, something bad happened");
+      log::debug("need to shutdown sockets, something bad happened");
    }
 }
 socket::~socket()
@@ -80,11 +79,11 @@ bool socket::openSock(unsigned short port)
    switch(m_type)
    {
       case eGameSocket:
-	 log::info("opening game socket");
+	 log::debug("opening game socket");
 	 m_socket = ::socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	 break;
       case eHttpSocket:
-	 log::info("opening http socket");
+	 log::debug("opening http socket");
 	 m_socket = ::socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 	 break;
       case eAcceptSocket:
@@ -95,9 +94,9 @@ bool socket::openSock(unsigned short port)
    {
 #if PLATFORM == PLATFORM_WINDOWS
       int error = WSAGetLastError();
-      log::info( "failed to open socket, error(%i)", error );
+      log::debug( "failed to open socket, error(%i)", error );
 #else
-      log::info( "failed to open socket");
+      log::debug( "failed to open socket");
 #endif
       m_socket = 0;
       return false;
@@ -111,12 +110,12 @@ bool socket::openSock(unsigned short port)
 #if PLATFORM == PLATFORM_WINDOWS
 	 if(setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, (const char*)&on, sizeof(on)))
 	 {
-	    log::info("error: failed to set feature levels on socket [%d]", m_socket);
+	    log::debug("error: failed to set feature levels on socket [%d]", m_socket);
 	 }
 #else
 	 if(setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, (void*)&on, sizeof(on)))
 	 {
-	    log::info("error: failed to set feature levels on socket [%d]", m_socket);
+	    log::debug("error: failed to set feature levels on socket [%d]", m_socket);
 	 }
 #endif
       }
@@ -136,14 +135,14 @@ bool socket::openSock(unsigned short port)
 
    if (bind(m_socket, (const sockaddr*) &address, sizeof(sockaddr_in)) != 0)
    {
-      log::info( "failed to bind socket [%d]", m_socket);
+      log::debug( "failed to bind socket [%d]", m_socket);
       closeSock();
       return false;
    }
    
    // if(!mf_set_nonblocking(true))
    // {
-   //    log::info( "failed to set non-blocking socket" );
+   //    log::debug( "failed to set non-blocking socket" );
    //    closeSock();
    //    return false;
    // }
@@ -157,14 +156,14 @@ bool socket::openSock(unsigned short port)
 	 //TODO: do something about this random limit here.
 	 if(listen(m_socket, 8) < 0)
 	 {
-	    log::info("failed to listen on socket");
+	    log::debug("failed to listen on socket");
 	    return false;
 	 }
 	 break;
       case eAcceptSocket:
 	 break;
    }
-   log::info("opened socket [%d] on port [%d]", m_socket, port);
+   log::debug("opened socket [%d] on port [%d]", m_socket, port);
    return true;
 }
 bool socket::mf_set_nonblocking(bool non_blocking)
@@ -193,7 +192,7 @@ void socket::closeSock()
 {
    if (m_socket != 0)
    {
-      log::info("closing socket [%d] on port [%d]", m_socket, m_port);
+      log::debug("closing socket [%d] on port [%d]", m_socket, m_port);
 #if PLATFORM == PLATFORM_MAC || PLATFORM == PLATFORM_UNIX
       close(m_socket);
 #elif PLATFORM == PLATFORM_WINDOWS
@@ -242,7 +241,7 @@ int socket::send(const address & destination, const void * data, int size)
    }
    else
    {
-      log::info("I should shut down the socket.");  
+      log::debug("I should shut down the socket.");  
    }
    return 0;
 
@@ -280,19 +279,19 @@ bool socket::Accept(address & sender, socket& _accept_socket)
 	    _accept_socket.m_port = m_port;
 	    _accept_socket.m_type = eAcceptSocket;
 
-	    log::info("opened socket [%d] on port [%d]", read_socket, m_port);
+	    log::debug("opened socket [%d] on port [%d]", read_socket, m_port);
 	    return true;
 	 }
       }
       else if(activity == -1)
       {
-	 log::info("socket failed select: %s", strerror(errno));
+	 log::debug("socket failed select: %s", strerror(errno));
       }
       return false;
    }
    else
    {
-      log::info("tried to accept on non http socket.");
+      log::debug("tried to accept on non http socket.");
    }
    return false;
 }
@@ -313,7 +312,7 @@ int socket::receive(address & sender, void * data, int size)
    tv.tv_usec = m_timeout;
    if(setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv) < 0)
    {
-      log::info("couldn't set recieve timeout...");
+      log::debug("couldn't set recieve timeout...");
    }
 //todo add these to the function
 // // WINDOWS
@@ -343,13 +342,13 @@ int socket::receive(address & sender, void * data, int size)
 	 // poll_fd.fd = m_socket; // your socket handler 
 	 // poll_fd.events = POLLIN;
 	 // int ret = poll(&poll_fd, 1, 1000); // 1 second for timeout
-	 // log::info("try post poll");
+	 // log::debug("try post poll");
 	 // if (ret > 0)
 	 // {
 	    int received_bytes = recvfrom(m_socket, (char*)data, size, 0, (sockaddr*)&from, &fromLength);
 	    if (received_bytes < 0)
 	    {
-	       log::info("socket failed recvfrom: %s", strerror(errno));
+	       log::debug("socket failed recvfrom: %s", strerror(errno));
 	       return 0;
 	    }
 	    unsigned int nAddress = ntohl(from.sin_addr.s_addr);
@@ -360,21 +359,21 @@ int socket::receive(address & sender, void * data, int size)
 	 // }
 	 // else if(ret == 0)
 	 // {
-	 //    log::info("timed out on recieve!");
+	 //    log::debug("timed out on recieve!");
 	 // }
 	 // else
 	 // {
-	 //    log::info("an error occured!");
+	 //    log::debug("an error occured!");
 	 // }
       }
       else
       {
-	 log::info("no read");
+	 log::debug("no read");
       }
    }
    else if(activity == -1)
    {
-      log::info("socket failed select: %s", strerror(errno));
+      log::debug("socket failed select: %s", strerror(errno));
    }
    return 0;
 }
@@ -393,7 +392,7 @@ int socket::receive(void * data, int size)
    tv.tv_usec = m_timeout;
    if(setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv) < 0)
    {
-      log::info("couldn't set recieve timeout...");
+      log::debug("couldn't set recieve timeout...");
    }
    int activity = ::select(m_socket+1, &read_fds, nullptr, nullptr, &tv);
    if(activity != 0 && activity != -1)
@@ -411,7 +410,7 @@ int socket::receive(void * data, int size)
 		 
 	    if (received_bytes < 0)
 	    {
-	       log::info("socket failed recv: %s", strerror(errno));
+	       log::debug("socket failed recv: %s", strerror(errno));
 	       return 0;    
 	    }
 	    return received_bytes;
@@ -419,12 +418,12 @@ int socket::receive(void * data, int size)
       }
       else
       {
-	 log::info("no read");
+	 log::debug("no read");
       }
    }
    else if(activity == -1)
    {
-      log::info("socket failed select: %s", strerror(errno));
+      log::debug("socket failed select: %s", strerror(errno));
    }
    return 0;
 }

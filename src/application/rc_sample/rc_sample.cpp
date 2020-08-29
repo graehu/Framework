@@ -14,7 +14,10 @@
 
 application* application::mf_factory()
 {
-   log::no_topic(R"(
+   static bool do_once = true;
+   if(do_once)
+   {
+      log::no_topic(R"(
                                                   .__          
 _______   ____        ___________    _____ ______ |  |   ____  
 \_  __ \_/ ___\      /  ___/\__  \  /     \\____ \|  | _/ __ \ 
@@ -22,9 +25,14 @@ _______   ____        ___________    _____ ______ |  |   ____
  |__|    \___  >____/____  >(____  /__|_|  /   __/|____/\___  >
              \/_____/    \/      \/      \/|__|             \/ 
 )""\n");
-   params::add("rc.port", {"8000"});
-   commandline::parse();
-   return new rc_sample();
+
+      params::add("rc.port", {"8000"});
+      commandline::parse();
+      log::topics::add("rc_sample");
+      do_once = false;
+      return new rc_sample();
+   }
+   return nullptr;
 }
 namespace net
 {
@@ -60,7 +68,7 @@ namespace net
 	       lv_dir.push_back(std::stof(token));
 	    }
 	    lv_dir.push_back(std::stof(lv_floats));
-	    log::info("read as: x: %f y: %f", lv_dir[0], lv_dir[1]);
+	    log::debug("read as: x: %f y: %f", lv_dir[0], lv_dir[1]);
 	 }
       }
       void mf_ws_send(http_server::handler::send_callback callback) override
@@ -81,19 +89,15 @@ namespace net
 }
 void rc_sample::mf_run(void)
 {
-   log::topics::add("rc_sample");
    auto topic = log::scope("rc_sample");
    log::info("----------------");
-   int port = 8000;
+   int port = 0;
    auto val = params::get_value("rc.port", 0);
-   if(val != nullptr)
-   {
-      log::info("port set: %s", val);
-      port = std::from_string<int>(val);
-   }
+   log::info("port set: %s", val);
+   port = std::from_string<int>(val);
    input* l_input = input::inputFactory();
    l_input->init();
-   log::info("entering loop");
+   log::debug("entering loop");
    net::http_server l_http_server(port);
    net::rc_handler lv_handler;
    l_http_server.mf_set_handler(&lv_handler);
@@ -104,5 +108,5 @@ void rc_sample::mf_run(void)
       std::this_thread::sleep_for(std::chrono::milliseconds(30));
    }
    delete l_input;
-   log::info("ending loop");
+   log::debug("ending loop");
 }
