@@ -20,10 +20,9 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer) {
     var histpos_ = 0;
     var histtemp_ = 0;
 
-    window.addEventListener('click', function(e) {
+    output_.addEventListener('click', function(e) {
 	cmdLine_.focus();
     }, false);
-    
     cmdLine_.addEventListener('click', inputTextClick_, false);
     cmdLine_.addEventListener('keydown', historyHandler_, false);
     cmdLine_.addEventListener('keydown', processNewCommand_, false);
@@ -70,6 +69,10 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer) {
 	    // Implement tab suggest.
 	} else if (e.keyCode == 13) { // enter
 	    // Save shell history.
+	    if(this.value.length == 0)
+	    {
+		return;
+	    }
 	    if (this.value) {
 		history_[history_.length] = this.value;
 		histpos_ = history_.length;
@@ -105,7 +108,7 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer) {
 		output( args.join(' ') );
 		break;
             case 'help':
-		output('<div class="ls-files">' + CMDS_.join('<br>') + '</div>');
+		output('<div class="ls-files">'+ CMDS_.join('<br>') + '</div>');
 		break;
             case 'uname':
 		output(navigator.appVersion);
@@ -115,29 +118,8 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer) {
 		    output(cmd + ': command not found');
 		}
 	    };
-
-	    window.scrollTo(0, getDocHeight_());
 	    this.value = ''; // Clear/setup line for next input.
 	}
-    }
-
-    //this is not used atm.
-    function formatColumns_(entries) {
-	var maxName = entries[0].name;
-	util.toArray(entries).forEach(function(entry, i) {
-	    if (entry.name.length > maxName.length) {
-		maxName = entry.name;
-	    }
-	});
-
-	var height = entries.length <= 3 ?
-            'height: ' + (entries.length * 15) + 'px;' : '';
-
-	// 12px monospace font yields ~7px screen width.
-	var colWidth = maxName.length * 7;
-
-	return ['<div class="ls-files" style="-webkit-column-width:',
-		colWidth, 'px;', height, '">'];
     }
 
     //

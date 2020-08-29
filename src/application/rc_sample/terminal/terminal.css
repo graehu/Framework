@@ -2,19 +2,15 @@
 ::selection {
     background: #FF5E99;
 }
-html, body {
-    width: 100%;
-    height: 100%;
-    margin: 0;
-}
-body {
-    font-size: 11pt;
-    font-family: Inconsolata, monospace;
+
+#container {
+    padding: 0em 1.5em 2em .5em;
     color: white;
     background-color: black;
-}
-#container {
-    padding:  .1em 1.5em 1em 1em;
+    overflow: scroll;
+    border-radius: 15px;
+    font-size: 11pt;
+    font-family: Inconsolata, monospace;
 }
 #container output {
     clear: both;
@@ -27,6 +23,8 @@ body {
     margin: 0;
 }
 .input-line {
+    margin-bottom: -10px;
+    margin-top: -10px;
     display: -webkit-box;
     -webkit-box-orient: horizontal;
     -webkit-box-align: stretch;
@@ -46,7 +44,7 @@ body {
 .prompt {
     white-space: nowrap;
     color: #96b38a;
-    margin-right: 7px;
+    margin-right: -5px;
     display: -webkit-box;
     -webkit-box-pack: center;
     -webkit-box-orient: vertical;
@@ -70,9 +68,8 @@ body {
     color: inherit;
 }
 .ls-files {
-    height: 45px;
-    -webkit-column-width: 50px;
-    -moz-column-width: 50px;
-    -o-column-width: 50px;
-    column-width: 50px;
+    /* -webkit-column-width: 50%; */
+    /* -moz-column-width: 50%; */
+    /* -o-column-width: 50%; */
+    /* column-width: 50%; */
 }
