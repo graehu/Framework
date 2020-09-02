@@ -37,7 +37,6 @@ namespace net
       handler* mv_handler;
       std::thread* mv_server_thread;
       std::vector<std::thread*> mv_ws_threads;
-      bool mv_logging;
       bool mv_running;
    };
 }

@@ -11,7 +11,7 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer) {
     var output_ = document.querySelector(outputContainer);
 
     const CMDS_ = [
-	'clear', 'date', 'echo', 'help', 'uname'
+	'clear', 'date', 'echo', 'help', 'uname', 'params'
     ];
     
     var fs_ = null;
@@ -105,13 +105,26 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer) {
 		output( new Date() );
 		break;
             case 'echo':
-		output( args.join(' ') );
+		output( " "+args.join(' ') );
 		break;
             case 'help':
 		output('<div class="ls-files">'+ CMDS_.join('<br>') + '</div>');
 		break;
             case 'uname':
 		output(navigator.appVersion);
+		break;
+	    case 'params':
+		if(args.length != 0)
+		{
+		    var post = new XMLHttpRequest();
+		    post.open('POST', window.location.hostname+"/params", true);
+		    post.send(args.join(' '));
+		    output("sent: "+window.location.hostname+"/params "+args.join(' '))
+		}
+		else
+		{
+		    output("no arguments supplied.");
+		}
 		break;
             default:
 		if (cmd) {

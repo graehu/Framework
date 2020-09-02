@@ -1,6 +1,7 @@
 #ifndef LOG_H
 #define LOG_H
 #include "../hasher.h"
+#include "../params.h"
 #include <cstdarg>
 #include <cstdint>
 #include <map>
@@ -29,24 +30,41 @@ namespace log
    void debug(const char* _message, ...);
    // logging specifically only for macros defined in log_macros.h
    void macro(const char* _message, ...);
+   // log severity info.
+   void info_inline(const char* _message, ...);
+   // log severity warning.
+   void warning_inline(const char* _message, ...);
+   // log severity error.
+   void error_inline(const char* _message, ...);
+   // log severity debug.
+   void debug_inline(const char* _message, ...);
+   // logging specifically only for macros defined in log_macros.h
+   void macro_inline(const char* _message, ...);
    // log with no topic.
    void no_topic(const char* _message, ...);
-   class topic
+   // log hash::path
+   void hash_path(hash::path&& _path);
+   //
+   class topic final : private params::callback
    {
      public:
+      void logline(level _level, const char* _message, std::va_list);
       void log(level _level, const char* _message, std::va_list);
       const char* name() const { return m_name; }
       std::uint32_t hash() const { return m_hash; }
       level m_level = e_info;
      private:
       topic(const char* _topic, uint32_t _hash) : m_name(_topic), m_hash(_hash) {}
+      bool param_cb(const char* _param_name) final;
       const char* m_name;
       std::uint32_t m_hash;
       friend class topics;
    };
+   
    class topics
    {
      public:
+      static void logline(level _level, const char* _message, std::va_list args);
       static void log(level _level, const char* _message, std::va_list args);
       template<typename T> static bool add(T&& _topic)
       {

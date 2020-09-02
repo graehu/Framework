@@ -175,7 +175,7 @@ class packet
     void SetLength(size_t a_length)
     {
       end = a_length < T_size ? a_length : T_size;
-      data[end-1] = '\0';
+      data[end] = '\0';
     }
 
     // Get the packet data used by sockets

@@ -7,8 +7,9 @@
 #include <string>
 
 
-std::map<std::uint32_t, std::unique_ptr<hash::path>> params::m_paths;
+std::set<std::uint32_t> params::m_hashes;
 params::param params::m_params;
+std::recursive_mutex params::m_mutex;
 
 namespace commandline
 {
@@ -16,140 +17,232 @@ namespace commandline
    char** arg_variables = nullptr;
    void parse(int argc, char *argv[])
    {
-      int start = 0, end = 0;
+      log::topics::add("params");
+      auto topic = log::scope("params");
+      log::debug("parsing: \n");
+      for(int i = 0; i < argc; i++)
+      {
+	 log::debug_inline("%s ", argv[i]);
+      }
+      log::debug_inline("\n\n");
       auto current = std::make_unique<params::param>();
       for(int i = 0; i < argc; i++)
       {
 	 if(argv[i][0] == '-')
 	 {
-	    if(current->m_name == nullptr)
+	    if(current->m_name.empty())
 	    {
 	       current->m_name = ++argv[i];
 	    }
 	    else
 	    {
-	       std::size_t len = std::strlen(current->m_name);
-	       auto param_path = hash::make_path(current->m_name, len);
+	       std::size_t len = current->m_name.length();
+	       auto param_path = hash::make_path(current->m_name.c_str(), len);
 	       if(params::exists(param_path))
 	       {
 		  if(!params::set_args(param_path, current->m_args))
 		  {
-		     log::debug("wrong args used for %s", current->m_name);
+		     log::debug("wrong args used for %s", current->m_name.c_str());
 		  }
 	       }
 	       else
 	       {
 		  if(!params::add(param_path, current->m_args))
 		  {
-		     log::debug("something went wrong adding %s", current->m_name);
+		     log::debug("something went wrong adding %s", current->m_name.c_str());
 		  }
 	       }
 	       current = std::make_unique<params::param>();
 	       current->m_name = ++argv[i];
 	    }
 	 }
-	 else if(current->m_name != nullptr)
+	 else if(!current->m_name.empty())
 	 {
 	    current->m_args.push_back(argv[i]);
 	 }
       }
-      if(current->m_name != nullptr)
+      if(!current->m_name.empty())
       {
-	 std::size_t len = std::strlen(current->m_name);
-	 auto param_path = hash::make_path(current->m_name, len);
+	 std::size_t len = current->m_name.length();
+	 auto param_path = hash::make_path(current->m_name.c_str(), len);
 	 if(params::exists(param_path))
 	 {
 	    if(!params::set_args(param_path, current->m_args))
 	    {
-	       log::debug("wrong args used for %s", current->m_name);
+	       log::debug("wrong args used for %s", current->m_name.c_str());
 	    }
 	 }
 	 else
 	 {
 	    if(!params::add(param_path, current->m_args))
 	    {
-	       log::debug("something went wrong adding %s", current->m_name);
+	       log::debug("something went wrong adding %s", current->m_name.c_str());
 	    }
 	 }
       }
-      auto params_topic = log::topics::add("params");
       params::print();
    }
    void parse()
    {
       parse(arg_count, arg_variables);
    }
+   void parse(char* _string)
+   {
+      std::uint32_t kMaxArgs = 64;
+      int argc = 0;
+      char *argv[kMaxArgs];
+      char *p2 = std::strtok(_string, " ");
+      while (p2 && argc < kMaxArgs-1)
+      {
+	 argv[argc++] = p2;
+	 p2 = strtok(0, " ");
+      }
+      argv[argc] = 0;
+      parse(argc, argv);
+   }
 }
 void params::print()
 {
    auto topic = log::scope("params");
    log::debug("----------------");
-   log::debug("printing params:");
-   for(auto it = m_paths.begin(); it != m_paths.end(); it++)
+   log::debug("printing params:\n");
+   for(auto it = m_params.m_params.begin(); it != m_params.m_params.end(); it++)
    {
-      std::string param_path;
-      for(int i = 0; i < it->second->m_name_count; i++)
+      it->second->print();
+   }
+   log::debug_inline("\n");
+}
+void params::param::print()
+{
+   if(!m_params.empty())
+   {
+      for(auto it = m_params.begin(); it != m_params.end(); it++)
       {
-	 param_path += it->second->m_names[i];
-	 if(i < it->second->m_name_count -1)
-	 {
-	    param_path += ".";
-	 }
+	 log::debug_inline("%s.", m_name.c_str());
+	 it->second->print();
       }
-      param_args args = params::get_args(*it->second.get());
-      for(auto arg : args)
+   }
+   else
+   {
+      log::debug_inline("%s ", m_name.c_str());
+      for(auto arg : m_args)
       {
-	 param_path += " ";
-	 param_path += arg;
+	 log::debug_inline("%s ", arg.c_str());
       }
-      param_path += " : hash ";
-      param_path += std::to_string(it->first);
-      log::debug("%s", param_path.c_str());
+      log::debug_inline("\n");
    }
 }
 
 bool params::param::add(hash::path& _path, param_args _args, int _depth)
 {
+   bool return_val = false;
    int i = _depth++;
    auto it = m_params.find(_path.m_hashes[i]);
    if(it == m_params.end())
    {
-      auto current_param = new param();
+      param* current_param = new param();
       current_param->m_name = _path.m_names[i];
+      current_param->m_name.resize(_path.m_str_lens[i]);
       current_param->m_hash = _path.m_hashes[i];
-      m_params.emplace(_path.m_hashes[i], current_param);
+      
+      m_params.emplace(_path.m_hashes[i], std::move(current_param));
       if(_path.m_name_count > i+1)
       {
-	 return current_param->add(_path, _args, _depth);
+	 return_val = current_param->add(_path, _args, _depth);
       }
       else
       {
 	 current_param->m_args = _args;
-	 return true;
+	 return_val = true;
       }
    }
    else if(_path.m_name_count > i+1)
    {
-      return it->second->add(_path, _args, _depth);
+      return_val = it->second->add(_path, _args, _depth);
    }
-   return false;
+   if(return_val)
+   {
+      std::set<callback*> removals;
+      for(auto cb : m_callbacks)
+      {
+	 if(cb != nullptr)
+	 {
+	    if(!cb->param_cb(m_name.c_str()))
+	    {
+	       removals.insert(cb);
+	    }
+	 }
+      }
+      for(auto cb : removals)
+      {
+	 m_callbacks.erase(cb);
+      }
+   }
+   return return_val;
 }
-const char* params::param::get_value(hash::path& _path, int index, int _depth)
+bool params::param::subscribe(hash::path& _path, params::callback* _callback, int _depth)
 {
+   bool return_val = false;
    int i = _depth++;
    auto it = m_params.find(_path.m_hashes[i]);
    if(it != m_params.end())
    {
       if(_path.m_name_count > i+1)
       {
-	 return it->second->get_value(_path, index, _depth);
+	 return_val = it->second->subscribe(_path, _callback, _depth);
       }
-      else if(it->second->m_args.size() > index)
+      else
       {
-	 return it->second->m_args[index];
+	 it->second->m_callbacks.insert(_callback);
+	 return_val = true;
       }
    }
-   return nullptr;
+   return return_val;
+}
+bool params::param::unsubscribe(hash::path& _path, params::callback* _callback, int _depth)
+{
+   bool return_val = false;
+   int i = _depth++;
+   auto it = m_params.find(_path.m_hashes[i]);
+   if(it != m_params.end())
+   {
+      if(_path.m_name_count > i+1)
+      {
+	 return_val = it->second->unsubscribe(_path, _callback, _depth);
+      }
+      else
+      {
+	 auto it2 = it->second->m_callbacks.find(_callback);
+	 if(it2 != it->second->m_callbacks.end())
+	 {
+	    it->second->m_callbacks.erase(it2);
+	    return_val = true;  
+	 }
+	 else
+	 {
+	    return_val = false;  
+	 }
+      }
+   }
+   return return_val;
+}
+const char* params::param::get_value(hash::path& _path, int _index, int _depth)
+{
+   const char* return_val = nullptr;
+   int i = _depth++;
+   auto it = m_params.find(_path.m_hashes[i]);
+   if(it != m_params.end())
+   {
+      if(_path.m_name_count > i+1)
+      {
+	 return_val = it->second->get_value(_path, _index, _depth);
+      }
+      else if(_index < it->second->m_args.size())
+      {
+	 return_val = it->second->m_args[_index].c_str();
+      }
+   }
+   return return_val;
 }
 param_args params::param::get_args(hash::path& _path, int _depth)
 {
@@ -176,11 +269,23 @@ bool params::param::set_args(hash::path& _path, param_args _args, int _depth)
    {
       if(_path.m_name_count > i+1)
       {
-	 return it->second->set_args(_path, _args, _depth);
+	 bool success = it->second->set_args(_path, _args, _depth);
+	 if(success)
+	 {
+	    for(auto cb : m_callbacks)
+	    {
+	       cb->param_cb(m_name.c_str());
+	    }
+	 }
+	 return success;
       }
       else if(_args.size() == it->second->m_args.size())
       {
 	 it->second->m_args = _args;
+	 for (auto cb : it->second->m_callbacks)
+	 {
+	    cb->param_cb(m_name.c_str());
+	 }
 	 return true;
       }
    }

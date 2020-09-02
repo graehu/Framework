@@ -4,6 +4,7 @@
 #include "socket.h"
 #include "../utils/encrypt.h"
 #include "../utils/encode.h"
+#include "../../utils/params.h"
 #include "../../utils/string_helpers.h"
 #include "../../utils/log/log.h"
 #include "../../utils/log/log_macros.h"
@@ -27,8 +28,8 @@
 net::http_server::http_server(unsigned int port) :
    mv_handler(nullptr),
    mv_server_thread(nullptr),
-   mv_running(true),
-   mv_logging(true)
+   mv_running(true)
+   
 {
    static bool do_once = true;
    if(do_once)
@@ -153,146 +154,189 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 	       // todo: this should be a string_view but emacs wont stop complaining.
 	       std::string view((char*)lv_packet.GetData());
 	       auto http_loc = view.find("HTTP/");
-	       auto get_loc = view.find("GET /");
 	       if (view.find("Connection: keep-alive") != std::string::npos || view.find("Connection: Keep-Alive") != std::string::npos)
 	       {
 		  lv_timeout = 0.5;
 		  lv_start_time = lv_clock.now();
 	       }
-	       if (http_loc != std::string::npos && get_loc != std::string::npos)
+	       if (http_loc != std::string::npos)
 	       {
-		  lv_packet.Clear();
-		  // todo: fix this
-		  std::string get_request = view.substr(get_loc + 5, http_loc - 6);
-		  log::debug("get: /%s", get_request.c_str());
-		  //
-		  if (get_request.compare("ws") == 0)
+		  auto get_loc = view.find("GET /");
+		  if(get_loc != std::string::npos)
 		  {
-		     //
-		     // Handle WS upgrade request
-		     //
-
-		     char key_start_str[] = {"Sec-WebSocket-Key: "};
-		     auto key_start_loc = view.find(key_start_str) + sizeof(key_start_str) - 1;
-		     //
-		     char key_end_str[] = {"==\r\n"};
-		     auto key_end_loc = (view.find(key_end_str) + 2) - key_start_loc;
-		     //
-		     unsigned char hash[28];
-		     memset(&hash[0], 0, sizeof(hash));
-		     // The stuff here is pretty cryptic sadly,
-		     // Generating a sha key and encoding it into
-		     // base64 hash.
-		     {
-			// todo: generate different GUIDs?
-			const char GUID[] = {"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"};
-			std::string key = view.substr(key_start_loc, key_end_loc) + GUID;
-			unsigned char sha[20];
-			net::encrypt::SHA1(sha, (unsigned char *)key.data(), key.length());
-			net::encode::Base64(&hash[0], &sha[0], sizeof(sha));
-		     }
-		     lv_packet.IterWrite(net::ws_handshake);
-		     lv_packet.IterWrite(hash);
-		     unsigned char packet_end[] = {"\r\n\r\n"};
-		     lv_packet.IterWrite(packet_end);
-		     //
-		     log::debug("sending: websocket upgrade");
-		     lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize());
 		     lv_packet.Clear();
+		     // todo: fix this
+		     std::string get_request = view.substr(get_loc + 5, http_loc - 6);
+		     log::debug("get: /%s", get_request.c_str());
+		     //
+		     if (get_request.compare("ws") == 0)
+		     {
+			//
+			// Handle WS upgrade request
+			//
+
+			char key_start_str[] = {"Sec-WebSocket-Key: "};
+			auto key_start_loc = view.find(key_start_str) + sizeof(key_start_str) - 1;
+			//
+			char key_end_str[] = {"==\r\n"};
+			auto key_end_loc = (view.find(key_end_str) + 2) - key_start_loc;
+			//
+			unsigned char hash[28];
+			memset(&hash[0], 0, sizeof(hash));
+			// The stuff here is pretty cryptic sadly,
+			// Generating a sha key and encoding it into
+			// base64 hash.
+			{
+			   // todo: generate different GUIDs?
+			   const char GUID[] = {"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"};
+			   std::string key = view.substr(key_start_loc, key_end_loc) + GUID;
+			   unsigned char sha[20];
+			   net::encrypt::SHA1(sha, (unsigned char *)key.data(), key.length());
+			   net::encode::Base64(&hash[0], &sha[0], sizeof(sha));
+			}
+			lv_packet.IterWrite(net::ws_handshake);
+			lv_packet.IterWrite(hash);
+			unsigned char packet_end[] = {"\r\n\r\n"};
+			lv_packet.IterWrite(packet_end);
+			//
+			log::debug("sending: websocket upgrade");
+			lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize());
+			lv_packet.Clear();
 		  
-		     // starting ws thread.
-		     lv_close_socket = false;
-		     lv_timeout = 0;
-		     lv_socket.mf_set_keepalive(true);
-		     mv_ws_threads.push_back(new std::thread(&net::http_server::mf_ws_thread, this, lv_socket, lv_address));
-		     // sleep here because those objects are passed by ref and I don't want them to be destroyed.
-		     std::this_thread::sleep_for(std::chrono::milliseconds(30));
-		  }
-		  else
-		  {
-		     //
-		     // Handle regular http get requests.
-		     //
-		     const char *lv_request = get_request.length() == 0 ? "index.html" : get_request.c_str();
-		     std::string lv_request_view(lv_request);
-		     bool lv_handled = false;
-		     if (mv_handler != nullptr)
-		     {
-			lf_html_200(); 
-			auto lv_get_response =
-			   [&lv_handled, &lv_packet]
-			   (const char *message, size_t size)
-			   {
-			      lv_handled = true;
-			      lv_packet.IterWrite(message, size);
-			   };
-			mv_handler->mf_get_response(lv_request, lv_get_response);
+			// starting ws thread.
+			lv_close_socket = false;
+			lv_timeout = 0;
+			lv_socket.mf_set_keepalive(true);
+			mv_ws_threads.push_back(new std::thread(&net::http_server::mf_ws_thread, this, lv_socket, lv_address));
+			// sleep here because those objects are passed by ref and I don't want them to be destroyed.
+			std::this_thread::sleep_for(std::chrono::milliseconds(30));
 		     }
-		     if (lv_handled != true)
+		     else
 		     {
-			std::string lv_file_path;
+			//
+			// Handle regular http get requests.
+			//
+			const char *lv_request = get_request.length() == 0 ? "index.html" : get_request.c_str();
+			std::string lv_request_view(lv_request);
+			bool lv_handled = false;
 			if (mv_handler != nullptr)
 			{
-			   lv_file_path.append(mv_handler->mf_get_response_root_dir());
-			}
-			lv_file_path.append(lv_request);
-			if(lv_file_path.find("../") != std::string::npos)
-			{
-			   // todo: write access denied
-			   // not allowing ../, illegal access pattern.
-			   lf_html_404();
-			}
-			else
-			{
-			   lv_packet.OpenFile(lv_file_path.c_str());
-			   if(lv_packet.IsFileOpen())
-			   {
-			      int start = 0, end = 0;
-			      bool lv_send_file = true;
-			      auto lv_content_length = std::to_string(lv_packet.GetFileSize());
-			      int lv_response_code = write_response_header(lv_packet, view, start, end);
-			      if(lv_response_code == 200 || lv_response_code == 206)
+			   lf_html_200(); 
+			   auto lv_get_response =
+			      [&lv_handled, &lv_packet]
+			      (const char *message, size_t size)
 			      {
-
-				 log::debug("sending %s", lv_file_path.c_str());
-				 if(send_file(lv_address, lv_socket, lv_packet, start, end))
-				 {
-				    if(start == 0 && end == 0)
-				    {
-				       //todo: this assumes about a 500kbs download speed.
-				       //      try to drive this via some metric rather than
-				       //      with a static magic number.
-				       lv_timeout = ((float)(lv_packet.GetFileSize()))/500000.0;
-				    }
-				    else
-				    {
-				       lv_timeout = ((float)(end - start))/(500000.0);
-				    }
-				    lv_timeout += 1.0f/30.0f;
-				 }
-				 else
-				 {
-				    lv_timeout = 0;
-				 }
-			      }
-			      lv_start_time = lv_clock.now();
+				 lv_handled = true;
+				 lv_packet.IterWrite(message, size);
+			      };
+			   mv_handler->mf_get_response(lv_request, lv_get_response);
+			}
+			if (lv_handled != true)
+			{
+			   std::string lv_file_path;
+			   if (mv_handler != nullptr)
+			   {
+			      lv_file_path.append(mv_handler->mf_get_response_root_dir());
+			   }
+			   lv_file_path.append(lv_request);
+			   if(lv_file_path.find("../") != std::string::npos)
+			   {
+			      // todo: write access denied
+			      // not allowing ../, illegal access pattern.
+			      lf_html_404();
 			   }
 			   else
 			   {
-			      lf_html_404();
+			      lv_packet.OpenFile(lv_file_path.c_str());
+			      if(lv_packet.IsFileOpen())
+			      {
+				 int start = 0, end = 0;
+				 auto lv_content_length = std::to_string(lv_packet.GetFileSize());
+				 int lv_response_code = write_response_header(lv_packet, view, start, end);
+				 if(lv_response_code == 200 || lv_response_code == 206)
+				 {
+
+				    log::debug("sending %s", lv_file_path.c_str());
+				    if(send_file(lv_address, lv_socket, lv_packet, start, end))
+				    {
+				       if(start == 0 && end == 0)
+				       {
+					  //todo: this assumes about a 500kbs download speed.
+					  //      try to drive this via some metric rather than
+					  //      with a static magic number.
+					  lv_timeout = ((float)(lv_packet.GetFileSize()))/500000.0;
+				       }
+				       else
+				       {
+					  lv_timeout = ((float)(end - start))/(500000.0);
+				       }
+				       lv_timeout += 1.0f/30.0f;
+				    }
+				    else
+				    {
+				       lv_timeout = 0;
+				    }
+				 }
+				 lv_start_time = lv_clock.now();
+			      }
+			      else
+			      {
+				 lf_html_404();
+			      }
+			      lv_packet.CloseFile();
 			   }
-			   lv_packet.CloseFile();
+			}
+			lv_packet.PrintDetails();
+		     }
+		     if(lv_packet.GetSize() > 0)
+		     {
+			lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize());
+			lv_packet.Clear();
+		     }
+		     log::debug("----------------");
+		  }
+		  else
+		  {
+		     auto post_loc = view.find("POST /");
+		     if(post_loc != std::string::npos)
+		     {
+			std::string post_request = view.substr(post_loc + 5, http_loc - 6);
+			log::debug("post request: %s", post_request.c_str());
+			if(std::ends_with(post_request, "/params"))
+			{
+			   //todo: this can be a string view
+			   std::string body = (char*)lv_packet.GetData();
+			   auto body_pos = body.find("\r\n\r\n");
+			   if(body_pos != std::string::npos && (body.length()-body_pos) > 4)
+			   {
+			      log::debug("parsing params post body");
+			      commandline::parse((char*)body.substr(body_pos+4).data());
+			   }
+			   else
+			   {
+			      lv_timeout = 1;
+			      lv_start_time = lv_clock.now();
+			      do
+			      {
+				 lv_packet.Clear();
+				 std::this_thread::sleep_for(std::chrono::milliseconds(30));
+				 lv_bytes_read = lv_socket.receive(lv_packet.GetData(), lv_packet.GetCapacity());
+			      } while(lv_timeout > std::chrono::duration<float>(lv_clock.now()-lv_start_time).count() && lv_bytes_read == 0);
+			      lv_packet.SetLength(lv_bytes_read);
+			      if(lv_bytes_read > 0)
+			      {
+				 log::debug("parsing params post");
+				 commandline::parse((char*)lv_packet.GetData());  
+			      }
+			      else
+			      {
+				 log::debug("timed out waiting params for post body");
+			      }
+			   }
 			}
 		     }
-		     lv_packet.PrintDetails();
 		  }
-		  if(lv_packet.GetSize() > 0)
-		  {
-		     lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize());
-		     lv_packet.Clear();
-		  }
-		  log::debug("----------------");
-	       }
+	       }  
 	    }
 	    if(lv_timeout > lv_last_timeout)
 	    {
@@ -326,8 +370,9 @@ void net::http_server::mf_ws_thread(const net::socket& from, const net::address&
    bool lv_is_connected = true;
    while (mv_running && lv_is_connected)
    {
+      // todo: this might not be thread safe, I'm not sure.
       auto lv_ws_send =
-	 [this, &lv_packet, &ws_header, &lv_socket, &lv_address, &lv_is_connected]
+	 [&lv_packet, &ws_header, &lv_socket, &lv_address, &lv_is_connected]
 	 (const char *message,size_t size)
 	 {
 	    // todo: make sure the correct message size is written here.

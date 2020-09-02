@@ -15,7 +15,7 @@ source_files = [
     "../../utils/log/log.cpp",
     "../../utils/params.cpp"
 ]
-# warnings = ["all"]
+warnings = ["all"]
 # debug_info = True
 # optimisation = 0
 link_libraries = ["stdc++", "pthread", "m"]

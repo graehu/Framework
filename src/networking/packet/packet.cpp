@@ -83,7 +83,7 @@ void BasePacket::PrintDetails()
    log::debug("[packet_start]\n");
    if(log::topics::get_level() == log::e_debug)
    {
-       log::no_topic("%.*s", end, GetData());  
+       log::no_topic("%.*s\n\n", end, GetData());
    }
    log::debug("[packet_end]");
 }    
