@@ -167,7 +167,7 @@ bool params::param::add(hash::path& _path, param_args _args, int _depth)
       {
 	 if(cb != nullptr)
 	 {
-	    if(!cb->param_cb(m_name.c_str()))
+	    if(!cb->param_cb(m_name.c_str(), m_args))
 	    {
 	       removals.insert(cb);
 	    }
@@ -274,7 +274,7 @@ bool params::param::set_args(hash::path& _path, param_args _args, int _depth)
 	 {
 	    for(auto cb : m_callbacks)
 	    {
-	       cb->param_cb(m_name.c_str());
+	       cb->param_cb(m_name.c_str(), m_args);
 	    }
 	 }
 	 return success;
@@ -284,7 +284,7 @@ bool params::param::set_args(hash::path& _path, param_args _args, int _depth)
 	 it->second->m_args = _args;
 	 for (auto cb : it->second->m_callbacks)
 	 {
-	    cb->param_cb(m_name.c_str());
+	    cb->param_cb(m_name.c_str(), _args);
 	 }
 	 return true;
       }

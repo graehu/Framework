@@ -55,7 +55,7 @@ namespace log
       level m_level = e_info;
      private:
       topic(const char* _topic, uint32_t _hash) : m_name(_topic), m_hash(_hash) {}
-      bool param_cb(const char* _param_name) final;
+      bool param_cb(const char* _param_name, param_args _args) final;
       const char* m_name;
       std::uint32_t m_hash;
       friend class topics;
