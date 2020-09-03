@@ -12,3 +12,15 @@ h1 {
     text-align: center;
     color: #444;
 }
+.demo-link {
+    font-size: 24px;
+}
+
+.center-box {
+    width: 50%;
+    height: 80%;
+    margin: 0 auto;
+    padding: 32px;
+    background-color: #999999;
+    border-radius: 15px;
+}

@@ -4,10 +4,12 @@
 }
 
 #container {
-    padding: 0em 1.5em 2em .5em;
+    padding-left: 1em;
+    box-sizing: border-box;
     color: white;
     background-color: black;
-    overflow: scroll;
+    overflow-x: hidden;
+    overflow-y: scroll;
     border-radius: 15px;
     font-size: 11pt;
     font-family: Inconsolata, monospace;
