@@ -108,22 +108,29 @@ void params::print()
    log::debug("printing params:\n");
    for(auto it = m_params.m_params.begin(); it != m_params.m_params.end(); it++)
    {
-      it->second->print();
+      it->second->print(nullptr);
    }
    log::debug_inline("\n");
 }
-void params::param::print()
+void params::param::print(const char* _parent)
 {
    if(!m_params.empty())
    {
       for(auto it = m_params.begin(); it != m_params.end(); it++)
       {
-	 log::debug_inline("%s.", m_name.c_str());
-	 it->second->print();
+	 if(_parent != nullptr)
+	 {
+	    log::debug_inline("%s.", _parent);
+	 }
+	 it->second->print(m_name.c_str());
       }
    }
    else
    {
+      if(_parent != nullptr)
+      {
+	 log::debug_inline("%s.", _parent);
+      }
       log::debug_inline("%s ", m_name.c_str());
       for(auto arg : m_args)
       {

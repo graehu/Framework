@@ -209,7 +209,7 @@ private:
       // Sets the arguments at the path
       bool set_args(hash::path& _path, param_args _args, int _depth = 0);
       //
-      void print();
+      void print(const char* _parent);
       //
       std::uint32_t m_hash = 0;
       std::string m_name;
