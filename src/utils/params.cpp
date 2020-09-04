@@ -175,6 +175,7 @@ bool params::param::add(hash::path& _path, param_args _args, int _depth)
       }
       for(auto cb : removals)
       {
+	 log::debug("unsubscribing %s from %s param", cb->m_cb_name, _path.m_path);
 	 m_callbacks.erase(cb);
       }
    }
@@ -193,8 +194,11 @@ bool params::param::subscribe(hash::path& _path, params::callback* _callback, in
       }
       else
       {
-	 it->second->m_callbacks.insert(_callback);
-	 return_val = true;
+	 return_val = it->second->m_callbacks.insert(_callback).second;
+	 if(return_val)
+	 {
+	    log::debug("subscribed %s to: %s param", _callback->m_cb_name, _path.m_path);
+	 }
       }
    }
    return return_val;

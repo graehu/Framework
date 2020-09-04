@@ -70,6 +70,7 @@ namespace log
 	 if(params::subscribe(path, this))
 	 {
 	    subscribe = false;
+	    _args = params::get_args(path);
 	 }
       }
       if(_args.size() > 0)

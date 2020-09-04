@@ -23,8 +23,9 @@ public:
    class callback
    {
    public:
-      //called from add and set, return false if you want to unsub from callback.
+      // called from add and set, return false if you want to unsub from callback.
       virtual bool param_cb(const char* _param_name, param_args _args) = 0;
+      const char* m_cb_name = "m_cb_name";
    };
    // adds the param at path with args if it doesn't exist already.
    // usage: params::add("path.to.param", {"1", "2", "3"})
