@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<html>
+  <head>
+    <link rel="stylesheet" href="/rcstyle.css"/>
+    <link rel="stylesheet" href="stream.css"/>
+    
+    <title>Stream Demo</title>
+  </head>
+  <body>
+    <div>
+      <h1>Stream Demo</h1>
+    </div>
+    <div class="center-box">
+      <canvas id="stream_canvas" class="stream_canvas">not supported</canvas>
+    </div>
+    <script>
+      const canvas = document.getElementById('stream_canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = 768;
+      canvas.height = 768;
+      const width = canvas.width;
+      const height = canvas.height;
+      const imageData = ctx.createImageData(width, height);
+      var timer = 0.0;
+      function loop()
+      {
+	  requestAnimationFrame(loop);
+	  timer = timer + 2.0/30.0;
+	  if(timer > 0.3)
+          {
+	      for (let i = 0; i < imageData.data.length; i += 4)
+	      {
+		  // Modify pixel data
+		  let noise = Math.random()*255;
+		  imageData.data[i + 0] = noise;  // R value
+		  imageData.data[i + 1] = noise;    // G value
+		  imageData.data[i + 2] = noise;  // B value
+		  imageData.data[i + 3] = 255;  // A value
+	      }
+	      // Draw image data to the canvas
+	      ctx.putImageData(imageData, 0, 0);
+	      ctx.font = "64px Arial";
+	      ctx.textAlign = "center";
+	      ctx.fillStyle = "white";
+	      ctx.fillText("no signal", Math.floor(width/2), Math.floor(height/2)+8);
+	      ctx.fillStyle = "black";
+	      ctx.strokeText("no signal", Math.floor(width/2), Math.floor(height/2)+8);
+	      timer = 0;
+	  }
+      };
+      requestAnimationFrame(loop);
+    </script>
+  </body>
+</html>
