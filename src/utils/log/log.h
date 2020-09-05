@@ -8,6 +8,7 @@
 #include <memory>
 #include <thread>
 #include <iosfwd>
+#include <chrono>
 
 
 #define log_int(variable)
@@ -122,5 +123,15 @@ namespace log
       auto hash = hash::i32(_topic);
       return scope_topic(hash);
    }
+   class timer
+   {
+   public:
+      timer(const char* _name);
+      ~timer();
+   private:
+      std::chrono::high_resolution_clock m_clock;
+      std::chrono::_V2::system_clock::time_point m_start;
+      const char* m_name;
+   };
 }
 #endif//LOG_H

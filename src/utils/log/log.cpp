@@ -296,4 +296,23 @@ namespace log
       }
       printf("--------------\n");
    }
+   timer::timer(const char* _name)
+   {
+      m_name = _name;
+      m_start = m_clock.now();
+   }
+   timer::~timer()
+   {
+      auto time = m_clock.now()-m_start;
+      auto millisecs = std::chrono::duration<float, std::milli>(time).count();
+      if(millisecs > 1000)
+      {
+            auto seconds = std::chrono::duration<float>(time).count();
+	    info("%s took %f secs", m_name, seconds);
+      }
+      else
+      {
+	 info("%s took %f millisecs", m_name, millisecs);
+      }
+   }
 }
