@@ -126,12 +126,13 @@ namespace log
    class timer
    {
    public:
-      timer(const char* _name);
+      timer(const char* _name, bool _condition = true);
       ~timer();
    private:
       std::chrono::high_resolution_clock m_clock;
       std::chrono::_V2::system_clock::time_point m_start;
-      const char* m_name;
+      const char* m_name = nullptr;
+      bool m_condition = true;
    };
 }
 #endif//LOG_H

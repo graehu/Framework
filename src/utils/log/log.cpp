@@ -9,7 +9,6 @@
 #include <unordered_map>
 #include <iostream>
 
-
 namespace log
 {
    std::mutex g_log_mutex;
@@ -61,6 +60,7 @@ namespace log
    bool topic::param_cb(const char* _param, param_args _args)
    {
       g_log_mutex.lock();
+      timer cb_timer("topics::param_cb");
       bool subscribe = true;
       std::string log_level = "log.level.";
       log_level += m_name;
@@ -296,23 +296,26 @@ namespace log
       }
       printf("--------------\n");
    }
-   timer::timer(const char* _name)
+   timer::timer(const char* _name, bool _condition)
    {
       m_name = _name;
       m_start = m_clock.now();
    }
    timer::~timer()
    {
-      auto time = m_clock.now()-m_start;
-      auto millisecs = std::chrono::duration<float, std::milli>(time).count();
-      if(millisecs > 1000)
+      if(m_condition)
       {
-            auto seconds = std::chrono::duration<float>(time).count();
-	    info("%s took %f secs", m_name, seconds);
-      }
-      else
-      {
-	 info("%s took %f millisecs", m_name, millisecs);
+	 auto time = m_clock.now()-m_start;
+	 auto millisecs = std::chrono::duration<float, std::milli>(time).count();
+	 if(millisecs > 1000)
+	 {
+	    auto seconds = std::chrono::duration<float>(time).count();
+	    debug("%s took %f secs", m_name, seconds);
+	 }
+	 else
+	 {
+	    debug("%s took %f millisecs", m_name, millisecs);
+	 }
       }
    }
 }
