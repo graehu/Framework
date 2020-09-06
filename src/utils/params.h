@@ -8,6 +8,18 @@
 #include <mutex>
 #include "hasher.h"
 
+/*
+Params are global variables, which can be set
+via the commandline or programatically.
+
+Ideally they should be efficent to lookup and set.
+Additions are less time dependent.
+*/
+
+// todo: remove top level params mutex and add per param mutexes.
+// todo: add "get_param" returning const param object.
+// todo: auto migrate subscriptions from parents to params that don't exist yet.
+
 namespace commandline
 {
    extern int arg_count;
@@ -34,12 +46,8 @@ public:
    {
       m_mutex.lock();
       bool return_val = false;
-      if(!exists(_path))
-      {
-	 m_hashes.emplace(hash::i32(_path));
-	 hash::path in_path = hash::make_path(_path);
-	 return_val =  m_params.add(in_path, _args);
-      }
+      hash::path in_path = hash::make_path(_path);
+      return_val =  m_params.add(in_path, _args);
       m_mutex.unlock();
       return return_val;
    }
@@ -50,11 +58,7 @@ public:
    {
       m_mutex.lock();
       bool return_val = false;
-      if(!exists(_path))
-      {
-	 m_hashes.emplace(_path.m_hash);
-	 return_val = m_params.add(_path, _args);
-      }
+      return_val = m_params.add(_path, _args);
       m_mutex.unlock();
       return return_val;
    }
@@ -101,20 +105,6 @@ public:
       return_val = m_params.unsubscribe(_path, _callback);
       m_mutex.unlock();
       return return_val;
-   }
-   // returns true if the param at path exists
-   // usage: params::exists("path.to.param")
-   template<typename T>
-   static bool exists(T&& _path)
-   {
-      return m_hashes.find(hash::i32(_path)) != m_hashes.end();
-   }
-   
-   // returns true if the param at path exists
-   // usage: params::exists(hash::make_path(var, len))
-   static bool exists(hash::path& _path)
-   {
-      return m_hashes.find(_path.m_hash) != m_hashes.end();
    }
    
    // sets the arguments at the path
@@ -219,7 +209,6 @@ private:
    };
    friend void commandline::parse(int argc, char *argv[]);
    static std::recursive_mutex m_mutex;
-   static std::set<std::uint32_t> m_hashes;
    static param m_params;
 };
 

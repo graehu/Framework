@@ -7,7 +7,6 @@
 #include <string>
 
 
-std::set<std::uint32_t> params::m_hashes;
 params::param params::m_params;
 std::recursive_mutex params::m_mutex;
 
@@ -38,18 +37,11 @@ namespace commandline
 	    {
 	       std::size_t len = current->m_name.length();
 	       auto param_path = hash::make_path(current->m_name.c_str(), len);
-	       if(params::exists(param_path))
+	       if(!params::add(param_path, current->m_args))
 	       {
 		  if(!params::set_args(param_path, current->m_args))
 		  {
-		     log::debug("wrong args used for %s", current->m_name.c_str());
-		  }
-	       }
-	       else
-	       {
-		  if(!params::add(param_path, current->m_args))
-		  {
-		     log::debug("something went wrong adding %s", current->m_name.c_str());
+		     log::debug("couldn't add or set  %s", current->m_name.c_str());
 		  }
 	       }
 	       current = std::make_unique<params::param>();
@@ -65,18 +57,11 @@ namespace commandline
       {
 	 std::size_t len = current->m_name.length();
 	 auto param_path = hash::make_path(current->m_name.c_str(), len);
-	 if(params::exists(param_path))
+	 if(!params::add(param_path, current->m_args))
 	 {
 	    if(!params::set_args(param_path, current->m_args))
 	    {
-	       log::debug("wrong args used for %s", current->m_name.c_str());
-	    }
-	 }
-	 else
-	 {
-	    if(!params::add(param_path, current->m_args))
-	    {
-	       log::debug("something went wrong adding %s", current->m_name.c_str());
+	       log::debug("couldn't add or set  %s", current->m_name.c_str());
 	    }
 	 }
       }
