@@ -36,13 +36,13 @@ public:
    {
    public:
       // called from add and set, return false if you want to unsub from callback.
-      virtual bool param_cb(const char* _param_name, param_args _args) = 0;
+      virtual bool param_cb(const char* _param_name, const param_args& _args) = 0;
       const char* m_cb_name = "m_cb_name";
    };
    
    // adds the param at path with args if it doesn't exist already.
    // usage: params::add(hash::path(var, len), {"1", "2", "3"})
-   static bool add(const hash::path& _path,  param_args _args)
+   static bool add(const hash::path& _path,  const param_args& _args)
    {
       m_mutex.lock();
       bool return_val = false;
@@ -75,7 +75,7 @@ public:
    
    // sets the arguments at the path
    // usage: params::set_args(hash::path(var, len), {"1", "2", "3"})
-   static bool set_args(const hash::path& _path, param_args _args)
+   static bool set_args(const hash::path& _path, const param_args& _args)
    {
       m_mutex.lock();
       bool return_val = false;
@@ -98,11 +98,10 @@ public:
       
    // gets the arguenents at path.
    // usage: params::get_args(hash::path(var, len));
-   static param_args get_args(const hash::path& _path)
+   static const param_args& get_args(const hash::path& _path)
    {
       m_mutex.lock();
-      param_args return_val;
-      return_val = m_params.get_args(_path);
+      const param_args& return_val = m_params.get_args(_path);
       m_mutex.unlock();
       return return_val;
    }
@@ -115,7 +114,7 @@ private:
    public:
       param(){}
       // Adds a param at the path
-      bool add(const hash::path& _path, param_args _args, std::uint32_t _depth = 0);
+      bool add(const hash::path& _path, const param_args& _args, std::uint32_t _depth = 0);
       // Adds callback to paths callback list
       bool subscribe(const hash::path& _path, callback* _callback, std::uint32_t _depth = 0);
       // Removes callback from paths callbacks list
@@ -123,9 +122,9 @@ private:
       // Gets a value at the path and index
       const char* get_value(const hash::path& _path, std::uint32_t index, std::uint32_t _depth = 0);
       // Gets the arguements at the path
-      param_args get_args(const hash::path& _path, std::uint32_t _depth = 0);
+      const param_args& get_args(const hash::path& _path, std::uint32_t _depth = 0);
       // Sets the arguments at the path
-      bool set_args(const hash::path& _path, param_args _args, std::uint32_t _depth = 0);
+      bool set_args(const hash::path& _path, const param_args& _args, std::uint32_t _depth = 0);
       //
       void print(const char* _parent);
       //

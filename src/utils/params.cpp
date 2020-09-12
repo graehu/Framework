@@ -125,7 +125,7 @@ void params::param::print(const char* _parent)
    }
 }
 
-bool params::param::add(const hash::path& _path, param_args _args, std::uint32_t _depth)
+bool params::param::add(const hash::path& _path, const param_args& _args, std::uint32_t _depth)
 {
    bool return_val = false;
    std::uint32_t i = _depth++;
@@ -240,8 +240,9 @@ const char* params::param::get_value(const hash::path& _path, std::uint32_t _ind
    }
    return return_val;
 }
-param_args params::param::get_args(const hash::path& _path, std::uint32_t _depth)
+const param_args& params::param::get_args(const hash::path& _path, std::uint32_t _depth)
 {
+   static param_args g_empty;
    std::uint32_t i = _depth++;
    auto it = m_params.find(_path.m_hashes[i]);
    if(it != m_params.end())
@@ -255,9 +256,9 @@ param_args params::param::get_args(const hash::path& _path, std::uint32_t _depth
 	 return it->second->m_args;
       }
    }
-   return {};
+   return g_empty;
 }
-bool params::param::set_args(const hash::path& _path, param_args _args, std::uint32_t _depth)
+bool params::param::set_args(const hash::path& _path, const param_args& _args, std::uint32_t _depth)
 {
    std::uint32_t i = _depth++;
    auto it = m_params.find(_path.m_hashes[i]);

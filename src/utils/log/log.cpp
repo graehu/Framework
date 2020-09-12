@@ -57,10 +57,23 @@ namespace log
 	 vprintf(_message, args);
       }
    }
-   bool topic::param_cb(const char* _param, param_args _args)
+   bool topic::param_cb(const char* _param, const param_args& _args)
    {
       g_log_mutex.lock();
       timer cb_timer("topics::param_cb");
+      auto set_level =
+	 [this](const param_args& _args)
+	 {
+	    if(_args.size() > 0)
+	    {
+	       auto new_level = to_level.find(_args[0]);
+	       if(new_level != to_level.end())
+	       {
+		  printf("[%s] set log level to %s\n", m_name, _args[0].c_str());
+		  m_level = new_level->second;
+	       }
+	    } 
+	 };
       bool subscribe = true;
       std::string log_level = "log.level.";
       log_level += m_name;
@@ -70,17 +83,17 @@ namespace log
 	 if(params::subscribe(path, this))
 	 {
 	    subscribe = false;
-	    _args = params::get_args(path);
+	    
+	    set_level(params::get_args(path));
+	 }
+	 else
+	 {
+	    set_level(_args);
 	 }
       }
-      if(_args.size() > 0)
+      else
       {
-	 auto new_level = to_level.find(_args[0]);
-	 if(new_level != to_level.end())
-	 {
-	    printf("[%s] set log level to %s\n", m_name, _args[0].c_str());
-	    m_level = new_level->second;
-	 }
+	 set_level(_args);
       }
       g_log_mutex.unlock();
       return subscribe;
