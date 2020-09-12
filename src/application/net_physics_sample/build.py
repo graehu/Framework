@@ -1,10 +1,12 @@
 #!../../../tools/confply/confply.py
 from confply.cpp_compiler.config import *
 
-confply_tool = "clang"
+confply_tool = "clang++"
 source_files = [
     "../../main.cpp",
     "net_physics_sample.cpp",
+    "../../utils/params.cpp",
+    "../../utils/log/log.cpp",
     "../../window/wSdlGl/wSdlGl.cpp",
     "../../input/inSdl/inSdl.cpp",
     "../../graphics/gSdlGl/gSdlGl.cpp",

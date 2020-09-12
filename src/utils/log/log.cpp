@@ -64,7 +64,7 @@ namespace log
       bool subscribe = true;
       std::string log_level = "log.level.";
       log_level += m_name;
-      auto path = hash::make_path(log_level.c_str(), log_level.length());
+      auto path = hash::path(log_level.c_str(), log_level.length());
       if(std::strcmp(_param, "level") == 0)
       {
 	 if(params::subscribe(path, this))
@@ -97,7 +97,7 @@ namespace log
 	 success = topics::m_topics.emplace(hash, _topic).second;
 	 std::string log_level = "log.level.";
 	 log_level += _topic->m_name;
-	 auto path = hash::make_path(log_level.c_str(), log_level.length());
+	 auto path = hash::path(log_level.c_str(), log_level.length());
 	 auto value = params::get_value(path, 0);
 	 if(value != nullptr)
 	 {
@@ -110,7 +110,7 @@ namespace log
 	 }
 	 else
 	 {
-	    params::add("log.level", {});
+	    params::add({"log.level"}, {});
 	    params::subscribe("log.level", _topic);
 	 }
       }
@@ -289,7 +289,7 @@ namespace log
       printf("directories in path: %d\n", _path.m_name_count);
       std::uint32_t path_len = _path.m_path_len;
       printf("0) path: %.*s : len %d : hash %u\n", path_len, _path.m_path, path_len, _path.m_hash);
-      for(int i = 0; i < _path.m_name_count; i++)
+      for(std::uint32_t i = 0; i < _path.m_name_count; i++)
       {
 	 std::uint32_t len = _path.m_str_lens[i];
 	 printf("%d) %.*s : len %d : hash %u\n", i+1, len, _path.m_names[i], len, _path.m_hashes[i]);

@@ -88,7 +88,7 @@ namespace net
    };
 }
 
-bool send_file(const net::address& lv_address,  net::socket& lv_socket,  net::http_packet& lv_packet, int start, int end);
+bool send_file(const net::address& lv_address,  net::socket& lv_socket,  net::http_packet& lv_packet, uint32_t start, uint32_t end);
 int write_response_header(net::http_packet& lv_packet, std::string request, int& start, int& end);
 
 void net::http_server::mf_server_thread(const socket& in_socket)
@@ -125,7 +125,6 @@ void net::http_server::mf_server_thread(const socket& in_socket)
    bool print_waiting = true;
    while(mv_running)
    {
-      int receive_attempts = 0;
       if(print_waiting)
       {
 	 log::debug("----------------");
@@ -148,7 +147,6 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 	    int lv_bytes_read = lv_socket.receive(lv_packet.GetData(), lv_packet.GetCapacity());
 	    if (lv_bytes_read > 0)
 	    {
-	       receive_attempts = 0;
 	       lv_packet.SetLength(lv_bytes_read);
 	       lv_packet.PrintDetails();
 	       // todo: this should be a string_view but emacs wont stop complaining.
@@ -437,7 +435,7 @@ net::http_server::~http_server()
    }
 }
 // file handlers.
-bool send_file(const net::address& lv_address,  net::socket& lv_socket,  net::http_packet& lv_packet, int start = 0, int end = 0)
+bool send_file(const net::address& lv_address,  net::socket& lv_socket,  net::http_packet& lv_packet, std::uint32_t start = 0, std::uint32_t end = 0)
 {
    if(lv_packet.IsFileOpen())
    {

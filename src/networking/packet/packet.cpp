@@ -53,13 +53,13 @@ int BasePacket::WriteFile(size_t _start, size_t _end, size_t max_write)
       {
 	 _end = GetFileSize();
       }
-      int bytes_to_write = _end - _start;
-      int space_remaining = GetRemainingSpace();
+      std::uint32_t bytes_to_write = _end - _start;
+      std::uint32_t space_remaining = GetRemainingSpace();
       if (max_write > 0)
       {
 	 space_remaining = max_write < space_remaining ? max_write : space_remaining;
       }
-      int read_length = space_remaining < bytes_to_write ? space_remaining : bytes_to_write;
+      std::uint32_t read_length = space_remaining < bytes_to_write ? space_remaining : bytes_to_write;
       m_file->seekg(_start, m_file->beg);
       m_file->read((char*)(&GetData()[end]), read_length);
       end += read_length;

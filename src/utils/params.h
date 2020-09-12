@@ -39,22 +39,10 @@ public:
       virtual bool param_cb(const char* _param_name, param_args _args) = 0;
       const char* m_cb_name = "m_cb_name";
    };
-   // adds the param at path with args if it doesn't exist already.
-   // usage: params::add("path.to.param", {"1", "2", "3"})
-   template<typename T>
-   static bool add(T&& _path, param_args _args)
-   {
-      m_mutex.lock();
-      bool return_val = false;
-      hash::path in_path = hash::make_path(_path);
-      return_val =  m_params.add(in_path, _args);
-      m_mutex.unlock();
-      return return_val;
-   }
    
    // adds the param at path with args if it doesn't exist already.
-   // usage: params::add(hash::make_path(var, len), {"1", "2", "3"})
-   static bool add(hash::path& _path,  param_args _args)
+   // usage: params::add(hash::path(var, len), {"1", "2", "3"})
+   static bool add(const hash::path& _path,  param_args _args)
    {
       m_mutex.lock();
       bool return_val = false;
@@ -62,21 +50,10 @@ public:
       m_mutex.unlock();
       return return_val;
    }
+
    // adds the callback to paths callback list
-   // usage: params::subscribe("log.level", this);
-   template<typename T>
-   static bool subscribe(T&& _path, callback* _callback)
-   {
-      m_mutex.lock();
-      bool return_val = false;
-      hash::path in_path = hash::make_path(_path);
-      return_val =  m_params.subscribe(in_path, _callback);
-      m_mutex.unlock();
-      return return_val;
-   }
-   // adds the callback to paths callback list
-   // usage: params::subscribe(hash::make_path(var, len), this);
-   static bool subscribe(hash::path& _path,  callback* _callback)
+   // usage: params::subscribe(hash::path(var, len), this);
+   static bool subscribe(const hash::path& _path,  callback* _callback)
    {
       m_mutex.lock();
       bool return_val = false;
@@ -84,21 +61,10 @@ public:
       m_mutex.unlock();
       return return_val;
    }
+
    // removes the callback from paths callback list
-   // usage: params::unsubscribe("log.level", this);
-   template<typename T>
-   static bool unsubscribe(T&& _path, callback* _callback)
-   {
-      m_mutex.lock();
-      bool return_val = false;
-      hash::path in_path = hash::make_path(_path);
-      return_val =  m_params.unsubscribe(in_path, _callback);
-      m_mutex.unlock();
-      return return_val;
-   }
-   // removes the callback from paths callback list
-   // usage: params::unsubscribe(hash::make_path(var, len), this);
-   static bool unsubscribe(hash::path& _path,  callback* _callback)
+   // usage: params::unsubscribe(hash::path(var, len), this);
+   static bool unsubscribe(const hash::path& _path,  callback* _callback)
    {
       m_mutex.lock();
       bool return_val = false;
@@ -108,21 +74,8 @@ public:
    }
    
    // sets the arguments at the path
-   // usage: params::set_args("path.to.param", {"1", "2", "3"})
-   template<typename T>
-   static bool set_args(T&& _path, param_args _args)
-   {
-      m_mutex.lock();
-      bool return_val = false;
-      auto in_path = hash::make_path(_path);
-      return_val =  m_params.set_args(in_path, _args);
-      m_mutex.unlock();
-      return return_val;
-   }
-   
-   // sets the arguments at the path
-   // usage: params::set_args(hash::make_path(var, len), {"1", "2", "3"})
-   static bool set_args(hash::path& _path, param_args _args)
+   // usage: params::set_args(hash::path(var, len), {"1", "2", "3"})
+   static bool set_args(const hash::path& _path, param_args _args)
    {
       m_mutex.lock();
       bool return_val = false;
@@ -131,22 +84,10 @@ public:
       return return_val;
    }
 
-   // gets a value at path of index.
-   // usage: params::get_args("path.to.param", 0);
-   template<typename T>
-   static const char* get_value(T&& _path, int index)
-   {
-      m_mutex.lock();
-      const char* return_val = nullptr;
-      auto hash = hash::make_path(_path);
-      return_val =  m_params.get_value(hash, index);
-      m_mutex.unlock();
-      return return_val;
-   }
    
    // gets a value at path of index.
-   // usage: params::get_args(hash::make_path(hash::make_path(var, len)), 0);
-   static const char* get_value(hash::path& _path, int index)
+   // usage: params::get_args(hash::path(hash::path(var, len)), 0);
+   static const char* get_value(const hash::path& _path, int index)
    {
       m_mutex.lock();
       const char* return_val = nullptr;
@@ -154,23 +95,10 @@ public:
       m_mutex.unlock();
       return return_val;
    }
-   
+      
    // gets the arguenents at path.
-   // usage: params::get_args("path.to.param");
-   template<typename T>
-   static param_args get_args(T&& _path)
-   {
-      m_mutex.lock();
-      param_args return_val;
-      auto hash = hash::make_path(_path);
-      return_val =  m_params.get_args(hash);
-      m_mutex.unlock();
-      return return_val;
-   }
-   
-   // gets the arguenents at path.
-   // usage: params::get_args(hash::make_path(var, len));
-   static param_args get_args(hash::path& _path)
+   // usage: params::get_args(hash::path(var, len));
+   static param_args get_args(const hash::path& _path)
    {
       m_mutex.lock();
       param_args return_val;
@@ -187,17 +115,17 @@ private:
    public:
       param(){}
       // Adds a param at the path
-      bool add(hash::path& _path, param_args _args, int _depth = 0);
+      bool add(const hash::path& _path, param_args _args, std::uint32_t _depth = 0);
       // Adds callback to paths callback list
-      bool subscribe(hash::path& _path, callback* _callback, int _depth = 0);
+      bool subscribe(const hash::path& _path, callback* _callback, std::uint32_t _depth = 0);
       // Removes callback from paths callbacks list
-      bool unsubscribe(hash::path& _path, callback* _callback, int _depth = 0);
+      bool unsubscribe(const hash::path& _path, callback* _callback, std::uint32_t _depth = 0);
       // Gets a value at the path and index
-      const char* get_value(hash::path& _path, int index, int _depth = 0);
+      const char* get_value(const hash::path& _path, std::uint32_t index, std::uint32_t _depth = 0);
       // Gets the arguements at the path
-      param_args get_args(hash::path& _path, int _depth = 0);
+      param_args get_args(const hash::path& _path, std::uint32_t _depth = 0);
       // Sets the arguments at the path
-      bool set_args(hash::path& _path, param_args _args, int _depth = 0);
+      bool set_args(const hash::path& _path, param_args _args, std::uint32_t _depth = 0);
       //
       void print(const char* _parent);
       //

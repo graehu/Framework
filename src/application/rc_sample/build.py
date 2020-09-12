@@ -1,7 +1,7 @@
 #!../../../tools/confply/confply.py
 from confply.cpp_compiler.config import *
 
-confply_tool = "clang"
+confply_tool = "clang++"
 source_files = [
     "../../main.cpp",
     "rc_sample.cpp",

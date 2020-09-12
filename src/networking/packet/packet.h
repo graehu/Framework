@@ -2,6 +2,7 @@
 #define PACKET_H
 
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <cstdio>
 #include <iosfwd>
@@ -138,7 +139,7 @@ class packet
      // try close the file.
      void CloseFile();
      // Get file bytes written
-     int GetFileSize() { return mf_file_size; }
+     std::uint32_t GetFileSize() { return mf_file_size; }
      // get file name/path
      const char* GetFileName() { return mv_file_name; }
      // if valid is true, this prints the valid contents of the packet.

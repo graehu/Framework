@@ -6,7 +6,7 @@ import confply.log as log
 confply_log_topic = "param_sample"
 log.normal("loading build.py with confply_args: "+str(confply_args))
 
-confply_tool = "clang"
+confply_tool = "clang++"
 source_files = [
     "../../main.cpp",
     "param_sample.cpp",

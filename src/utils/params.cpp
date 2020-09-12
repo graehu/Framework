@@ -36,7 +36,7 @@ namespace commandline
 	    else
 	    {
 	       std::size_t len = current->m_name.length();
-	       auto param_path = hash::make_path(current->m_name.c_str(), len);
+	       auto param_path = hash::path(current->m_name.c_str(), len);
 	       if(!params::add(param_path, current->m_args))
 	       {
 		  if(!params::set_args(param_path, current->m_args))
@@ -56,7 +56,7 @@ namespace commandline
       if(!current->m_name.empty())
       {
 	 std::size_t len = current->m_name.length();
-	 auto param_path = hash::make_path(current->m_name.c_str(), len);
+	 auto param_path = hash::path(current->m_name.c_str(), len);
 	 if(!params::add(param_path, current->m_args))
 	 {
 	    if(!params::set_args(param_path, current->m_args))
@@ -74,7 +74,7 @@ namespace commandline
    void parse(char* _string)
    {
       std::uint32_t kMaxArgs = 64;
-      int argc = 0;
+      std::uint32_t argc = 0;
       char *argv[kMaxArgs];
       char *p2 = std::strtok(_string, " ");
       while (p2 && argc < kMaxArgs-1)
@@ -125,10 +125,10 @@ void params::param::print(const char* _parent)
    }
 }
 
-bool params::param::add(hash::path& _path, param_args _args, int _depth)
+bool params::param::add(const hash::path& _path, param_args _args, std::uint32_t _depth)
 {
    bool return_val = false;
-   int i = _depth++;
+   std::uint32_t i = _depth++;
    auto it = m_params.find(_path.m_hashes[i]);
    if(it == m_params.end())
    {
@@ -173,10 +173,10 @@ bool params::param::add(hash::path& _path, param_args _args, int _depth)
    }
    return return_val;
 }
-bool params::param::subscribe(hash::path& _path, params::callback* _callback, int _depth)
+bool params::param::subscribe(const hash::path& _path, params::callback* _callback, std::uint32_t _depth)
 {
    bool return_val = false;
-   int i = _depth++;
+   std::uint32_t i = _depth++;
    auto it = m_params.find(_path.m_hashes[i]);
    if(it != m_params.end())
    {
@@ -195,10 +195,10 @@ bool params::param::subscribe(hash::path& _path, params::callback* _callback, in
    }
    return return_val;
 }
-bool params::param::unsubscribe(hash::path& _path, params::callback* _callback, int _depth)
+bool params::param::unsubscribe(const hash::path& _path, params::callback* _callback, std::uint32_t _depth)
 {
    bool return_val = false;
-   int i = _depth++;
+   std::uint32_t i = _depth++;
    auto it = m_params.find(_path.m_hashes[i]);
    if(it != m_params.end())
    {
@@ -222,10 +222,10 @@ bool params::param::unsubscribe(hash::path& _path, params::callback* _callback, 
    }
    return return_val;
 }
-const char* params::param::get_value(hash::path& _path, int _index, int _depth)
+const char* params::param::get_value(const hash::path& _path, std::uint32_t _index, std::uint32_t _depth)
 {
    const char* return_val = nullptr;
-   int i = _depth++;
+   std::uint32_t i = _depth++;
    auto it = m_params.find(_path.m_hashes[i]);
    if(it != m_params.end())
    {
@@ -240,9 +240,9 @@ const char* params::param::get_value(hash::path& _path, int _index, int _depth)
    }
    return return_val;
 }
-param_args params::param::get_args(hash::path& _path, int _depth)
+param_args params::param::get_args(const hash::path& _path, std::uint32_t _depth)
 {
-   int i = _depth++;
+   std::uint32_t i = _depth++;
    auto it = m_params.find(_path.m_hashes[i]);
    if(it != m_params.end())
    {
@@ -257,9 +257,9 @@ param_args params::param::get_args(hash::path& _path, int _depth)
    }
    return {};
 }
-bool params::param::set_args(hash::path& _path, param_args _args, int _depth)
+bool params::param::set_args(const hash::path& _path, param_args _args, std::uint32_t _depth)
 {
-   int i = _depth++;
+   std::uint32_t i = _depth++;
    auto it = m_params.find(_path.m_hashes[i]);
    if(it != m_params.end())
    {
