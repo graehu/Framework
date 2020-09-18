@@ -103,7 +103,7 @@ void connection::update(float _deltaTime)
 {
   assert(m_running);
 
-  bool accumRestart = false;
+  // bool accumRestart = false;
 
   if(m_mailList.size() == 0)
     return;

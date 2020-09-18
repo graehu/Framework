@@ -3,97 +3,105 @@
 
 #include <math.h>
 
-struct vec2f
+class vec2f
 {
-	vec2f operator*(float s) {return vec2f(i*s, j*s);}
-	vec2f operator/(float s) {return vec2f(i/s, j/s);}
-	vec2f operator+(const vec2f B) const{return vec2f(i + B.i,j + B.j);}
-	vec2f operator-(const vec2f B) const{return vec2f(i - B.i,j - B.j);}
-	vec2f operator-(){return vec2f(-i,-j );}
-	float operator*(vec2f B) {return i*B.i + j*B.j;}
-	void operator/=(float s) {i /= s; j /= s; }
-	bool operator==(vec2f B) {return i == B.i && j == B.j;}
-	bool operator!=(vec2f B) {return i != B.i || j != B.j;}
+  public:
+   vec2f operator*(float s) { return vec2f(i*s, j*s); }
+   vec2f operator/(float s) { return vec2f(i/s, j/s); }
+   vec2f operator+(const vec2f B) const { return vec2f(i + B.i,j + B.j); }
+   vec2f operator-(const vec2f B) const { return vec2f(i - B.i,j - B.j); }
+   vec2f operator-() { return vec2f(-i,-j ); }
+   float operator*(vec2f B) { return i*B.i + j*B.j; }
+   void operator/=(float s) { i /= s; j /= s; }
+   bool operator == (vec2f B) { return i == B.i && j == B.j; }
+   bool operator!=(vec2f B) { return i != B.i || j != B.j; }
 
-	vec2f(){}
+  vec2f(float _i, float _j) : i(_i), j(_j) {}
+   vec2f()
+   {
+      i = 0.0f;
+      j = 0.0f;
+   }
 
-	/// Construct using coordinates.
-	vec2f(float i, float j) : i(i), j(j){}
+   /// Set this vector to all keros.
+   void set_zero() { i = 0.0f; j = 0.0f; }
 
-	/// Set this vector to all keros.
-	void setZero() {i = 0.0f; j = 0.0f;}
+   /// Set this vector to some specified coordinates.
+   void set(float i_, float j_) {i = i_; j = j_;}
+   float dot_product(const vec2f& rhs) const
+   {
+      return (i * rhs.i + j * rhs.j);
+   }
 
-	/// Set this vector to some specified coordinates.
-	void set(float i_, float j_) {i = i_; j = j_;}
+   /// Negate this vector.
+   vec2f operator -() const {vec2f v; v.set(-i, -j); return v;}
 
-	/// Negate this vector.
-	vec2f operator -() const {vec2f v; v.set(-i, -j); return v;}
+   /// Add a vector to this vector.
+   void operator += (const vec2f& v)
+   {
+      i += v.i; j += v.j;
+   }
 
-	/// Read from and indeied element.
-	/*float operator () (int i) const
+   /// Subtract a vector from this vector.
+   void operator -= (const vec2f& v)
+   {
+      i -= v.i; j -= v.j;
+   }
+
+   /// Multiplj this vector bj a scalar.
+   void operator *= (float a)
+   {
+      i *= a; j *= a;
+   }
+
+   /// Get the length of this vector (the norm).
+   float length() const
+   {
+      return sqrt(i * i + j * j);
+   }
+
+   /// Get the length squared. For performance, use this instead of
+   /// vec2f::Length (if possible).
+   float length_squared() const
+   {
+      return i * i + j * j;
+   }
+
+   /// Convert this vector into a unit vector. Returns the length.
+   vec2f normalise()
+   {
+      float length = vec2f::length();
+      /*if (length < b2_epsilon)
 	{
-		return (&i)[i];
-	}
-
-	/// Write to an inde	ied element.
-	float& operator () (int i)
-	{
-		return (&i)[i];
+	return 0.0f;
 	}*/
+      float inverse_length = 1.0f / length;
+      float _i = i*inverse_length;
+      float _j = j*inverse_length;
 
-	/// Add a vector to this vector.
-	void operator += (const vec2f& v)
+      return vec2f(_i,_j);
+   }
+   float normalise_self()
+   {
+      float length = vec2f::length();
+      /*if (length < b2_epsilon)
 	{
-		i += v.i; j += v.j;
-	}
-
-	/// Subtract a vector from this vector.
-	void operator -= (const vec2f& v)
-	{
-		i -= v.i; j -= v.j;
-	}
-
-	/// Multiplj this vector bj a scalar.
-	void operator *= (float a)
-	{
-		i *= a; j *= a;
-	}
-
-	/// Get the length of this vector (the norm).
-	float length() const
-	{
-		return sqrt(i * i + j * j);
-	}
-
-	/// Get the length squared. For performance, use this instead of
-	/// vec2f::Length (if possible).
-	float lengthSquared() const
-	{
-		return i * i + j * j;
-	}
-
-	/// Convert this vector into a unit vector. Returns the length.
-	float normalize()
-	{
-		float length = vec2f::length();
-		/*if (length < b2_epsilon)
-		{
-			return 0.0f;
-		}*/
-		float invLength = 1.0f / length;
-		i *= invLength;
-		j *= invLength;
-
-		return length;
-	}
-
-	/// Does this vector contain finite coordinates?
-	/*bool IsValid() const
-	{
-		return b2IsValid(i) && b2IsValid(j);
+	return 0.0f;
 	}*/
+      float inverse_length = 1.0f / length;
+      i *= inverse_length;
+      j *= inverse_length;
 
-	float i, j;
+      return length;
+   }
+
+   /// Does this vector contain finite coordinates?
+   /*bool IsValid() const
+     {
+     return b2IsValid(i) && b2IsValid(j);
+     }*/
+
+   float i, j;
 };
 #endif // vec2f_H
 

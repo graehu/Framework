@@ -7,7 +7,7 @@
 #pragma comment(lib, "opengl32.lib")
 #pragma comment(lib, "glu32.lib")
 
-int wSdlGl::init(int _width, int _height, char* _name)
+int wSdlGl::init(int _width, int _height, const char* _name)
 {
 	//initialize the SDL video component
 	if (SDL_Init(SDL_INIT_VIDEO) != 0) 

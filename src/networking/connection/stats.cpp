@@ -3,9 +3,7 @@ using namespace net;
 
 stats::stats(unsigned int _maxSequence)
 {
-  this->m_rttMaximum = m_rttMaximum;
   this->m_maxSequence = _maxSequence;
-
   reset();
 }
 

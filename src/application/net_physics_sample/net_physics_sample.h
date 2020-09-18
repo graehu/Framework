@@ -21,7 +21,7 @@ class net_physics_sample : public application
  protected:
 
   bool m_looping;
-  char* m_name;
+  const char* m_name;
 
   graphics* m_graphics;
   window* m_window;

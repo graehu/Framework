@@ -30,7 +30,7 @@ class gSdlGl : public graphics, public iRenderVisitor
   iRenderVisitor* getRenderer(void);
 
   //visitor section
-  void visit(class polygon* _poly);
+   void visit(class physics::collider::polygon* _poly);
   void visit(class camera* _camera);
 
  protected:

@@ -38,12 +38,12 @@ void camera::update()
 	quaternion q;
 
 	// Make the Quaternions that will represent our rotations
-	m_qPitch.createFromAxisAngle(1.0f, 0.0f, 0.0f, m_pitchDegrees);
-	m_qHeading.createFromAxisAngle(0.0f, 1.0f, 0.0f, m_headingDegrees);
+	m_qPitch.create_from_axis_angle(1.0f, 0.0f, 0.0f, m_pitchDegrees);
+	m_qHeading.create_from_axis_angle(0.0f, 1.0f, 0.0f, m_headingDegrees);
 	
 	// Combine the pitch and heading rotations and store the results in q
 	q = m_qPitch * m_qHeading;
-	q.createMatrix(&Matrix);
+	q.create_matrix(&Matrix);
 	
 	m_view = Matrix;
 	
@@ -52,24 +52,24 @@ void camera::update()
 
 	//transposed all maths from opengl
 
-	m_qPitch.createMatrix(&Matrix);
+	m_qPitch.create_matrix(&Matrix);
 	m_DirectionVector.j = Matrix.elem[2][1];//[9];
 
 	// Combine the heading and pitch rotations and make a matrix to get
 	// the i and k vectors for our direction.
 
 	q = m_qHeading * m_qPitch;
-	q.createMatrix(&Matrix);
+	q.create_matrix(&Matrix);
 	m_DirectionVector.i = Matrix.elem[2][0];//[8]
 	m_DirectionVector.k = Matrix.elem[2][2];//[10];
 
-	m_DirectionVector.NormaliseSelf();
+	m_DirectionVector.normalise_self();
 	// Scale the direction by our speed.
 	vec3f up(0,1,0); 
 	vec3f strafeDirection;
-	strafeDirection = CrossProduct(m_DirectionVector, up);
+	strafeDirection = cross_product(m_DirectionVector, up);
 	//TODO: Find out why normalising here isn't going well.
-	strafeDirection.NormaliseSelf();
+	strafeDirection.normalise_self();
 	m_strafeVector = strafeDirection;
 	m_up.i = m_view.elem[0][1];
 	m_up.j = m_view.elem[1][1];
@@ -148,7 +148,7 @@ void camera::changeHeading(float degrees)
 		// defined so lets increment it but first we must check
 		// to see if we are inverted so that our heading will not
 		// become inverted.
-		if(m_pitchDegrees > 90 && m_pitchDegrees < 270 || (m_pitchDegrees < -90 && m_pitchDegrees > -270))
+	   if((m_pitchDegrees > 90 && m_pitchDegrees < 270) || (m_pitchDegrees < -90 && m_pitchDegrees > -270))
 		{
 			m_headingDegrees -= degrees;
 		}
@@ -180,7 +180,7 @@ void camera::changeHeading(float degrees)
 		else
 		{
 			// Check to see if we are upside down.
-			if(m_pitchDegrees > 90 && m_pitchDegrees < 270 || (m_pitchDegrees < -90 && m_pitchDegrees > -270))
+		   if((m_pitchDegrees > 90 && m_pitchDegrees < 270) || (m_pitchDegrees < -90 && m_pitchDegrees > -270))
 			{
 				// Ok we would normally increment here but since we are upside
 				// down then we need to decrement our heading.

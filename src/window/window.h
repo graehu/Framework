@@ -5,7 +5,7 @@ class window
 {
  public:
 
-  virtual int init(int _width, int _height, char* _name) = 0;
+  virtual int init(int _width, int _height, const char* _name) = 0;
   virtual int move(int _x, int _y) = 0;
   virtual int resize(int _width, int _height) = 0;
   int getHeight(){return m_height;}
@@ -16,7 +16,7 @@ class window
 
   int m_width;  //window width
   int m_height; //window height
-  char* m_name; //window name
+  const char* m_name; //window name
 
  private:
 

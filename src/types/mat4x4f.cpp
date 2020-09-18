@@ -4,18 +4,15 @@
 #include "mat4x4f.h"
 
 const mat4x4f mat4x4f::IDENTITY(1.0f,0.0f,0.0f,0.0f,
-									0.0f,1.0f,0.0f,0.0f,
-									0.0f,0.0f,1.0f,0.0f,
-									0.0f,0.0f,0.0f,1.0f);
+				0.0f,1.0f,0.0f,0.0f,
+				0.0f,0.0f,1.0f,0.0f,
+				0.0f,0.0f,0.0f,1.0f);
 
 const mat4x4f mat4x4f::NULLMATRIX(0.0f,0.0f,0.0f,0.0f,
-									  0.0f,0.0f,0.0f,0.0f,
-									  0.0f,0.0f,0.0f,0.0f,
-									  0.0f,0.0f,0.0f,0.0f);
+				  0.0f,0.0f,0.0f,0.0f,
+				  0.0f,0.0f,0.0f,0.0f,
+				  0.0f,0.0f,0.0f,0.0f);
 
-/*mat4x4f::mat4x4f(void)
-{
-}*/
 
 mat4x4f::~mat4x4f(void)
 {
@@ -157,20 +154,20 @@ void mat4x4f::rotateZ(float fAngle)
 
 void mat4x4f::lookAt(const vec3f & vFrom, const vec3f & vTo, const vec3f & vUp)
 {
-	vec3f vZ = Normalise(vFrom - vTo);
+	vec3f vZ = normalise(vFrom - vTo);
 	//vZ.Dumpvec3f("vZ");
-	vec3f vX = Normalise(vUp.Cross(vZ));
+	vec3f vX = normalise(vUp.cross_product(vZ));
 	//vX.Dumpvec3f("vX");
-	vec3f vY = vZ.Cross(vX);
+	vec3f vY = vZ.cross_product(vX);
 	//vY.Dumpvec3f("vY");
 
     elem[0][0] = vX.i;	elem[0][1] = vY.i;	elem[0][2] = vZ.i;	elem[0][3] = 0;
 	elem[1][0] = vX.j;	elem[1][1] = vY.j;	elem[1][2] = vZ.j;	elem[1][3] = 0;
 	elem[2][0] = vX.k;	elem[2][1] = vY.k;	elem[2][2] = vZ.k;	elem[2][3] = 0;
 
-	elem[3][0] = -vX.dot3(vFrom);
-	elem[3][1] = -vY.dot3(vFrom);
-	elem[3][2] = -vZ.dot3(vFrom);
+	elem[3][0] = -vX.dot_product3(vFrom);
+	elem[3][1] = -vY.dot_product3(vFrom);
+	elem[3][2] = -vZ.dot_product3(vFrom);
 	elem[3][3] = 1;
 }
 float* mat4x4f::asSingleArray()
