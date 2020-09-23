@@ -1,6 +1,8 @@
 #include "rigid_body.h"
 #include "colliders/polygon.h"
 #include "collision.h"
+#include <vector>
+
 	 // update::subscribe(update::e_late, [this](float _delta){this->late_update(_delta);});
 namespace physics
 {
@@ -24,13 +26,19 @@ namespace physics
 //      updating bodies and resolving collisions.
    void rigid_body::update(float t, float dt)
    {
-      m_previous_state = m_current_state;
+       m_previous_state = m_current_state;
       integrate(m_current_state, t, dt);
       m_current_state.forces.clear();
       //if physics are 2d. do this:
       m_current_state.position.k = 0;
       m_current_state.orientation.i = 0;
       m_current_state.orientation.j = 0;
+      // printf("t: %f i: %f v: %f\n", t, m_current_state.position.j, m_current_state.velocity.j);
+      if(m_collider != nullptr)
+      {
+	 m_collider->m_physics = this;
+	 m_collider->recalculate();
+      }
    }
    
    void rigid_body::integrate(state &_state, float t, float dt)
@@ -53,13 +61,14 @@ namespace physics
    void rigid_body::add_collider(collider::collider* _collider)
    {
       m_collider = _collider;
+      // printf("adding %p to %p\n", this, m_collider);
       m_collider->m_physics = this;
    }
 
    derivative rigid_body::evaluate(const state &_state, float t)
    {
       derivative output;
-      output.velocity = _state.velocity;
+      output.velocity = _state.velocity;//.limit(2);
       output.spin = _state.spin;
       forces(_state, t, output.force, output.torque);
       return output;
@@ -74,7 +83,7 @@ namespace physics
       _state.recalculate();
 	
       derivative output;
-      output.velocity = _state.velocity;
+      output.velocity = _state.velocity;//.limit(2);
       output.spin = _state.spin;
       forces(_state, t+dt, output.force, output.torque);
       return output;
@@ -83,7 +92,7 @@ namespace physics
    void rigid_body::forces(const state &_state, float t, vec3f &force, vec3f &torque)
    {
       // attract towards origin
-      force.j = -9.8;// * _state.position.j;
+      force.j = -9.8f;// * _state.position.j;
 
       for(int i = 0; i < m_current_state.forces.size(); i++)
 	 force = force + m_current_state.forces[i];
@@ -96,17 +105,16 @@ namespace physics
 	 auto poly = dynamic_cast<collider::polygon*>(m_collider);
 	 if(poly != nullptr)
 	 {
-	    std::vector<vec3f> temp = poly->m_vertices;
-	    mat4x4f orient;
-	    m_current_state.orientation.create_matrix(&orient);
-	    for(unsigned int i = 0; i < poly->m_vertices.size(); i++)
-	       poly->m_vertices[i] = (orient)*poly->m_vertices[i] + m_current_state.position;
 	    _renderer->visit(poly);
-	    poly->m_vertices = temp;
 	 }
       }
    }
-
+   core::transform rigid_body::get_transform()
+   {
+      mat4x4f orient;
+      m_current_state.orientation.create_matrix(&orient);
+      return {get_position(), orient};
+   }
    void rigid_body::add_collision(collision _collision)
    {
       m_collisions.push_back(_collision);
@@ -132,21 +140,6 @@ namespace physics
       };
       m_collisions.clear();
    }
-
-   // vec3f rigid_body::collide_sat(polygon* _poly)
-   // {
-   //    //Do interesting shaz here.
-   //    std::vector<vec3f> temp = m_vertices;
-   //    for(unsigned int i = 0; i < m_vertices.size(); i++)
-   // 	 m_vertices[i] = m_vertices[i] + m_current_state.position;
-   //    vec3f MTV = polygon::collide_sat(_poly);
-
-   //    m_forces.push_back(MTV*200);//*1000
-
-   //    m_current_state.position += MTV;
-   //    m_vertices = temp;
-   //    return MTV;
-   // };
 
    //todo: test this, not sure it works
    state interpolate(const state& a, const state& b, float alpha)

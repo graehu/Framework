@@ -43,6 +43,17 @@ vec3f vec3f::cross_product(const vec3f& rhs) const
 {
    return vec3f(j * rhs.k - k * rhs.j, k * rhs.i - i * rhs.k, i * rhs.j - j * rhs.i);
 }
+vec3f vec3f::limit(float _length) const
+{
+   float len = length();
+   if(len > _length)
+   {
+      vec3f temp = vec3f(i,j,k);
+      temp /= len;
+      return temp *_length;
+   }
+   return vec3f(i,j,k);
+}
 vec3f& vec3f::operator *=(const float s)
 {
    i *= s;

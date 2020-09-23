@@ -21,6 +21,7 @@ public:
    float dot_product3(const vec3f& rhs) const;
    float dot_product2(const vec3f& rhs) const;
    vec3f cross_product(const vec3f& rhs) const;
+   vec3f limit(float _length) const;
 
    vec3f & operator*=(const float s);
    vec3f & operator/=(const float s);

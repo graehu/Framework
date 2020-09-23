@@ -18,14 +18,25 @@ namespace physics
       //multi sampled collisions
       static void update()
       {
-	 
+	 for(int i = 0; i < collider::collider::m_colliders.size(); i++)
+	 {
+	    collider::collider::m_colliders[i]->late_update(0);
+	 }
 	 for(int i = 0; i < collider::collider::m_colliders.size(); i++)
 	 {
 	    collider::collider* current = collider::collider::m_colliders[i];
+	    if(i == 0)
+	    {
+	       current->recalculate();
+	    }
 	    if(current->m_physics == nullptr) continue;
 	    for (int ii = 0; ii < collider::collider::m_colliders.size(); ii++)
 	    {
 	       collider::collider* other = collider::collider::m_colliders[ii];
+	       if(i == 0)
+	       {
+		  other->recalculate();
+	       }
 	       if(other->m_collided.find(current) != other->m_collided.end()) continue;
 	       other->m_collided.insert(current);
 	       current->m_collided.insert(other);
@@ -39,7 +50,6 @@ namespace physics
 	       }
 	    }
 	 }
-
 	 for(int i = 0; i < collider::collider::m_colliders.size(); i++)
 	 {
 	    collider::collider* current = collider::collider::m_colliders[i];

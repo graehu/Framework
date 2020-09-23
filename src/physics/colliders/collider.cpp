@@ -10,7 +10,6 @@ namespace physics
       collider::collider()
       {
 	 collider::m_colliders.push_back(this);
-	 recalculate();
       }
       void collider::depenetrate(vec3f newMTV)
       {
@@ -53,7 +52,7 @@ namespace physics
 	 if(m_physics != nullptr)
 	 {
 	    vec3f pos = m_physics->get_position();
-	    m_physics->set_position(pos+m_mtv);
+	    m_physics->set_position(pos+m_mtv); //todo should subtract m_position here probably.
 	 }
 	 m_mtv = vec3f();
 	 m_mtvs.clear();

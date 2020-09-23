@@ -19,7 +19,9 @@ namespace physics
 	 void render(iRenderVisitor* _renderer) { _renderer->visit(this); }
 	 ///Stores the vertices that make up the body.
 	 std::vector<vec3f> m_vertices;
-	 std::vector<vec3f> m_normals;
+	 //
+	 std::vector<vec3f> m_transformed_vertices;
+	 std::vector<vec3f> m_transformed_normals;
       protected:
 
       private:

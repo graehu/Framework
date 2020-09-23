@@ -5,6 +5,7 @@
 #include <vector>
 #include "physics_state.h"
 #include "collision.h"
+#include "../types/transform.h"
 
 namespace physics
 {
@@ -22,6 +23,7 @@ namespace physics
       void set_position(vec3f _position) { m_current_state.position = _position; }
       void add_collision(collision _collision);
       quaternion get_orientation(void) { return m_current_state.orientation; }
+      core::transform get_transform();
 
       void render(class iRenderVisitor* _renderer);
       ///Update physics state.

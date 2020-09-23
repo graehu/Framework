@@ -40,22 +40,24 @@ namespace physics
       {
 	 collision collision;
 	 collider::polygon polys[] = {poly1, poly2};
-	 auto num_polys = sizeof(polys)/sizeof(collider::polygon);
+	 auto num_polys = 2;//sizeof(polys)/sizeof(collider::polygon);
 	 float  minOverlap = -99999.0f;
 	 std::vector<vec3f> tested;
 	 for(int i = 0; i < num_polys; i++)
 	 {
-	    for(int ii = 0; ii < polys[i].m_vertices.size(); ii++)
+	    // printf("v: %zu n: %zu\n", polys[i].m_transformed_vertices.size(), polys[i].m_transformed_normals.size());
+	    for(int ii = 0; ii < polys[i].m_transformed_vertices.size(); ii++)
 	    {
-	       vec3f normal = polys[i].m_normals[ii];
+	       vec3f normal = polys[i].m_transformed_normals[ii];
 	       if(std::find(tested.begin(), tested.end(), normal) != tested.end())
 	       {
 		  continue;
 	       }
 	       tested.push_back(normal);
+	       // printf("...\n");
 	       //Find the projected shape's ranges on the normal.
-	       vec3f range1 = project_points(normal, polys[i].m_vertices);// , debug);
-	       vec3f range2 = project_points(normal, polys[(i+1)%2].m_vertices);
+	       vec3f range1 = project_points(normal, polys[i].m_transformed_vertices);// , debug);
+	       vec3f range2 = project_points(normal, polys[(i+1)%2].m_transformed_vertices);
 	       if(i == 0 && !collide_ranges(range1, range2, -normal, collision, minOverlap)) return {};
 	       else if(!collide_ranges(range1, range2, normal, collision, minOverlap)) return {};
 	    }
@@ -91,9 +93,9 @@ namespace physics
 	 float  minOverlap = -99999.0f;
 	 std::vector<vec3f> tested;
 	 vec3f testVert;
-	 for(int i = 0; i < _poly.m_vertices.size(); i++)
+	 for(int i = 0; i < _poly.m_transformed_vertices.size(); i++)
 	 {
-	    vec3f normal = _poly.m_normals[i];
+	    vec3f normal = _poly.m_transformed_normals[i];
 	    if(std::find(tested.begin(), tested.end(), normal) != tested.end())
 	    {
 	       continue;
@@ -101,12 +103,12 @@ namespace physics
 	    tested.push_back(normal);
 	    // Debug.Log("i = " + i + " i-1 = " + ((i+poly.Length-1)%poly.Length));
 	    //todo: find a better way construct vec3 from vec2 while mainitaining vec2 to vec3?
-	    vec3f prevNorm = _poly.m_normals[(i+_poly.m_vertices.size()-1)%_poly.m_vertices.size()];
-	    float side1 = collision.find_point_side(circle.m_center, vec3f(_poly.m_vertices[i].i, _poly.m_vertices[i].j), prevNorm);
-	    float side2 = collision.find_point_side(circle.m_center, vec3f(_poly.m_vertices[i].i, _poly.m_vertices[i].j), normal);
+	    vec3f prevNorm = _poly.m_transformed_normals[(i+_poly.m_transformed_vertices.size()-1)%_poly.m_transformed_vertices.size()];
+	    float side1 = collision.find_point_side(circle.m_center, vec3f(_poly.m_transformed_vertices[i].i, _poly.m_transformed_vertices[i].j), prevNorm);
+	    float side2 = collision.find_point_side(circle.m_center, vec3f(_poly.m_transformed_vertices[i].i, _poly.m_transformed_vertices[i].j), normal);
 	    if(side1 == -1 && side2 == 1)
 	    {
-	       testVert = _poly.m_vertices[i];
+	       testVert = _poly.m_transformed_vertices[i];
 	       // if(debug)
 	       // {
 	       // 	  Debug.DrawLine(testVert, testVert+prevNorm, Color.cyan);
@@ -114,7 +116,7 @@ namespace physics
 	       // }
 	    }
 	    //Find the projected shape's ranges on the normal.
-	    vec3f range1 = project_points(normal, _poly.m_vertices);
+	    vec3f range1 = project_points(normal, _poly.m_transformed_vertices);
 	    vec3f range2 = project_circle(normal, circle.m_center, circle.m_radius);
 
 	    if(!collide_ranges(range1, range2, normal, collision, minOverlap)) return {};
@@ -125,7 +127,7 @@ namespace physics
 	    vec3f normal = testVert-circle.m_center;
 	    normal.normalise_self();
 	    //Find the projected shape's ranges on the normal.
-	    vec3f range1 = project_points(normal, _poly.m_vertices);
+	    vec3f range1 = project_points(normal, _poly.m_transformed_vertices);
 	    vec3f range2 = project_circle(normal, circle.m_center, circle.m_radius);
 
 	    if(!collide_ranges(range1, range2, normal, collision, minOverlap)) return {};
