@@ -11,6 +11,7 @@
 #include <sys/signal.h>
 #include <unistd.h>
 
+using namespace fw;
 using namespace net;
 
 int socket::setup_signals()

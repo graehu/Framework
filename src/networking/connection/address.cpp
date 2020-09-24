@@ -3,6 +3,7 @@
 #include "../../utils/log/log.h"
 
 using namespace net;
+using namespace fw;
 
 address::address()
 {

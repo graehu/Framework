@@ -24,6 +24,7 @@
 #include <chrono>
 #include <type_traits>
 
+using namespace fw;
 
 net::http_server::http_server(unsigned int port) :
    mv_handler(nullptr),
