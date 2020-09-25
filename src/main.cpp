@@ -12,8 +12,8 @@
 //                      int       nCmdShow)
 int main(int argc, char *argv[])
 {
-   commandline::arg_count = argc;
-   commandline::arg_variables = argv;
+   fw::commandline::arg_count = argc;
+   fw::commandline::arg_variables = argv;
    application* l_app = application::mf_factory();
    l_app->mf_run();
    return 0; 

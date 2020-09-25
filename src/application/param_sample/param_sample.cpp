@@ -5,6 +5,8 @@
 #include <string>
 #include <unordered_map>
 
+using namespace fw;
+
 static std::unordered_map<std::string,log::level> const to_level = {
       {"no_logs", log::level::e_no_logging},
       {"debug", log::level::e_debug},

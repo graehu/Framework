@@ -5,6 +5,7 @@
 #include <cstdarg>
 #include <fstream>
 
+using namespace fw;
 using namespace net;
 
 BasePacket::BasePacket()

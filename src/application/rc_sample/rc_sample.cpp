@@ -12,6 +12,8 @@
 #include <cstring>
 #include <string>
 
+using namespace fw;
+
 application* application::mf_factory()
 {
    static bool do_once = true;
