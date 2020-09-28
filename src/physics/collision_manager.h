@@ -3,7 +3,7 @@
 
 #include "colliders/collider.h"
 #include "rigid_body.h"
-#include <exception>
+#include "../utils/log/log.h"
 
 namespace physics
 {
@@ -18,45 +18,54 @@ namespace physics
       //multi sampled collisions
       static void update()
       {
-	 for(int i = 0; i < collider::collider::m_colliders.size(); i++)
+	 fw::log::timer col_update("col_update");
 	 {
-	    collider::collider::m_colliders[i]->late_update(0);
-	 }
-	 for(int i = 0; i < collider::collider::m_colliders.size(); i++)
-	 {
-	    collider::collider* current = collider::collider::m_colliders[i];
-	    if(i == 0)
+	    fw::log::timer col_cols("col_cols");
+	    for(int i = 0; i < collider::collider::m_colliders.size(); i++)
 	    {
-	       current->recalculate();
-	    }
-	    if(current->m_physics == nullptr) continue;
-	    for (int ii = 0; ii < collider::collider::m_colliders.size(); ii++)
-	    {
-	       collider::collider* other = collider::collider::m_colliders[ii];
+	       collider::collider* current = collider::collider::m_colliders[i];
 	       if(i == 0)
 	       {
-		  other->recalculate();
+		  current->recalculate();
 	       }
-	       if(other->m_collided.find(current) != other->m_collided.end()) continue;
-	       other->m_collided.insert(current);
-	       current->m_collided.insert(other);
-	       if(other != current)
+	       if(current->m_physics == nullptr) continue;
+	       for (int ii = 0; ii < collider::collider::m_colliders.size(); ii++)
 	       {
-		  //todo: fix the bounds check.
-		  //if(current.bounds.Intersects(other.bounds))
-		  //{
-		  current->collide(*other);
-		  //}
+		  collider::collider* other = collider::collider::m_colliders[ii];
+		  if(i == 0)
+		  {
+		     other->recalculate();
+		  }
+		  if(other->m_collided.find(current) != other->m_collided.end()) continue;
+		  other->m_collided.insert(current);
+		  current->m_collided.insert(other);
+		  if(other != current)
+		  {
+		     if(current->m_bounds.touching(other->m_bounds))
+		     {
+			current->collide(*other);
+		     }
+		  }
 	       }
 	    }
 	 }
-	 for(int i = 0; i < collider::collider::m_colliders.size(); i++)
 	 {
-	    collider::collider* current = collider::collider::m_colliders[i];
-	    current->m_collided.clear();
-	    if(current->m_physics != nullptr)
+	    fw::log::timer col_late("col_late_update");
+	    for(int i = 0; i < collider::collider::m_colliders.size(); i++)
 	    {
-	       current->m_physics->resolve_collisions();
+	       collider::collider::m_colliders[i]->late_update(0);
+	    }
+	 }
+	 {
+	    fw::log::timer col_resolve("col_resolve");
+	    for(int i = 0; i < collider::collider::m_colliders.size(); i++)
+	    {
+	       collider::collider* current = collider::collider::m_colliders[i];
+	       current->m_collided.clear();
+	       if(current->m_physics != nullptr)
+	       {
+		  current->m_physics->resolve_collisions();
+	       }
 	    }
 	 }
       }

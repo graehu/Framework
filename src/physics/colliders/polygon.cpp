@@ -51,8 +51,11 @@ namespace physics
 	    // printf("re cal n %p\n", this);	
 	    m_bounds.center = m_position;
 	 }
-	 m_transformed_normals.resize(m_vertices.size());
-	 m_transformed_vertices.resize(m_vertices.size());
+	 if (m_transformed_vertices.size() != m_vertices.size())
+	 {
+	    m_transformed_normals.resize(m_vertices.size());
+	    m_transformed_vertices.resize(m_vertices.size());  
+	 }
 	 //todo: add a transform to this physics stuff?
 	 for(int i = 0; i < m_vertices.size(); i++)
 	 {

@@ -37,3 +37,4 @@ debug_info = True
 link_libraries = ["stdc++", "m", "SDLmain", "SDL", "SDL_image", "OpenGL", "GL"]
 standard = "c++17"
 output_file = "net_physics_sample.bin"
+confply_log_config = False

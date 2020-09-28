@@ -75,7 +75,10 @@ GLuint textureGen(SDL_Surface* _surface)
 int gSdlGl::init()
 {
    m_windowSurface = SDL_GetVideoSurface();
-   SDL_SetColorKey(m_windowSurface, SDL_SRCCOLORKEY | SDL_RLEACCEL, SDL_MapRGB(m_windowSurface->format, 0xff, 0x00, 0xff));
+   if(m_windowSurface != nullptr)
+   {
+      SDL_SetColorKey(m_windowSurface, SDL_SRCCOLORKEY | SDL_RLEACCEL, SDL_MapRGB(m_windowSurface->format, 0xff, 0x00, 0xff));
+   }
    return 0;
 }
 
