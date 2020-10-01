@@ -1,13 +1,7 @@
-.cproject
-Debug
-.project
-.settings
-hi.png
 .clangd/
-*CMakeFiles/
-*CMakeCache.txt
-*.cmake
 *.*~
-*Makefile
 *.bin
-bin/
+*.exe
+*.elf
+*.o
+*.d
