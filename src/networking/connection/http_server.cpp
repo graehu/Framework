@@ -90,7 +90,7 @@ namespace net
 }
 
 bool send_file(const net::address& lv_address,  net::socket& lv_socket,  net::http_packet& lv_packet, uint32_t start, uint32_t end);
-int write_response_header(net::http_packet& lv_packet, std::string request, int& start, int& end);
+int write_response_header(net::http_packet& lv_packet, std::string_view request, int& start, int& end);
 
 void net::http_server::mf_server_thread(const socket& in_socket)
 {
@@ -151,7 +151,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 	       lv_packet.SetLength(lv_bytes_read);
 	       lv_packet.PrintDetails();
 	       // todo: this should be a string_view but emacs wont stop complaining.
-	       std::string view((char*)lv_packet.GetData());
+	       std::string_view view((char*)lv_packet.GetData());
 	       auto http_loc = view.find("HTTP/");
 	       if (view.find("Connection: keep-alive") != std::string::npos || view.find("Connection: Keep-Alive") != std::string::npos)
 	       {
@@ -165,7 +165,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 		  {
 		     lv_packet.Clear();
 		     // todo: fix this
-		     std::string get_request = view.substr(get_loc + 5, http_loc - 6);
+		     std::string get_request(view.substr(get_loc + 5, http_loc - 6));
 		     log::debug("get: /%s", get_request.c_str());
 		     //
 		     if (get_request.compare("ws") == 0)
@@ -188,7 +188,8 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 			{
 			   // todo: generate different GUIDs?
 			   const char GUID[] = {"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"};
-			   std::string key = view.substr(key_start_loc, key_end_loc) + GUID;
+			   std::string key(view.substr(key_start_loc, key_end_loc));
+			   key += GUID;
 			   unsigned char sha[20];
 			   net::encrypt::SHA1(sha, (unsigned char *)key.data(), key.length());
 			   net::encode::Base64(&hash[0], &sha[0], sizeof(sha));
@@ -299,12 +300,12 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 		     auto post_loc = view.find("POST /");
 		     if(post_loc != std::string::npos)
 		     {
-			std::string post_request = view.substr(post_loc + 5, http_loc - 6);
-			log::debug("post request: %s", post_request.c_str());
+			std::string post_request(view.substr(post_loc + 5, http_loc - 6));
+			log::debug("post request: %.*s", post_request.length(), post_request.data());
 			if(std::ends_with(post_request, "/params"))
 			{
 			   //todo: this can be a string view
-			   std::string body = (char*)lv_packet.GetData();
+			   std::string_view body((char*)lv_packet.GetData(), lv_packet.GetSize());
 			   auto body_pos = body.find("\r\n\r\n");
 			   if(body_pos != std::string::npos && (body.length()-body_pos) > 4)
 			   {
@@ -467,13 +468,13 @@ bool send_file(const net::address& lv_address,  net::socket& lv_socket,  net::ht
    log::debug("file not open...");
    return false;
 }
-int write_response_header(net::http_packet& lv_packet, std::string request, int& start, int& end)
+int write_response_header(net::http_packet& lv_packet, std::string_view request, int& start, int& end)
 {
    if(lv_packet.IsFileOpen())
    {
       lv_packet.Clear();
-      std::string lv_file_name(lv_packet.GetFileName());
-      std::string lv_content_type;
+      std::string_view lv_file_name(lv_packet.GetFileName());
+      std::string_view lv_content_type;
       if(lv_file_name.find(".html") != std::string::npos)
       {
 	 lv_content_type = "Content-Type: text/html\r\n";
@@ -498,7 +499,7 @@ int write_response_header(net::http_packet& lv_packet, std::string request, int&
       {
 	 auto lv_end_offset = request.find("\r\n", partial)-(partial+sizeof(lv_range_str)-1);
 
-	 std::string lv_partial_range = request.substr(partial+sizeof(lv_range_str)-1, lv_end_offset);
+	 std::string lv_partial_range(request.substr(partial+sizeof(lv_range_str)-1, lv_end_offset));
 	 int lv_num_left = 0;
 	 int lv_num_right = 0;
 
@@ -520,9 +521,9 @@ int write_response_header(net::http_packet& lv_packet, std::string request, int&
 	 if(partial_bytes > 0)
 	 {
 	    lv_packet.IterWrite("HTTP/1.1 206 Partial Content\r\n");
-	    lv_packet.IterWrite(lv_content_type.c_str(), lv_content_type.length());
+	    lv_packet.IterWrite(lv_content_type.data(), lv_content_type.length());
 	    lv_packet.IterWrite("Content-Length: ");
-	    lv_packet.IterWrite(lv_content_length.c_str(), lv_content_length.length());
+	    lv_packet.IterWrite(lv_content_length.data(), lv_content_length.length());
 	    lv_packet.IterWrite("\r\n");
 	    lv_packet.IterWrite("Connection: Keep-Alive\r\n");
 	    lv_packet.IterWrite("Accept-Ranges: bytes\r\n");
@@ -540,11 +541,11 @@ int write_response_header(net::http_packet& lv_packet, std::string request, int&
 	 else
 	 {
 	    lv_packet.IterWrite("HTTP/1.1 416 Range Not Satisfiable\r\n");
-	    lv_packet.IterWrite(lv_content_type.c_str(), lv_content_type.length());
+	    lv_packet.IterWrite(lv_content_type.data(), lv_content_type.length());
 	    lv_packet.IterWrite("Connection: Keep-Alive\r\n");
 	    lv_packet.IterWrite("Accept-Ranges: bytes\r\n");
 	    lv_packet.IterWrite("Content-Length: ");
-	    lv_packet.IterWrite(lv_file_size.c_str(), lv_file_size.length());
+	    lv_packet.IterWrite(lv_file_size.data(), lv_file_size.length());
 	    lv_packet.IterWrite("\r\n\r\n");
 	    lv_packet.PrintDetails();
 	    return 416;
@@ -553,11 +554,11 @@ int write_response_header(net::http_packet& lv_packet, std::string request, int&
       else
       {
 	 lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
-	 lv_packet.IterWrite(lv_content_type.c_str(), lv_content_type.length());
+	 lv_packet.IterWrite(lv_content_type.data(), lv_content_type.length());
 	 lv_packet.IterWrite("Connection: Keep-Alive\r\n");
 	 lv_packet.IterWrite("Accept-Ranges: bytes\r\n");
 	 lv_packet.IterWrite("Content-Length: ");
-	 lv_packet.IterWrite(lv_file_size.c_str(), lv_file_size.length());
+	 lv_packet.IterWrite(lv_file_size.data(), lv_file_size.length());
 	 lv_packet.IterWrite("\r\n\r\n");
 	 lv_packet.PrintDetails();
 	 return 200;
