@@ -33,7 +33,7 @@ void TMXLoader::cleanup()
 
 bool 	TMXLoader::VisitEnter  (const TiXmlDocument  &doc)
 {
-    return true; //TODO: for performance, we may not want to return true for each of these callbacks for the visitor pattern.
+    return true; // #TODO: for performance, we may not want to return true for each of these callbacks for the visitor pattern.
 }
 
 bool 	TMXLoader::VisitExit (const TiXmlDocument &doc)
@@ -50,7 +50,7 @@ bool 	TMXLoader::VisitEnter (const TiXmlElement &elem, const TiXmlAttribute *att
         //elem.Attribute("tileheight");
         //elem.Attribute("tilewidth");
 
-        //TODO: get width and height, and tilewidth and tileheight
+        // #TODO: get width and height, and tilewidth and tileheight
         //m_layer_width =
 
     }
@@ -63,7 +63,7 @@ bool 	TMXLoader::VisitEnter (const TiXmlElement &elem, const TiXmlAttribute *att
         elem.Attribute("spacing", &m_TileSpacing);
         elem.Attribute("margin", &m_TilesetMargin);
 
-        //TODO: get spacing and margin
+        // #TODO: get spacing and margin
     }
     else if (string("image") == elem.Value()) {
         //string attrib = attrib.ValueStr();

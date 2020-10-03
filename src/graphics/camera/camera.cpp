@@ -7,7 +7,7 @@ return (val > T(0)) - (val < T(0));
 }
 
 
-//TODO: make this camera more user friendly. probably need to add deceleration
+// #TODO: make this camera more user friendly. probably need to add deceleration
 
 camera::camera()
 {
@@ -68,7 +68,7 @@ void camera::update()
 	vec3f up(0,1,0); 
 	vec3f strafeDirection;
 	strafeDirection = CrossProduct(m_DirectionVector, up);
-	//TODO: Find out why normalising here isn't going well.
+	// #TODO: Find out why normalising here isn't going well.
 	strafeDirection.NormaliseSelf();
 	m_strafeVector = strafeDirection;
 	m_up.i = m_view.elem[0][1];

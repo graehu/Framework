@@ -26,7 +26,7 @@ namespace net
       };
       http_server(unsigned int port);
       ~http_server();
-      //todo: unique pointer or something?
+      // #todo: accept multiple handlers
       void mf_set_handler(handler* handler) { mv_handler = handler; }
       
    protected:

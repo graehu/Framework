@@ -15,7 +15,7 @@ rigidBody::rigidBody()
 	previous = current;
 }
 
-//TODO: this needs to be done differently.
+// #TODO: this needs to be done differently.
 //      the physics engine should be the thing
 //      updating bodies and resolving collisions.
 void rigidBody::update(float t, float dt)

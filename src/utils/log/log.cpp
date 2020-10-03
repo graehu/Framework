@@ -134,7 +134,7 @@ namespace fw
 // sets the topic, for the current thread.
       bool topics::set_topic_internal(std::uint32_t _hash)
       {
-	 //todo: locks are a bit wide here.
+	 // #todo: locks are a bit wide here.
 	 g_log_mutex.lock();
 	 bool success = false;
 	 auto this_id = std::this_thread::get_id();
