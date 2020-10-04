@@ -1,3 +1,6 @@
 [submodule "tools/confply"]
 	path = tools/confply
 	url = git@github.com:graehu/confply.git
+[submodule "tools/ta-git"]
+	path = tools/ta-git
+	url = git@github.com:graehu/ta-git.git

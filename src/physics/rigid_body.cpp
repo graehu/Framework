@@ -21,7 +21,7 @@ namespace physics
       m_previous_state = m_current_state;
    }
 
-//TODO: this needs to be done differently.
+// #TODO: this needs to be done differently.
 //      the physics engine should be the thing
 //      updating bodies and resolving collisions.
    void rigid_body::update(float t, float dt)
@@ -141,7 +141,7 @@ namespace physics
       m_collisions.clear();
    }
 
-   //todo: test this, not sure it works
+   // #todo: test this, not sure it works
    state interpolate(const state& a, const state& b, float alpha)
    {
       state state = b;

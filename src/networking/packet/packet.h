@@ -119,14 +119,14 @@ class packet
     template <typename T>
     T IterRead(void)
     {
-      //todo: make safe?
+      // #todo: make safe?
       T temp = *((T*)&GetData()[end]);
       end += sizeof(T);
       return temp;
     }
     void IterRead(unsigned char& buffer, size_t read_length)
     {
-      //todo: make safe?
+      // #todo: make safe?
       memcpy(&buffer, &GetData()[end], read_length);
       end += read_length;
     }

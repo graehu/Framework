@@ -8,17 +8,16 @@
 #include <mutex>
 #include "hasher.h"
 
-/*
-Params are global variables, which can be set
-via the commandline or programatically.
 
-Ideally they should be efficent to lookup and set.
-Additions are less time dependent.
+/*
+#doc: Params are global variables, which can be set via the commandline or programatically.
+#doc: Ideally they should be efficent to lookup and set.
+#doc: Additions are less time dependent.
 */
 
-// todo: remove top level params mutex and add per param mutexes.
-// todo: add "get_param" returning const param object.
-// todo: auto migrate subscriptions from parents to params that don't exist yet.
+// #todo: remove top level params mutex and add per param mutexes. write only locks?
+// #todo: add "get_param" returning const param object.
+// #todo: auto migrate subscriptions from parents to params that don't exist yet.
 namespace fw
 {
    namespace commandline

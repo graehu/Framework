@@ -154,7 +154,7 @@ bool socket::openSock(unsigned short port)
       case eGameSocket:
 	 break;
       case eHttpSocket:
-	 //TODO: do something about this random limit here.
+	 // #TODO: do something about this random limit here.
 	 if(listen(m_socket, 8) < 0)
 	 {
 	    log::debug("failed to listen on socket");

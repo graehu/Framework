@@ -43,7 +43,7 @@ namespace net
    public:
       void mf_get_response(const char* request, http_server::handler::send_callback callback) override
       {
-	 //todo: test this because i don't think it works.
+	 // #todo: test this because i don't think it works.
 	 if(strcmp(request, "custom") == 0)
 	 {
 	    callback("you suck", sizeof("you suck"));

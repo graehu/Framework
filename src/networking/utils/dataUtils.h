@@ -29,7 +29,7 @@ public:
   template <typename T>
   T readData(unsigned char* _data)
   {
-    //TODO: Find a way to do this in a more generic way
+    // #TODO: Find a way to do this in a more generic way
     //      like writeData.
     unsigned int size = sizeof(T);
     if(size == 1)

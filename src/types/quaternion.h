@@ -5,7 +5,8 @@
 #include <cassert>
 
 #define PI			3.14159265358979323846
-const float epsilon = 0.00001f;                         ///< floating point epsilon for single precision. todo: verify epsilon value and usage
+// #todo: verify epsilon value and usage
+const float epsilon = 0.00001f;                         ///< floating point epsilon for single precision.
 const float epsilonSquared = epsilon * epsilon;         ///< epsilon value squared
 
 class quaternion  

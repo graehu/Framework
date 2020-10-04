@@ -40,7 +40,7 @@ namespace physics
       //resolve stored up collisions
       void resolve_collisions();
      protected:
-      //todo: support more colliders than one.
+      // #todo: support more colliders than one.
       collider::collider* m_collider = nullptr;
       state m_previous_state;
       state m_current_state;

@@ -42,13 +42,13 @@ net::http_server::http_server(unsigned int port) :
       
    net::socket lv_listen_socket(net::socket::eHttpSocket);
    for(int i = 0; !lv_listen_socket.openSock(port+i) && i < 100; i++) { }
-   //todo: find out exactly how unsafe this is.
+   // #todo: find out exactly how unsafe this is.
    lv_listen_socket.mf_set_keepalive(true);
    mv_server_thread = new std::thread(&net::http_server::mf_server_thread, this, lv_listen_socket);
 }
 namespace net
 {
-   //todo: test a smaller packet.
+   // #todo: test a smaller packet.
    typedef NewPacket<33068> http_packet;
    // typedef NewPacket<16384> http_packet;
    // typedef NewPacket<8192> http_packet;
@@ -150,7 +150,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 	    {
 	       lv_packet.SetLength(lv_bytes_read);
 	       lv_packet.PrintDetails();
-	       // todo: this should be a string_view but emacs wont stop complaining.
+	       //  #todo: this should be a string_view but emacs wont stop complaining.
 	       std::string_view view((char*)lv_packet.GetData());
 	       auto http_loc = view.find("HTTP/");
 	       if (view.find("Connection: keep-alive") != std::string::npos || view.find("Connection: Keep-Alive") != std::string::npos)
@@ -164,12 +164,15 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 		  if(get_loc != std::string::npos)
 		  {
 		     lv_packet.Clear();
-		     // todo: fix this
+		     //  #note: these aren't magic numbers, but it could be clearer
+		     //         +5 is len of GET / and the start of http_loc is always 6 chars longer
+		     //         than the request.
 		     std::string get_request(view.substr(get_loc + 5, http_loc - 6));
 		     log::debug("get: /%s", get_request.c_str());
 		     //
 		     if (get_request.compare("ws") == 0)
 		     {
+			//  #todo: Move this to a custom handler and support multiple custom handlers.
 			//
 			// Handle WS upgrade request
 			//
@@ -186,7 +189,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 			// Generating a sha key and encoding it into
 			// base64 hash.
 			{
-			   // todo: generate different GUIDs?
+			   //  #todo: generate different GUIDs?
 			   const char GUID[] = {"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"};
 			   std::string key(view.substr(key_start_loc, key_end_loc));
 			   key += GUID;
@@ -218,6 +221,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 			//
 			const char *lv_request = get_request.length() == 0 ? "index.html" : get_request.c_str();
 			std::string lv_request_view(lv_request);
+			//  #todo: check for multiple custom handlers.
 			bool lv_handled = false;
 			if (mv_handler != nullptr)
 			{
@@ -233,6 +237,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 			}
 			if (lv_handled != true)
 			{
+			   //  #todo: move this not handled code into a func, if possible
 			   std::string lv_file_path;
 			   if (mv_handler != nullptr)
 			   {
@@ -241,7 +246,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 			   lv_file_path.append(lv_request);
 			   if(lv_file_path.find("../") != std::string::npos)
 			   {
-			      // todo: write access denied
+			      //  #todo: return access denied code.
 			      // not allowing ../, illegal access pattern.
 			      lf_html_404();
 			   }
@@ -261,7 +266,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 				    {
 				       if(start == 0 && end == 0)
 				       {
-					  //todo: this assumes about a 500kbs download speed.
+					  // #todo: this assumes about a 500kbs download speed.
 					  //      try to drive this via some metric rather than
 					  //      with a static magic number.
 					  lv_timeout = ((float)(lv_packet.GetFileSize()))/500000.0;
@@ -304,7 +309,6 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 			log::debug("post request: %.*s", post_request.length(), post_request.data());
 			if(std::ends_with(post_request, "/params"))
 			{
-			   //todo: this can be a string view
 			   std::string_view body((char*)lv_packet.GetData(), lv_packet.GetSize());
 			   auto body_pos = body.find("\r\n\r\n");
 			   if(body_pos != std::string::npos && (body.length()-body_pos) > 4)
@@ -370,12 +374,12 @@ void net::http_server::mf_ws_thread(const net::socket& from, const net::address&
    bool lv_is_connected = true;
    while (mv_running && lv_is_connected)
    {
-      // todo: this might not be thread safe, I'm not sure.
+      //  #todo: test if this is thread safe
       auto lv_ws_send =
 	 [&lv_packet, &ws_header, &lv_socket, &lv_address, &lv_is_connected]
 	 (const char *message,size_t size)
 	 {
-	    // todo: make sure the correct message size is written here.
+	    //  #todo: split packets that are too big for websocket, or bail
 	    lv_packet.Clear();
 	    ws_header.length = size - 1;
 	    lv_packet.IterWrite(ws_header);

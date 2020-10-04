@@ -1,7 +1,7 @@
 #ifndef MAT4X4F_H
 #define MAT4X4F_H
 
-//TODO: This file does not follow current conventions. Fix this.
+// #TODO: This file does not follow current conventions. Fix this.
 
 #include "vec3f.h"
 
