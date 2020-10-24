@@ -3,11 +3,13 @@
 #include <cstdarg>
 #include <cstring>
 #include <memory>
+#include <queue>
 #include <string>
 #include "../string_helpers.h"
 #include <mutex>
 #include <unordered_map>
 #include <iostream>
+
 namespace fw
 {
    namespace log
@@ -24,38 +26,47 @@ namespace fw
 	 {"macro", level::e_macro},
 	 {"warning", level::e_warning}
       };
-      void topics::logline(log::level _level, const char* _message, std::va_list args)
+      void topics::logline(log::level _level, const char* _message, fmt::format_args _args)
       {
 	 auto this_id = std::this_thread::get_id();
 	 auto thread_topic = m_thread_topic[this_id];
 	 if(thread_topic != 0)
 	 {
-	    m_topics[thread_topic]->logline(_level, _message, args);
+	    m_topics[thread_topic]->logline(_level, _message, _args);
 	 }
       }
-      void topic::logline(level _level, const char* _message, va_list args)
+      // static std::stack;
+      static std::string log_queue;
+      void topic::logline(level _level, const char* _message, fmt::format_args _args)
       {
 	 if (_level <= m_level && _level > e_no_logging)
 	 {
-	    printf("[%s] ", m_name);
-	    vprintf(_message, args);
-	    printf("\n");
+#ifndef NO_LOG_LABELS
+	    fmt::vprint(m_label + _message, _args);
+#else
+	    fmt::vprint(_message, _args);
+#endif
+	    puts("");
 	 }
       }
-      void topics::log(log::level _level, const char* _message, std::va_list args)
+      void topics::log(log::level _level, const char* _message, fmt::format_args _args)
       {
 	 auto this_id = std::this_thread::get_id();
 	 auto thread_topic = m_thread_topic[this_id];
 	 if(thread_topic != 0)
 	 {
-	    m_topics[thread_topic]->log(_level, _message, args);
+	    m_topics[thread_topic]->log(_level, _message, _args);
 	 }
       }
-      void topic::log(level _level, const char* _message, va_list args)
+      void topic::log(level _level, const char* _message, fmt::format_args _args)
       {
 	 if (_level <= m_level && _level > e_no_logging)
 	 {
-	    vprintf(_message, args);
+#ifndef NO_LOG_LABELS
+	    fmt::vprint(m_label + _message, _args);
+#else
+	    fmt::vprint(_message, _args);
+#endif
 	 }
       }
       bool topic::param_cb(const char* _param, const param_args& _args)
@@ -73,7 +84,7 @@ namespace fw
 		     printf("[%s] set log level to %s\n", m_name, _args[0].c_str());
 		     m_level = new_level->second;
 		  }
-	       } 
+	       }
 	    };
 	 bool subscribe = true;
 	 std::string log_level = "log.level.";
@@ -214,89 +225,56 @@ namespace fw
 	 return 0;
       }
       // log severity info.
-      void info(const char* _message, ...)
-      {
-	 va_list args;
-	 va_start(args, _message);
-	 topics::logline(log::e_info, _message, args);
-	 va_end(args);
-      }
-// log severity warning.
-      void warning(const char* _message, ...)
-      {
-	 va_list args;
-	 va_start(args, _message);
-	 topics::logline(log::e_warning, _message, args);
-	 va_end(args);
-      }
-// log severity error.
-      void error(const char* _message, ...)
-      {
-	 va_list args;
-	 va_start(args, _message);
-	 topics::logline(log::e_error, _message, args);
-	 va_end(args);
-      }
-// log severity debug.
-      void debug(const char* _message, ...)
-      {
-	 va_list args;
-	 va_start(args, _message);
-	 topics::logline(log::e_debug, _message, args);
-	 va_end(args);
-      }
-      void macro(const char* _message, ...)
-      {
-	 va_list args;
-	 va_start(args, _message);
-	 topics::logline(log::e_debug, _message, args);
-	 va_end(args);
-      }
-      void info_inline(const char* _message, ...)
-      {
-	 va_list args;
-	 va_start(args, _message);
-	 topics::log(log::e_info, _message, args);
-	 va_end(args);
-      }
-// log severity warning.
-      void warning_inline(const char* _message, ...)
-      {
-	 va_list args;
-	 va_start(args, _message);
-	 topics::log(log::e_warning, _message, args);
-	 va_end(args);
-      }
-// log severity error.
-      void error_inline(const char* _message, ...)
-      {
-	 va_list args;
-	 va_start(args, _message);
-	 topics::log(log::e_error, _message, args);
-	 va_end(args);
-      }
-// log severity debug.
-      void debug_inline(const char* _message, ...)
-      {
-	 va_list args;
-	 va_start(args, _message);
-	 topics::log(log::e_debug, _message, args);
-	 va_end(args);
-      }
-      void macro_inline(const char* _message, ...)
-      {
-	 va_list args;
-	 va_start(args, _message);
-	 topics::log(log::e_debug, _message, args);
-	 va_end(args);
-      }
-      void no_topic(const char* _message, ...)
-      {
-	 va_list args;
-	 va_start(args, _message);
-	 vprintf(_message, args);
-	 va_end(args);
-      }
+//       void info(const char* _message)
+//       {
+// 	 topics::logline(log::e_info, _message);
+//       }
+// // log severity warning.
+//       void warning(const char* _message)
+//       {
+// 	 topics::logline(log::e_warning, _message);
+//       }
+// // log severity error.
+//       void error(const char* _message)
+//       {
+// 	 topics::logline(log::e_error, _message);
+//       }
+// // log severity debug.
+//       void debug(const char* _message)
+//       {
+// 	 topics::logline(log::e_debug, _message);
+//       }
+//       void macro(const char* _message)
+//       {
+// 	 topics::logline(log::e_macro, _message);
+//       }
+//       void info_inline(const char* _message)
+//       {
+// 	 topics::log(log::e_info, _message);
+//       }
+// // log severity warning.
+//       void warning_inline(const char* _message)
+//       {
+// 	 topics::log(log::e_warning, _message);
+//       }
+// // log severity error.
+//       void error_inline(const char* _message)
+//       {
+// 	 topics::log(log::e_error, _message);
+//       }
+// // log severity debug.
+//       void debug_inline(const char* _message)
+//       {
+// 	 topics::log(log::e_debug, _message);
+//       }
+//       void macro_inline(const char* _message)
+//       {
+// 	 topics::log(log::e_debug, _message);
+//       }
+//       void no_topic(const char* _message)
+//       {
+// 	 printf("%s", _message);
+//       }
       void hash_path(hash::path&& _path)
       {
 	 printf("--------------\n");
@@ -324,11 +302,13 @@ namespace fw
 	    if(millisecs > 1000)
 	    {
 	       auto seconds = std::chrono::duration<float>(time).count();
-	       debug("%s took %f secs", m_name, seconds);
+	       std::string message = fmt::format("{} took {} secs", m_name, seconds);
+	       debug(message.c_str());
 	    }
 	    else
 	    {
-	       debug("%s took %f millisecs", m_name, millisecs);
+	       std::string message = fmt::format("{} took {} millisecs", m_name, millisecs);
+	       debug(message.c_str());
 	    }
 	 }
       }

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #                      _____       .__         
 #   ____  ____   _____/ ____\_____ |  | ___.__.
-# _/ ___\/  _ \ /    \   __\____ \|  |<   |  |
+# _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
 # \  \__(  <_> )   |  \  |  |  |_> >  |_\___  |
 #  \___  >____/|___|  /__|  |   __/|____/ ____|
 #      \/           \/      |__|        \/
@@ -25,7 +25,11 @@ aliases = {
     "rc_sample":"src/application/rc_sample/build.py",
     "net_physics_sample":"src/application/net_physics_sample/build.py",
     "param_sample":"src/application/param_sample/build.py",
+    "log_sample":"src/application/log_sample/build.py"
 }
 
 if __name__ == "__main__":
+    if not os.path.exists("libs/libfwcore.a"):
+        os.system("cd libs && ./build.py")
+    aliases["samples"] = ";".join([val for key, val in aliases.items() if key.endswith("sample")])
     launcher(sys.argv[1:], aliases)

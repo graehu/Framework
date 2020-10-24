@@ -14,7 +14,7 @@
 
 using namespace fw;
 
-application* application::mf_factory()
+application* application::factory()
 {
    static bool do_once = true;
    if(do_once)
@@ -70,7 +70,7 @@ namespace net
 	       lv_dir.push_back(std::stof(token));
 	    }
 	    lv_dir.push_back(std::stof(lv_floats));
-	    log::debug("read as: x: %f y: %f", lv_dir[0], lv_dir[1]);
+	    log::debug("read as: x: {} y: {}", lv_dir[0], lv_dir[1]);
 	 }
       }
       void mf_ws_send(http_server::handler::send_callback callback) override
@@ -89,13 +89,13 @@ namespace net
       float y_dir = 0;
    };
 }
-void rc_sample::mf_run(void)
+void rc_sample::run(void)
 {
    auto topic = log::scope("rc_sample");
    log::info("----------------");
    int port = 0;
    auto val = params::get_value("rc.port", 0);
-   log::info("port set: %s", val);
+   log::info("port set: {}", val);
    port = std::from_string<int>(val);
    input* l_input = input::inputFactory();
    l_input->init();

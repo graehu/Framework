@@ -14,9 +14,7 @@ class net_physics_sample : public application
  public:
 
   net_physics_sample();
-  ~net_physics_sample();
-
-  void mf_run(void) override;
+  void run(void) override;
 
  protected:
 

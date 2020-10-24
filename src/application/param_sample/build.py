@@ -13,10 +13,17 @@ source_files = [
     "../../utils/log/log.cpp",
     "../../utils/params.cpp"
 ]
+include_paths = [
+    "../../../libs/fmt/include/"
+]
+
+library_paths = [
+    "../../../libs/"
+]
 warnings = ["all"]
 # debug_info = True
 optimisation = 3
-link_libraries = ["stdc++", "m"]
+link_libraries = ["stdc++", "m", "fwcore"]
 standard = "c++17"
 output_file = "param_sample.bin"
 confply_log_config = False

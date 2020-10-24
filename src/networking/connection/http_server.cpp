@@ -168,7 +168,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 		     //         +5 is len of GET / and the start of http_loc is always 6 chars longer
 		     //         than the request.
 		     std::string get_request(view.substr(get_loc + 5, http_loc - 6));
-		     log::debug("get: /%s", get_request.c_str());
+		     log::debug("get: /{}", get_request.c_str());
 		     //
 		     if (get_request.compare("ws") == 0)
 		     {
@@ -261,7 +261,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 				 if(lv_response_code == 200 || lv_response_code == 206)
 				 {
 
-				    log::debug("sending %s", lv_file_path.c_str());
+				    log::debug("sending {}", lv_file_path.c_str());
 				    if(send_file(lv_address, lv_socket, lv_packet, start, end))
 				    {
 				       if(start == 0 && end == 0)
@@ -306,7 +306,7 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 		     if(post_loc != std::string::npos)
 		     {
 			std::string post_request(view.substr(post_loc + 5, http_loc - 6));
-			log::debug("post request: %.*s", post_request.length(), post_request.data());
+			log::debug("post request: {:.{}}", post_request.data(), post_request.length());
 			if(std::ends_with(post_request, "/params"))
 			{
 			   std::string_view body((char*)lv_packet.GetData(), lv_packet.GetSize());
@@ -345,11 +345,11 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 	    if(lv_timeout > lv_last_timeout)
 	    {
 	       float lv_until = lv_timeout - std::chrono::duration<float>(lv_clock.now()-lv_start_time).count();
-	       log::debug("timeout in: %f secs", lv_until);
+	       log::debug("timeout in: {} secs", lv_until);
 	       lv_last_timeout = lv_timeout;
 	    }
 	 }while(lv_timeout > std::chrono::duration<float>(lv_clock.now()-lv_start_time).count());
-	 log::debug("connection timedout: %f secs", std::chrono::duration<float>(lv_clock.now()-lv_start_time).count());
+	 log::debug("connection timedout: {} secs", std::chrono::duration<float>(lv_clock.now()-lv_start_time).count());
 	 if(lv_close_socket)
 	 {
 	    lv_socket.closeSock();
@@ -409,7 +409,8 @@ void net::http_server::mf_ws_thread(const net::socket& from, const net::address&
 	    // think [i & 3] is faster.
 	    data[i] ^= mask[i & 3];
 	 }
-	 log::debug("%s", data);
+	 // #todo: test this debug.
+	 log::debug("{}", data);
 	 if (mv_handler != nullptr)
 	 {
 	    mv_handler->mf_ws_response((const char *)&data[0], lv_ws_send);
@@ -466,7 +467,7 @@ bool send_file(const net::address& lv_address,  net::socket& lv_socket,  net::ht
 	 std::this_thread::sleep_for(std::chrono::milliseconds(30));
       }
       while(bytes_written < bytes_to_write);
-      log::debug("sent %d", bytes_written);
+      log::debug("sent {}", bytes_written);
       return true;
    }
    log::debug("file not open...");

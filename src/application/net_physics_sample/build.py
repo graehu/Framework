@@ -2,6 +2,7 @@
 from confply.cpp_compiler.config import *
 
 confply_tool = "clang++"
+confply_log_topic = "net_physics_sample"
 source_files = [
     "../../main.cpp",
     "net_physics_sample.cpp",
@@ -32,9 +33,16 @@ source_files = [
     "../../networking/packet/writePacket.cpp",
     "../../networking/utils/dataUtils.cpp"
 ]
+include_paths = [
+    "../../../libs/fmt/include/"
+]
+
+library_paths = [
+    "../../../libs/"
+]
 warnings = "all"
 debug_info = True
-link_libraries = ["stdc++", "m", "SDLmain", "SDL", "SDL_image", "OpenGL", "GL"]
+link_libraries = ["stdc++", "m", "SDLmain", "SDL", "SDL_image", "OpenGL", "GL", "fwcore"]
 standard = "c++17"
 output_file = "net_physics_sample.bin"
 confply_log_config = False

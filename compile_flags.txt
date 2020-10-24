@@ -1,2 +1,3 @@
 -Wall
--std=c++17
+-std=c++2a
+-I libs/fmt/include/

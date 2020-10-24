@@ -32,12 +32,12 @@ static constexpr hash::path paths[] =
    path5
 };
 
-application* application::mf_factory()
+application* application::factory()
 {
    return new param_sample();
 }
 
-void param_sample::mf_run(void)
+void param_sample::run(void)
 {
    log::topics::add("param_sample");
    auto scope = log::scope("param_sample");

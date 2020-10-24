@@ -23,7 +23,7 @@ namespace fw
 	 log::debug("parsing: \n");
 	 for(int i = 0; i < argc; i++)
 	 {
-	    log::debug_inline("%s ", argv[i]);
+	    log::debug_inline("{}", argv[i]);
 	 }
 	 log::debug_inline("\n\n");
 	 auto current = std::make_unique<params::param>();
@@ -43,7 +43,8 @@ namespace fw
 		  {
 		     if(!params::set_args(param_path, current->m_args))
 		     {
-			log::debug("couldn't add or set  %s", current->m_name.c_str());
+			// #todo: replace string.c_str() within log::debugs
+			log::debug("couldn't add or set  {}", current->m_name.c_str());
 		     }
 		  }
 		  current = std::make_unique<params::param>();
@@ -63,7 +64,7 @@ namespace fw
 	    {
 	       if(!params::set_args(param_path, current->m_args))
 	       {
-		  log::debug("couldn't add or set  %s", current->m_name.c_str());
+		  log::debug("couldn't add or set  {}", current->m_name.c_str());
 	       }
 	    }
 	 }
@@ -107,7 +108,7 @@ namespace fw
 	 {
 	    if(_parent != nullptr)
 	    {
-	       log::debug_inline("%s.", _parent);
+	       log::debug_inline("{}.", _parent);
 	    }
 	    it->second->print(m_name.c_str());
 	 }
@@ -116,12 +117,12 @@ namespace fw
       {
 	 if(_parent != nullptr)
 	 {
-	    log::debug_inline("%s.", _parent);
+	    log::debug_inline("{}.", _parent);
 	 }
-	 log::debug_inline("%s ", m_name.c_str());
+	 log::debug_inline("{} ", m_name.c_str());
 	 for(auto arg : m_args)
 	 {
-	    log::debug_inline("%s ", arg.c_str());
+	    log::debug_inline("{} ", arg.c_str());
 	 }
 	 log::debug_inline("\n");
       }
@@ -169,7 +170,7 @@ namespace fw
 	 }
 	 for(auto cb : removals)
 	 {
-	    log::debug("unsubscribing %s from %s param", cb->m_cb_name, _path.m_path);
+	    log::debug("unsubscribing {} from {} param", cb->m_cb_name, _path.m_path);
 	    m_callbacks.erase(cb);
 	 }
       }
@@ -191,7 +192,7 @@ namespace fw
 	    return_val = it->second->m_callbacks.insert(_callback).second;
 	    if(return_val)
 	    {
-	       log::debug("subscribed %s to: %s param", _callback->m_cb_name, _path.m_path);
+	       log::debug("subscribed {} to: {} param", _callback->m_cb_name, _path.m_path);
 	    }
 	 }
       }
@@ -278,6 +279,7 @@ namespace fw
 	    }
 	    return success;
 	 }
+	 // #todo: define args better, same number of args isn't great.
 	 else if(_args.size() == it->second->m_args.size())
 	 {
 	    it->second->m_args = _args;

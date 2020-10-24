@@ -3,7 +3,7 @@
 class application
 {
  public:
-  virtual void mf_run(void) = 0;
-  static application* mf_factory(void);
+  virtual void run(void) = 0;
+  static application* factory(void);
 };
 #endif//APPLICATION_H

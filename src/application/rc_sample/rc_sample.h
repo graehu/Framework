@@ -5,6 +5,6 @@
 class rc_sample : public application
 {
  public:
-  void mf_run(void) override;
+  void run(void) override;
 };
 #endif//RCSAMPLE_H

@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
 {
    fw::commandline::arg_count = argc;
    fw::commandline::arg_variables = argv;
-   application* l_app = application::mf_factory();
-   l_app->mf_run();
+   application* app = application::factory();
+   app->run();
    return 0; 
 }

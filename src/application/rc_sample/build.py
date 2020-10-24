@@ -2,6 +2,7 @@
 from confply.cpp_compiler.config import *
 
 confply_tool = "clang++"
+confply_log_topic = "rc_sample"
 source_files = [
     "../../main.cpp",
     "rc_sample.cpp",
@@ -15,10 +16,17 @@ source_files = [
     "../../utils/log/log.cpp",
     "../../utils/params.cpp"
 ]
+include_paths = [
+    "../../../libs/fmt/include/"
+]
+
+library_paths = [
+    "../../../libs/"
+]
 warnings = ["all"]
 # debug_info = True
 # optimisation = 0
-link_libraries = ["stdc++", "pthread", "m"]
+link_libraries = ["stdc++", "pthread", "m", "fwcore"]
 standard = "c++17"
 output_file = "rc_sample.bin"
 confply_log_config = False

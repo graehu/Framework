@@ -95,7 +95,7 @@ bool socket::openSock(unsigned short port)
    {
 #if PLATFORM == PLATFORM_WINDOWS
       int error = WSAGetLastError();
-      log::debug( "failed to open socket, error(%i)", error );
+      log::debug( "failed to open socket, error({})", error );
 #else
       log::debug( "failed to open socket");
 #endif
@@ -111,12 +111,12 @@ bool socket::openSock(unsigned short port)
 #if PLATFORM == PLATFORM_WINDOWS
 	 if(setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, (const char*)&on, sizeof(on)))
 	 {
-	    log::debug("error: failed to set feature levels on socket [%d]", m_socket);
+	    log::debug("error: failed to set feature levels on socket [{}]", m_socket);
 	 }
 #else
 	 if(setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, (void*)&on, sizeof(on)))
 	 {
-	    log::debug("error: failed to set feature levels on socket [%d]", m_socket);
+	    log::debug("error: failed to set feature levels on socket [{}]", m_socket);
 	 }
 #endif
       }
@@ -136,7 +136,7 @@ bool socket::openSock(unsigned short port)
 
    if (bind(m_socket, (const sockaddr*) &address, sizeof(sockaddr_in)) != 0)
    {
-      log::debug( "failed to bind socket [%d]", m_socket);
+      log::debug( "failed to bind socket [{}]", m_socket);
       closeSock();
       return false;
    }
@@ -164,7 +164,7 @@ bool socket::openSock(unsigned short port)
       case eAcceptSocket:
 	 break;
    }
-   log::debug("opened socket [%d] on port [%d]", m_socket, port);
+   log::debug("opened socket [{}] on port [{}]", m_socket, port);
    return true;
 }
 bool socket::mf_set_nonblocking(bool non_blocking)
@@ -193,7 +193,7 @@ void socket::closeSock()
 {
    if (m_socket != 0)
    {
-      log::debug("closing socket [%d] on port [%d]", m_socket, m_port);
+      log::debug("closing socket [{}] on port [{}]", m_socket, m_port);
 #if PLATFORM == PLATFORM_MAC || PLATFORM == PLATFORM_UNIX
       close(m_socket);
 #elif PLATFORM == PLATFORM_WINDOWS
@@ -280,13 +280,13 @@ bool socket::Accept(address & sender, socket& _accept_socket)
 	    _accept_socket.m_port = m_port;
 	    _accept_socket.m_type = eAcceptSocket;
 
-	    log::debug("opened socket [%d] on port [%d]", read_socket, m_port);
+	    log::debug("opened socket [{}] on port [{}]", read_socket, m_port);
 	    return true;
 	 }
       }
       else if(activity == -1)
       {
-	 log::debug("socket failed select: %s", strerror(errno));
+	 log::debug("socket failed select: {}", strerror(errno));
       }
       return false;
    }
@@ -349,7 +349,7 @@ int socket::receive(address & sender, void * data, int size)
 	    int received_bytes = recvfrom(m_socket, (char*)data, size, 0, (sockaddr*)&from, &fromLength);
 	    if (received_bytes < 0)
 	    {
-	       log::debug("socket failed recvfrom: %s", strerror(errno));
+	       log::debug("socket failed recvfrom: {}", strerror(errno));
 	       return 0;
 	    }
 	    unsigned int nAddress = ntohl(from.sin_addr.s_addr);
@@ -374,7 +374,7 @@ int socket::receive(address & sender, void * data, int size)
    }
    else if(activity == -1)
    {
-      log::debug("socket failed select: %s", strerror(errno));
+      log::debug("socket failed select: {}", strerror(errno));
    }
    return 0;
 }
@@ -411,7 +411,7 @@ int socket::receive(void * data, int size)
 		 
 	    if (received_bytes < 0)
 	    {
-	       log::debug("socket failed recv: %s", strerror(errno));
+	       log::debug("socket failed recv: {}", strerror(errno));
 	       return 0;    
 	    }
 	    return received_bytes;
@@ -424,7 +424,7 @@ int socket::receive(void * data, int size)
    }
    else if(activity == -1)
    {
-      log::debug("socket failed select: %s", strerror(errno));
+      log::debug("socket failed select: {}", strerror(errno));
    }
    return 0;
 }

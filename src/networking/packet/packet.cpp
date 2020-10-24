@@ -80,11 +80,11 @@ void BasePacket::CloseFile()
 
 void BasePacket::PrintDetails()
 {
-   log::debug("[packet] printing %ld bytes:", end);
+   log::debug("[packet] printing {} bytes:", end);
    log::debug("[packet_start]\n");
    if(log::topics::get_level() == log::e_debug)
    {
-       log::no_topic("%.*s\n\n", end, GetData());
+      log::no_topic("{:.{}}\n\n", GetData(), end);
    }
    log::debug("[packet_end]");
 }    

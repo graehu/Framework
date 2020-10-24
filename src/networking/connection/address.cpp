@@ -55,7 +55,7 @@ unsigned short address::getPort() const
 
 void address::PrintDetails() const
 {
-   log::debug("%d.%d.%d.%d:%d",
+   log::debug("{}.{}.{}.{}:{}",
 	 getA(),
 	 getB(),
 	 getC(),

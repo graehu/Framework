@@ -14,7 +14,7 @@ net_physics_sample::net_physics_sample() : m_name("physics")
 {
    m_looping = true;
 }
-application* application::mf_factory()
+application* application::factory()
 {
    return new net_physics_sample();
 }
@@ -28,7 +28,7 @@ void net_physics_sample::init(void)
    m_input->init();
 }
 
-void net_physics_sample::mf_run(void)
+void net_physics_sample::run(void)
 {
    fw::log::topics::add("physics_sample");
    fw::log::scope("physics_sample");
@@ -92,7 +92,7 @@ void net_physics_sample::mf_run(void)
 	    test[test.size()-1].set_position({float(i*2), -float(ii*2), 0});
 	 }
       }
-      fw::log::debug("created %d bodies", test.size());
+      fw::log::debug("created {} bodies", test.size());
    }
 
    float time = 0;
@@ -155,9 +155,4 @@ void net_physics_sample::mf_run(void)
 
       // printf("%f\n", dt);
    }
-}
-
-net_physics_sample::~net_physics_sample()
-{
-   
 }
