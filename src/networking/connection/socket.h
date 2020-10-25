@@ -79,7 +79,7 @@ namespace net
     socket(Types _types = eGameSocket);
     ~socket();
     bool Accept(address & _sender, socket & _accept_socket);
-    bool mf_set_nonblocking(bool blocking);
+    bool set_nonblocking(bool blocking);
       
     bool openSock(unsigned short port);
     void closeSock();
@@ -87,8 +87,8 @@ namespace net
     int send(const address & destination, const void * data, int size);
     int receive(void * data, int size);
     int receive(address & sender, void * data, int size);
-     void mf_set_keepalive(bool keep_alive);
-     bool mf_get_keepalive() { return mv_keepalive; }
+     void set_keepalive(bool keep_alive);
+     bool get_keepalive() { return mv_keepalive; }
      void set_timeout(unsigned int miliseconds) { m_timeout = miliseconds;}
 
   private:

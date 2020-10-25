@@ -2,6 +2,7 @@
 #define HTTPCONNECTION_H
 
 #include <functional>
+#include <iosfwd>
 #include <vector>
 namespace std
 {
@@ -19,26 +20,38 @@ namespace net
       public:
 	 // typedef void (*send_callback)(const char* message, size_t size);
 	 typedef std::function<void(const char*, size_t)> send_callback;
-	 virtual void mf_get_response(const char* request, send_callback send_cb) = 0;
-	 virtual void mf_ws_response(const char* data, send_callback send_cb) = 0;
-	 virtual void mf_ws_send(send_callback send_cb) = 0;
-	 virtual const char* mf_get_response_root_dir() const = 0;
+	 virtual void get_response(const char* request, send_callback send_cb) {}
+	 virtual void post_response(std::string_view& request, std::string_view& body) {}
+	 virtual void ws_response(const char* data, send_callback send_cb) {}
+	 virtual void ws_send(send_callback send_cb) {}
+	 virtual bool is_ws_handler() { return false; }
       };
       http_server(unsigned int port);
       ~http_server();
-      // #todo: accept multiple handlers
-      void mf_set_handler(handler* handler) { mv_handler = handler; }
-      
+      void add_handler(handler* handler) { m_handlers.push_back(handler); }
+      void set_root_dir(const char* root_dir) { m_root_dir = root_dir;}
    protected:
       // member functions
-      void mf_server_thread(const socket& listen);
-      void mf_ws_thread(const socket& from, const address& to);
+      void server_thread(const socket& listen);
+      void ws_thread(const socket& from, const address& to);
       // member variables
-      handler* mv_handler;
-      std::thread* mv_server_thread;
-      std::vector<std::thread*> mv_ws_threads;
-      bool mv_running;
+      const char* m_root_dir;
+      std::thread* m_server_thread;
+      std::vector<handler*> m_handlers;
+      std::vector<std::thread*> m_ws_threads;
+      bool m_running;
    };
+}
+namespace fw
+{
+   namespace commandline
+   {
+      class http_handler : public net::http_server::handler
+      {
+      public:
+	 void post_response(std::string_view& request, std::string_view& body) override;
+      };
+   }
 }
 
 #endif//HTTPCONNECTION_H

@@ -62,11 +62,7 @@ namespace fw
       {
 	 if (_level <= m_level && _level > e_no_logging)
 	 {
-#ifndef NO_LOG_LABELS
-	    fmt::vprint(m_label + _message, _args);
-#else
 	    fmt::vprint(_message, _args);
-#endif
 	 }
       }
       bool topic::param_cb(const char* _param, const param_args& _args)

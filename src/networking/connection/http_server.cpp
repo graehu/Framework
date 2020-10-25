@@ -26,10 +26,18 @@
 
 using namespace fw;
 
+void fw::commandline::http_handler::post_response(std::string_view& request, std::string_view& body)
+{
+   if(std::ends_with(request, "/params"))
+   {
+      commandline::parse((char*)body.data());
+   }
+}
+
 net::http_server::http_server(unsigned int port) :
-   mv_handler(nullptr),
-   mv_server_thread(nullptr),
-   mv_running(true)
+   m_root_dir(""),
+   m_server_thread(nullptr),
+   m_running(true)
    
 {
    static bool do_once = true;
@@ -40,11 +48,11 @@ net::http_server::http_server(unsigned int port) :
       do_once = false;
    }
       
-   net::socket lv_listen_socket(net::socket::eHttpSocket);
-   for(int i = 0; !lv_listen_socket.openSock(port+i) && i < 100; i++) { }
+   net::socket listen_socket(net::socket::eHttpSocket);
+   for(int i = 0; !listen_socket.openSock(port+i) && i < 100; i++) { }
    // #todo: find out exactly how unsafe this is.
-   lv_listen_socket.mf_set_keepalive(true);
-   mv_server_thread = new std::thread(&net::http_server::mf_server_thread, this, lv_listen_socket);
+   listen_socket.set_keepalive(true);
+   m_server_thread = new std::thread(&net::http_server::server_thread, this, listen_socket);   
 }
 namespace net
 {
@@ -89,42 +97,42 @@ namespace net
    };
 }
 
-bool send_file(const net::address& lv_address,  net::socket& lv_socket,  net::http_packet& lv_packet, uint32_t start, uint32_t end);
-int write_response_header(net::http_packet& lv_packet, std::string_view request, int& start, int& end);
+bool send_file(const net::address& address,  net::socket& socket,  net::http_packet& packet, uint32_t start, uint32_t end);
+int write_response_header(net::http_packet& packet, std::string_view request, int& start, int& end);
 
-void net::http_server::mf_server_thread(const socket& in_socket)
+void net::http_server::server_thread(const socket& in_socket)
 {
    auto topic = log::scope("http_server");
-   net::socket lv_listen_socket(in_socket);
+   net::socket listen_socket(in_socket);
    //Initialize some things
-   net::http_packet lv_packet;
+   net::http_packet packet;
    auto lf_html_404 =
-      [&lv_packet]
+      [&packet]
       {
-	 lv_packet.Clear();
-	 char lv_html_404[] =
+	 packet.Clear();
+	 char html_404[] =
 	    {
 	       "HTTP/1.1 404 resource not found\r\n"
 	       "\r\n"
 	    };
-	 lv_packet.IterWrite<decltype(lv_html_404)>(lv_html_404);
+	 packet.IterWrite<decltype(html_404)>(html_404);
       };
    auto lf_html_200 =
-      [&lv_packet]()
+      [&packet]()
       {
-	 lv_packet.Clear();
-	 lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
-	 lv_packet.IterWrite("Connection: Keep-Alive");
-	 lv_packet.IterWrite( "\r\n\r\n");
+	 packet.Clear();
+	 packet.IterWrite("HTTP/1.1 200 OK\r\n");
+	 packet.IterWrite("Connection: Keep-Alive");
+	 packet.IterWrite( "\r\n\r\n");
       };
 
-   net::address lv_address;
-   net::socket lv_socket;
+   net::address address;
+   net::socket socket;
    log::debug("----------------");
    log::debug("starting http server");
 
    bool print_waiting = true;
-   while(mv_running)
+   while(m_running)
    {
       if(print_waiting)
       {
@@ -132,38 +140,38 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 	 log::debug("waiting to accept...");
 	 print_waiting = false;
       }
-      if(lv_listen_socket.Accept(lv_address, lv_socket))
+      if(listen_socket.Accept(address, socket))
       {
 	 print_waiting = true;
 	 log::debug("accepted: ");
-	 lv_address.PrintDetails();
-	 bool lv_close_socket = true;
-	 float lv_timeout = 0.5;
-	 float lv_last_timeout = 0;
-	 std::chrono::high_resolution_clock lv_clock;
-	 auto lv_start_time = lv_clock.now();
+	 address.PrintDetails();
+	 bool close_socket = true;
+	 float timeout = 0.5;
+	 float last_timeout = 0;
+	 std::chrono::high_resolution_clock clock;
+	 auto start_time = clock.now();
 	 do
 	 {
-	    lv_packet.Clear();
-	    int lv_bytes_read = lv_socket.receive(lv_packet.GetData(), lv_packet.GetCapacity());
-	    if (lv_bytes_read > 0)
+	    packet.Clear();
+	    int bytes_read = socket.receive(packet.GetData(), packet.GetCapacity());
+	    if (bytes_read > 0)
 	    {
-	       lv_packet.SetLength(lv_bytes_read);
-	       lv_packet.PrintDetails();
+	       packet.SetLength(bytes_read);
+	       packet.PrintDetails();
 	       //  #todo: this should be a string_view but emacs wont stop complaining.
-	       std::string_view view((char*)lv_packet.GetData());
+	       std::string_view view((char*)packet.GetData());
 	       auto http_loc = view.find("HTTP/");
 	       if (view.find("Connection: keep-alive") != std::string::npos || view.find("Connection: Keep-Alive") != std::string::npos)
 	       {
-		  lv_timeout = 0.5;
-		  lv_start_time = lv_clock.now();
+		  timeout = 0.5;
+		  start_time = clock.now();
 	       }
 	       if (http_loc != std::string::npos)
 	       {
 		  auto get_loc = view.find("GET /");
 		  if(get_loc != std::string::npos)
 		  {
-		     lv_packet.Clear();
+		     packet.Clear();
 		     //  #note: these aren't magic numbers, but it could be clearer
 		     //         +5 is len of GET / and the start of http_loc is always 6 chars longer
 		     //         than the request.
@@ -197,20 +205,20 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 			   net::encrypt::SHA1(sha, (unsigned char *)key.data(), key.length());
 			   net::encode::Base64(&hash[0], &sha[0], sizeof(sha));
 			}
-			lv_packet.IterWrite(net::ws_handshake);
-			lv_packet.IterWrite(hash);
+			packet.IterWrite(net::ws_handshake);
+			packet.IterWrite(hash);
 			unsigned char packet_end[] = {"\r\n\r\n"};
-			lv_packet.IterWrite(packet_end);
+			packet.IterWrite(packet_end);
 			//
 			log::debug("sending: websocket upgrade");
-			lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize());
-			lv_packet.Clear();
+			socket.send(address, packet.GetData(), packet.GetSize());
+			packet.Clear();
 		  
 			// starting ws thread.
-			lv_close_socket = false;
-			lv_timeout = 0;
-			lv_socket.mf_set_keepalive(true);
-			mv_ws_threads.push_back(new std::thread(&net::http_server::mf_ws_thread, this, lv_socket, lv_address));
+			close_socket = false;
+			timeout = 0;
+			socket.set_keepalive(true);
+			m_ws_threads.push_back(new std::thread(&net::http_server::ws_thread, this, socket, address));
 			// sleep here because those objects are passed by ref and I don't want them to be destroyed.
 			std::this_thread::sleep_for(std::chrono::milliseconds(30));
 		     }
@@ -219,32 +227,35 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 			//
 			// Handle regular http get requests.
 			//
-			const char *lv_request = get_request.length() == 0 ? "index.html" : get_request.c_str();
-			std::string lv_request_view(lv_request);
+			const char *request = get_request.length() == 0 ? "index.html" : get_request.c_str();
+			std::string request_view(request);
 			//  #todo: check for multiple custom handlers.
-			bool lv_handled = false;
-			if (mv_handler != nullptr)
+			bool handled = false;
+			if (!m_handlers.empty())
 			{
-			   lf_html_200(); 
-			   auto lv_get_response =
-			      [&lv_handled, &lv_packet]
-			      (const char *message, size_t size)
+			   for(auto* handler : m_handlers)
+			   {
+			      lf_html_200(); 
+			      auto get_response =
+				 [&handled, &packet]
+				 (const char *message, size_t size)
+				 {
+				    handled = true;
+				    packet.IterWrite(message, size);
+				 };
+			      handler->get_response(request, get_response);
+			      if(handled)
 			      {
-				 lv_handled = true;
-				 lv_packet.IterWrite(message, size);
-			      };
-			   mv_handler->mf_get_response(lv_request, lv_get_response);
+				 break;
+			      }
+			   }
 			}
-			if (lv_handled != true)
+			if (handled != true)
 			{
 			   //  #todo: move this not handled code into a func, if possible
-			   std::string lv_file_path;
-			   if (mv_handler != nullptr)
-			   {
-			      lv_file_path.append(mv_handler->mf_get_response_root_dir());
-			   }
-			   lv_file_path.append(lv_request);
-			   if(lv_file_path.find("../") != std::string::npos)
+			   std::string file_path(m_root_dir);
+			   file_path.append(request);
+			   if(file_path.find("../") != std::string::npos)
 			   {
 			      //  #todo: return access denied code.
 			      // not allowing ../, illegal access pattern.
@@ -252,51 +263,51 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 			   }
 			   else
 			   {
-			      lv_packet.OpenFile(lv_file_path.c_str());
-			      if(lv_packet.IsFileOpen())
+			      packet.OpenFile(file_path.c_str());
+			      if(packet.IsFileOpen())
 			      {
 				 int start = 0, end = 0;
-				 auto lv_content_length = std::to_string(lv_packet.GetFileSize());
-				 int lv_response_code = write_response_header(lv_packet, view, start, end);
-				 if(lv_response_code == 200 || lv_response_code == 206)
+				 auto content_length = std::to_string(packet.GetFileSize());
+				 int response_code = write_response_header(packet, view, start, end);
+				 if(response_code == 200 || response_code == 206)
 				 {
 
-				    log::debug("sending {}", lv_file_path.c_str());
-				    if(send_file(lv_address, lv_socket, lv_packet, start, end))
+				    log::debug("sending {}", file_path.c_str());
+				    if(send_file(address, socket, packet, start, end))
 				    {
 				       if(start == 0 && end == 0)
 				       {
 					  // #todo: this assumes about a 500kbs download speed.
 					  //      try to drive this via some metric rather than
 					  //      with a static magic number.
-					  lv_timeout = ((float)(lv_packet.GetFileSize()))/500000.0;
+					  timeout = ((float)(packet.GetFileSize()))/500000.0;
 				       }
 				       else
 				       {
-					  lv_timeout = ((float)(end - start))/(500000.0);
+					  timeout = ((float)(end - start))/(500000.0);
 				       }
-				       lv_timeout += 1.0f/30.0f;
+				       timeout += 1.0f/30.0f;
 				    }
 				    else
 				    {
-				       lv_timeout = 0;
+				       timeout = 0;
 				    }
 				 }
-				 lv_start_time = lv_clock.now();
+				 start_time = clock.now();
 			      }
 			      else
 			      {
 				 lf_html_404();
 			      }
-			      lv_packet.CloseFile();
+			      packet.CloseFile();
 			   }
 			}
-			lv_packet.PrintDetails();
+			packet.PrintDetails();
 		     }
-		     if(lv_packet.GetSize() > 0)
+		     if(packet.GetSize() > 0)
 		     {
-			lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize());
-			lv_packet.Clear();
+			socket.send(address, packet.GetData(), packet.GetSize());
+			packet.Clear();
 		     }
 		     log::debug("----------------");
 		  }
@@ -306,35 +317,52 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 		     if(post_loc != std::string::npos)
 		     {
 			std::string post_request(view.substr(post_loc + 5, http_loc - 6));
+			std::string_view post_request_view(post_request);
 			log::debug("post request: {:.{}}", post_request.data(), post_request.length());
-			if(std::ends_with(post_request, "/params"))
+			std::string_view body((char*)packet.GetData(), packet.GetSize());
+			auto body_pos = body.find("\r\n\r\n");
+			//if(std::ends_with(post_request, "/params"))
+			if(!m_handlers.empty())
 			{
-			   std::string_view body((char*)lv_packet.GetData(), lv_packet.GetSize());
-			   auto body_pos = body.find("\r\n\r\n");
 			   if(body_pos != std::string::npos && (body.length()-body_pos) > 4)
 			   {
-			      log::debug("parsing params post body");
-			      commandline::parse((char*)body.substr(body_pos+4).data());
+			      log::debug("passing post request to handlers");
+			      std::string_view body_view(body.substr(body_pos+4));
+			      for(auto* handler : m_handlers)
+			      {
+				 handler->post_response(post_request_view, body_view);
+			      }
+			      // commandline::parse((char*)body.substr(body_pos+4).data());
 			   }
 			   else
 			   {
-			      lv_timeout = 1;
-			      lv_start_time = lv_clock.now();
+			      timeout = 1;
+			      start_time = clock.now();
 			      do
 			      {
-				 lv_packet.Clear();
+				 packet.Clear();
 				 std::this_thread::sleep_for(std::chrono::milliseconds(30));
-				 lv_bytes_read = lv_socket.receive(lv_packet.GetData(), lv_packet.GetCapacity());
-			      } while(lv_timeout > std::chrono::duration<float>(lv_clock.now()-lv_start_time).count() && lv_bytes_read == 0);
-			      lv_packet.SetLength(lv_bytes_read);
-			      if(lv_bytes_read > 0)
+				 bytes_read = socket.receive(packet.GetData(), packet.GetCapacity());
+			      } while(timeout > std::chrono::duration<float>(clock.now()-start_time).count() && bytes_read == 0);
+			      packet.SetLength(bytes_read);
+			      if(bytes_read > 0)
 			      {
 				 log::debug("parsing params post");
-				 commandline::parse((char*)lv_packet.GetData());  
+				 std::string_view body_view((char*)packet.GetData(), bytes_read);
+				 for(auto* handler : m_handlers)
+				 {
+				    handler->post_response(post_request_view, body_view);
+				 }
+				 // commandline::parse((char*)packet.GetData());  
 			      }
 			      else
 			      {
 				 log::debug("timed out waiting params for post body");
+				 std::string_view body_view("");
+				 for(auto* handler : m_handlers)
+				 {
+				    handler->post_response(post_request_view, body_view);
+				 }
 			      }
 			   }
 			}
@@ -342,17 +370,17 @@ void net::http_server::mf_server_thread(const socket& in_socket)
 		  }
 	       }  
 	    }
-	    if(lv_timeout > lv_last_timeout)
+	    if(timeout > last_timeout)
 	    {
-	       float lv_until = lv_timeout - std::chrono::duration<float>(lv_clock.now()-lv_start_time).count();
-	       log::debug("timeout in: {} secs", lv_until);
-	       lv_last_timeout = lv_timeout;
+	       float until = timeout - std::chrono::duration<float>(clock.now()-start_time).count();
+	       log::debug("timeout in: {} secs", until);
+	       last_timeout = timeout;
 	    }
-	 }while(lv_timeout > std::chrono::duration<float>(lv_clock.now()-lv_start_time).count());
-	 log::debug("connection timedout: {} secs", std::chrono::duration<float>(lv_clock.now()-lv_start_time).count());
-	 if(lv_close_socket)
+	 }while(timeout > std::chrono::duration<float>(clock.now()-start_time).count());
+	 log::debug("connection timedout: {} secs", std::chrono::duration<float>(clock.now()-start_time).count());
+	 if(close_socket)
 	 {
-	    lv_socket.closeSock();
+	    socket.closeSock();
 	 }
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(30));
@@ -360,48 +388,58 @@ void net::http_server::mf_server_thread(const socket& in_socket)
    log::debug("ending http server");
 }
 
-void net::http_server::mf_ws_thread(const net::socket& from, const net::address& to)
+void net::http_server::ws_thread(const net::socket& from, const net::address& to)
 {
    auto topic = log::scope("websocket");
    // This thread is pointless if there is no
    // handler set.
-   net::socket lv_socket(from);
-   net::address lv_address(to);
-   net::http_packet lv_packet;
+   net::socket socket(from);
+   net::address address(to);
+   net::http_packet packet;
    log::debug("begin websocket thread");
-   lv_socket.mf_set_nonblocking(true);
+   socket.set_nonblocking(true);
    websocket_header ws_header;
-   bool lv_is_connected = true;
-   while (mv_running && lv_is_connected)
+   bool is_connected = true;
+   handler* ws_handler = nullptr;
+   for(auto* handler : m_handlers)
+   {
+      if(handler->is_ws_handler())
+      {
+	 ws_handler = handler;
+	 break;
+      }
+   }
+   while (m_running && is_connected)
    {
       //  #todo: test if this is thread safe
-      auto lv_ws_send =
-	 [&lv_packet, &ws_header, &lv_socket, &lv_address, &lv_is_connected]
+      auto ws_send =
+	 [&packet, &ws_header, &socket, &address, &is_connected]
 	 (const char *message,size_t size)
 	 {
 	    //  #todo: split packets that are too big for websocket, or bail
-	    lv_packet.Clear();
+	    packet.Clear();
 	    ws_header.length = size - 1;
-	    lv_packet.IterWrite(ws_header);
-	    lv_packet.IterWrite(message, size);
-	    if(lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize()) == -1)
+	    packet.IterWrite(ws_header);
+	    packet.IterWrite(message, size);
+	    if(socket.send(address, packet.GetData(), packet.GetSize()) == -1)
 	    {
 	       log::debug("websocket connection broken");
-	       lv_is_connected = false;
+	       is_connected = false;
 	    };
 	 };
       // spin lock waiting for messages.
-      lv_packet.Clear();
-      int lv_bytes_read = lv_socket.receive(lv_packet.GetData(), lv_packet.GetCapacity());
-      if (lv_bytes_read > 0)
+      packet.Clear();
+      int bytes_read = socket.receive(packet.GetData(), packet.GetCapacity());
+      // #todo: this only sends if we're recieving, that's not correct.
+      if (bytes_read > 0)
       {
 	 log::debug("------");
-	 auto in_header = lv_packet.IterRead<websocket_header>();
+	 auto in_header = packet.IterRead<websocket_header>();
 	 unsigned char mask[4];
 	 unsigned char data[in_header.length + 1];
 	 data[in_header.length] = '\0';
-	 lv_packet.IterRead(mask[0], 4);
-	 lv_packet.IterRead(data[0], in_header.length);
+	 packet.IterRead(mask[0], 4);
+	 packet.IterRead(data[0], in_header.length);
 	 log::debug("client_sends: ");
 	 for (unsigned int i = 0; i < in_header.length; ++i)
 	 {
@@ -411,59 +449,59 @@ void net::http_server::mf_ws_thread(const net::socket& from, const net::address&
 	 }
 	 // #todo: test this debug.
 	 log::debug("{}", data);
-	 if (mv_handler != nullptr)
+	 if (ws_handler != nullptr)
 	 {
-	    mv_handler->mf_ws_response((const char *)&data[0], lv_ws_send);
+	    ws_handler->ws_response((const char *)&data[0], ws_send);
 	 }
 	 log::debug("------");
       }
-      if (mv_handler != nullptr)
+      if (ws_handler != nullptr)
       {
-	 mv_handler->mf_ws_send(lv_ws_send);
+	 ws_handler->ws_send(ws_send);
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(30));
    }
-   lv_socket.closeSock();
+   socket.closeSock();
 }
 
 net::http_server::~http_server()
 {
    //shutdown all the threads
-   mv_running = false;
-   if(mv_server_thread != nullptr)
+   m_running = false;
+   if(m_server_thread != nullptr)
    {
-      mv_server_thread->join();
-      delete mv_server_thread;
+      m_server_thread->join();
+      delete m_server_thread;
    }
-   for(auto* ws_thread : mv_ws_threads)
+   for(auto* ws_thread : m_ws_threads)
    {
       ws_thread->join();
       delete ws_thread;
    }
 }
 // file handlers.
-bool send_file(const net::address& lv_address,  net::socket& lv_socket,  net::http_packet& lv_packet, std::uint32_t start = 0, std::uint32_t end = 0)
+bool send_file(const net::address& address,  net::socket& socket,  net::http_packet& packet, std::uint32_t start = 0, std::uint32_t end = 0)
 {
-   if(lv_packet.IsFileOpen())
+   if(packet.IsFileOpen())
    {
-      if(end == 0 || end > lv_packet.GetFileSize())
+      if(end == 0 || end > packet.GetFileSize())
       {
-	 end = lv_packet.GetFileSize();
+	 end = packet.GetFileSize();
       }
       int bytes_to_write = end - start;
       int bytes_written = 0;
       do
       {
-	 int space = lv_packet.GetRemainingSpace(); //reserving 8 bytes
+	 int space = packet.GetRemainingSpace(); //reserving 8 bytes
 	 int chunk_size = space > bytes_to_write ? bytes_to_write : space;
-	 bytes_written += lv_packet.WriteFile(start+bytes_written, end, chunk_size);
-	 if(lv_socket.send(lv_address, lv_packet.GetData(), lv_packet.GetSize()) == -1)
+	 bytes_written += packet.WriteFile(start+bytes_written, end, chunk_size);
+	 if(socket.send(address, packet.GetData(), packet.GetSize()) == -1)
 	 {
 	    log::debug("failed to send file.");
-	    lv_packet.Clear();
+	    packet.Clear();
 	    return false;
 	 }
-	 lv_packet.Clear();
+	 packet.Clear();
 	 std::this_thread::sleep_for(std::chrono::milliseconds(30));
       }
       while(bytes_written < bytes_to_write);
@@ -473,99 +511,99 @@ bool send_file(const net::address& lv_address,  net::socket& lv_socket,  net::ht
    log::debug("file not open...");
    return false;
 }
-int write_response_header(net::http_packet& lv_packet, std::string_view request, int& start, int& end)
+int write_response_header(net::http_packet& packet, std::string_view request, int& start, int& end)
 {
-   if(lv_packet.IsFileOpen())
+   if(packet.IsFileOpen())
    {
-      lv_packet.Clear();
-      std::string_view lv_file_name(lv_packet.GetFileName());
-      std::string_view lv_content_type;
-      if(lv_file_name.find(".html") != std::string::npos)
+      packet.Clear();
+      std::string_view file_name(packet.GetFileName());
+      std::string_view content_type;
+      if(file_name.find(".html") != std::string::npos)
       {
-	 lv_content_type = "Content-Type: text/html\r\n";
+	 content_type = "Content-Type: text/html\r\n";
       }
-      else if(lv_file_name.find(".js") != std::string::npos)
+      else if(file_name.find(".js") != std::string::npos)
       {
-	 lv_content_type = "Content-Type: text/javascript\r\n";
+	 content_type = "Content-Type: text/javascript\r\n";
       }
-      else if (lv_file_name.find(".css") != std::string::npos)
+      else if (file_name.find(".css") != std::string::npos)
       {
-	 lv_content_type = "Content-Type: text/css;\r\n";
+	 content_type = "Content-Type: text/css;\r\n";
       }
-      else if (lv_file_name.find(".mp4") != std::string::npos)
+      else if (file_name.find(".mp4") != std::string::npos)
       {
-	 lv_content_type = "Content-Type: video/mp4\r\n";
+	 content_type = "Content-Type: video/mp4\r\n";
       }
       
-      std::string lv_file_size = std::to_string(lv_packet.GetFileSize());
-      char lv_range_str[] = { "Range: bytes=" };
-      auto partial = request.find(lv_range_str);
+      std::string file_size = std::to_string(packet.GetFileSize());
+      char range_str[] = { "Range: bytes=" };
+      auto partial = request.find(range_str);
       if(partial != std::string::npos)
       {
-	 auto lv_end_offset = request.find("\r\n", partial)-(partial+sizeof(lv_range_str)-1);
+	 auto end_offset = request.find("\r\n", partial)-(partial+sizeof(range_str)-1);
 
-	 std::string lv_partial_range(request.substr(partial+sizeof(lv_range_str)-1, lv_end_offset));
-	 int lv_num_left = 0;
-	 int lv_num_right = 0;
+	 std::string partial_range(request.substr(partial+sizeof(range_str)-1, end_offset));
+	 int num_left = 0;
+	 int num_right = 0;
 
-	 auto lv_number_split = lv_partial_range.find("-");
-	 lv_num_left = std::from_string<int>(lv_partial_range.substr(0, lv_number_split));
-	 auto lv_num_right_str = lv_partial_range.substr(lv_number_split+1, lv_partial_range.npos);
-	 if (!lv_num_right_str.empty())
+	 auto number_split = partial_range.find("-");
+	 num_left = std::from_string<int>(partial_range.substr(0, number_split));
+	 auto num_right_str = partial_range.substr(number_split+1, partial_range.npos);
+	 if (!num_right_str.empty())
 	 {
-	    lv_num_right = std::from_string<int>(lv_num_right_str);	       
+	    num_right = std::from_string<int>(num_right_str);	       
 	 }
 	 else
 	 {
-	    lv_num_right = std::from_string<int>(lv_file_size)-1;
-	    lv_partial_range.append(std::to_string(lv_num_right));
+	    num_right = std::from_string<int>(file_size)-1;
+	    partial_range.append(std::to_string(num_right));
 	 }
 
-	 int partial_bytes = (lv_num_right - lv_num_left)+1;
-	 std::string lv_content_length = std::to_string(partial_bytes);
+	 int partial_bytes = (num_right - num_left)+1;
+	 std::string content_length = std::to_string(partial_bytes);
 	 if(partial_bytes > 0)
 	 {
-	    lv_packet.IterWrite("HTTP/1.1 206 Partial Content\r\n");
-	    lv_packet.IterWrite(lv_content_type.data(), lv_content_type.length());
-	    lv_packet.IterWrite("Content-Length: ");
-	    lv_packet.IterWrite(lv_content_length.data(), lv_content_length.length());
-	    lv_packet.IterWrite("\r\n");
-	    lv_packet.IterWrite("Connection: Keep-Alive\r\n");
-	    lv_packet.IterWrite("Accept-Ranges: bytes\r\n");
-	    lv_packet.IterWrite("Content-Range: bytes ");
-	    lv_packet.IterWrite(lv_partial_range.c_str(), lv_partial_range.length());
-	    lv_packet.IterWrite(" / ");
-	    lv_packet.IterWrite(lv_file_size.c_str(), lv_file_size.length());
-	    lv_packet.IterWrite("\r\n\r\n");
-	    start = lv_num_left;
+	    packet.IterWrite("HTTP/1.1 206 Partial Content\r\n");
+	    packet.IterWrite(content_type.data(), content_type.length());
+	    packet.IterWrite("Content-Length: ");
+	    packet.IterWrite(content_length.data(), content_length.length());
+	    packet.IterWrite("\r\n");
+	    packet.IterWrite("Connection: Keep-Alive\r\n");
+	    packet.IterWrite("Accept-Ranges: bytes\r\n");
+	    packet.IterWrite("Content-Range: bytes ");
+	    packet.IterWrite(partial_range.c_str(), partial_range.length());
+	    packet.IterWrite(" / ");
+	    packet.IterWrite(file_size.c_str(), file_size.length());
+	    packet.IterWrite("\r\n\r\n");
+	    start = num_left;
 	    //byte ranges are inclusive! 0-1 = 2bytes
-	    end = lv_num_right+1;
-	    lv_packet.PrintDetails();
+	    end = num_right+1;
+	    packet.PrintDetails();
 	    return 206;
 	 }
 	 else
 	 {
-	    lv_packet.IterWrite("HTTP/1.1 416 Range Not Satisfiable\r\n");
-	    lv_packet.IterWrite(lv_content_type.data(), lv_content_type.length());
-	    lv_packet.IterWrite("Connection: Keep-Alive\r\n");
-	    lv_packet.IterWrite("Accept-Ranges: bytes\r\n");
-	    lv_packet.IterWrite("Content-Length: ");
-	    lv_packet.IterWrite(lv_file_size.data(), lv_file_size.length());
-	    lv_packet.IterWrite("\r\n\r\n");
-	    lv_packet.PrintDetails();
+	    packet.IterWrite("HTTP/1.1 416 Range Not Satisfiable\r\n");
+	    packet.IterWrite(content_type.data(), content_type.length());
+	    packet.IterWrite("Connection: Keep-Alive\r\n");
+	    packet.IterWrite("Accept-Ranges: bytes\r\n");
+	    packet.IterWrite("Content-Length: ");
+	    packet.IterWrite(file_size.data(), file_size.length());
+	    packet.IterWrite("\r\n\r\n");
+	    packet.PrintDetails();
 	    return 416;
 	 }
       }
       else
       {
-	 lv_packet.IterWrite("HTTP/1.1 200 OK\r\n");
-	 lv_packet.IterWrite(lv_content_type.data(), lv_content_type.length());
-	 lv_packet.IterWrite("Connection: Keep-Alive\r\n");
-	 lv_packet.IterWrite("Accept-Ranges: bytes\r\n");
-	 lv_packet.IterWrite("Content-Length: ");
-	 lv_packet.IterWrite(lv_file_size.data(), lv_file_size.length());
-	 lv_packet.IterWrite("\r\n\r\n");
-	 lv_packet.PrintDetails();
+	 packet.IterWrite("HTTP/1.1 200 OK\r\n");
+	 packet.IterWrite(content_type.data(), content_type.length());
+	 packet.IterWrite("Connection: Keep-Alive\r\n");
+	 packet.IterWrite("Accept-Ranges: bytes\r\n");
+	 packet.IterWrite("Content-Length: ");
+	 packet.IterWrite(file_size.data(), file_size.length());
+	 packet.IterWrite("\r\n\r\n");
+	 packet.PrintDetails();
 	 return 200;
       }
    }

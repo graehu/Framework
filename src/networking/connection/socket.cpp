@@ -68,7 +68,7 @@ socket::~socket()
       closeSock();
    }
 }
-void socket::mf_set_keepalive(bool keep_alive)
+void socket::set_keepalive(bool keep_alive)
 {
   mv_keepalive = keep_alive;
 }
@@ -141,7 +141,7 @@ bool socket::openSock(unsigned short port)
       return false;
    }
    
-   // if(!mf_set_nonblocking(true))
+   // if(!set_nonblocking(true))
    // {
    //    log::debug( "failed to set non-blocking socket" );
    //    closeSock();
@@ -167,7 +167,7 @@ bool socket::openSock(unsigned short port)
    log::debug("opened socket [{}] on port [{}]", m_socket, port);
    return true;
 }
-bool socket::mf_set_nonblocking(bool non_blocking)
+bool socket::set_nonblocking(bool non_blocking)
 {
      // set non-blocking io
 #if PLATFORM == PLATFORM_MAC || PLATFORM == PLATFORM_UNIX
