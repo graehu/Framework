@@ -86,7 +86,7 @@ namespace net
 
 void rc_sample::run(void)
 {
-   auto topic = log::scope("rc_sample");
+   log::scope topic("rc_sample");
    log::info("----------------");
    int port = 0;
    auto val = params::get_value("rc.port", 0);

@@ -28,6 +28,7 @@ namespace net
       };
       http_server(unsigned int port);
       ~http_server();
+      // #todo: no way to remove handlers, no lifetime management
       void add_handler(handler* handler) { m_handlers.push_back(handler); }
       void set_root_dir(const char* root_dir) { m_root_dir = root_dir;}
    protected:

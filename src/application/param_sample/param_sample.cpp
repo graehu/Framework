@@ -12,8 +12,9 @@ static std::unordered_map<std::string,log::level> const to_level = {
       {"debug", log::level::e_debug},
       {"info", log::level::e_info},
       {"error", log::level::e_error},
-      {"macro", log::level::e_macro},
-      {"warning", log::level::e_warning}
+      {"all", log::level::e_all},
+      {"warning", log::level::e_warning},
+      {"fatal", log::level::e_fatal}
    };
 
 

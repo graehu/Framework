@@ -20,6 +20,7 @@ include_paths = [
 library_paths = [
     "../../../libs/"
 ]
+defines = ["DEFAULT_PARAMS=\"-log.default.level debug\""]
 source_files = [
     "../../main.cpp",
     "log_sample.cpp",

@@ -17,15 +17,34 @@ namespace fw
       std::mutex g_log_mutex;
       std::map<std::uint32_t, std::unique_ptr<topic> > topics::m_topics;
       std::map<std::thread::id, std::uint32_t> topics::m_thread_topic;
+      topic topics::default_topic("log", hash::i32("log"));
 
       static std::unordered_map<std::string,log::level> const to_level = {
 	 {"no_logs", level::e_no_logging},
 	 {"debug", level::e_debug},
 	 {"info", level::e_info},
 	 {"error", level::e_error},
-	 {"macro", level::e_macro},
-	 {"warning", level::e_warning}
+	 {"all", level::e_all},
+	 {"warning", level::e_warning},
+	 {"fatal", level::e_fatal}
       };
+      topic::topic(const char* _topic, uint32_t _hash) :
+	 m_name(_topic),
+	 m_hash(_hash)
+      {
+	 m_cb_name = m_name;
+	 m_label = m_name;
+	 m_label = "[" + m_label + "] ";
+	 auto value = params::get_value("log.default.level", 0);
+	 if(value != nullptr)
+	 {
+	    auto new_level = to_level.find(value);
+	    if(new_level != to_level.end())
+	    {
+	       m_level = new_level->second;
+	    }
+	 }
+      }
       void topics::logline(log::level _level, const char* _message, fmt::format_args _args)
       {
 	 auto this_id = std::this_thread::get_id();
@@ -34,9 +53,11 @@ namespace fw
 	 {
 	    m_topics[thread_topic]->logline(_level, _message, _args);
 	 }
+	 else
+	 {
+	    default_topic.logline(_level, _message, _args);
+	 }
       }
-      // static std::stack;
-      static std::string log_queue;
       void topic::logline(level _level, const char* _message, fmt::format_args _args)
       {
 	 if (_level <= m_level && _level > e_no_logging)
@@ -56,6 +77,10 @@ namespace fw
 	 if(thread_topic != 0)
 	 {
 	    m_topics[thread_topic]->log(_level, _message, _args);
+	 }
+	 else
+	 {
+	    default_topic.log(_level, _message, _args);
 	 }
       }
       void topic::log(level _level, const char* _message, fmt::format_args _args)
@@ -145,15 +170,7 @@ namespace fw
 	 g_log_mutex.lock();
 	 bool success = false;
 	 auto this_id = std::this_thread::get_id();
-	 auto topic_it = topics::m_topics.end();
-	 for(auto it = topics::m_topics.begin(); it != topics::m_topics.end(); it++)
-	 {
-	    if(it->second->hash() == _hash)
-	    {
-	       topic_it = it;
-	       break;
-	    }
-	 }
+	 auto topic_it = topics::m_topics.find(_hash);
 	 if(topic_it  != topics::m_topics.end())
 	 {
 	    auto thread_it = topics::m_thread_topic.find(this_id);
@@ -220,58 +237,7 @@ namespace fw
 	 }
 	 return 0;
       }
-      // log severity info.
-//       void info(const char* _message)
-//       {
-// 	 topics::logline(log::e_info, _message);
-//       }
-// // log severity warning.
-//       void warning(const char* _message)
-//       {
-// 	 topics::logline(log::e_warning, _message);
-//       }
-// // log severity error.
-//       void error(const char* _message)
-//       {
-// 	 topics::logline(log::e_error, _message);
-//       }
-// // log severity debug.
-//       void debug(const char* _message)
-//       {
-// 	 topics::logline(log::e_debug, _message);
-//       }
-//       void macro(const char* _message)
-//       {
-// 	 topics::logline(log::e_macro, _message);
-//       }
-//       void info_inline(const char* _message)
-//       {
-// 	 topics::log(log::e_info, _message);
-//       }
-// // log severity warning.
-//       void warning_inline(const char* _message)
-//       {
-// 	 topics::log(log::e_warning, _message);
-//       }
-// // log severity error.
-//       void error_inline(const char* _message)
-//       {
-// 	 topics::log(log::e_error, _message);
-//       }
-// // log severity debug.
-//       void debug_inline(const char* _message)
-//       {
-// 	 topics::log(log::e_debug, _message);
-//       }
-//       void macro_inline(const char* _message)
-//       {
-// 	 topics::log(log::e_debug, _message);
-//       }
-//       void no_topic(const char* _message)
-//       {
-// 	 printf("%s", _message);
-//       }
-      void hash_path(hash::path&& _path)
+      void hash_path(const hash::path& _path)
       {
 	 printf("--------------\n");
 	 printf("directories in path: %d\n", _path.m_name_count);

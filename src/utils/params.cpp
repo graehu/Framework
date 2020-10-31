@@ -1,11 +1,9 @@
 #include "params.h"
 #include "log/log.h"
-#include "log/log_macros.h"
 #include "hasher.h"
 #include <cstdint>
 #include <cstring>
 #include <string>
-
 
 namespace fw
 {
@@ -72,6 +70,10 @@ namespace fw
       }
       void parse()
       {
+#if defined(DEFAULT_PARAMS)
+	 char default_params[] = { QUOTE(DEFAULT_PARAMS) };
+	 parse(default_params);
+#endif
 	 parse(arg_count, arg_variables);
       }
       void parse(char* _string)

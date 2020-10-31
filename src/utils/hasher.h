@@ -17,6 +17,27 @@ namespace fw
       {
 	 return i32(s, sizeof(T)-1);
       }
+      //
+      struct string
+      {
+	 template<std::size_t N>
+	 constexpr string(const char(&_literal)[N]) :
+	    m_literal(&_literal[0]),
+	    m_len(N-1),
+	    m_hash(i32(m_literal, m_len-1))
+	 {
+	 }
+	 constexpr string(const char* _literal, std::size_t _size) :
+	    m_literal(_literal),
+	    m_len(_size),
+	    m_hash(i32(m_literal, m_len-1))
+	 {
+	 }
+	 constexpr string() = default;
+	 const char* m_literal = nullptr;
+	 const std::size_t m_len{0};
+	 const std::uint32_t m_hash{0};
+      };
       struct path
       {
 	 static const char path_separator = '.';

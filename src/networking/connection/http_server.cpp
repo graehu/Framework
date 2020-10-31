@@ -7,7 +7,6 @@
 #include "../../utils/params.h"
 #include "../../utils/string_helpers.h"
 #include "../../utils/log/log.h"
-#include "../../utils/log/log_macros.h"
 // lib includes
 #include <bits/stdint-uintn.h>
 #include <cstddef>
@@ -102,11 +101,11 @@ int write_response_header(net::http_packet& packet, std::string_view request, in
 
 void net::http_server::server_thread(const socket& in_socket)
 {
-   auto topic = log::scope("http_server");
+   log::scope topic("http_server");
    net::socket listen_socket(in_socket);
    //Initialize some things
    net::http_packet packet;
-   auto lf_html_404 =
+   auto html_404 =
       [&packet]
       {
 	 packet.Clear();
@@ -117,7 +116,7 @@ void net::http_server::server_thread(const socket& in_socket)
 	    };
 	 packet.IterWrite<decltype(html_404)>(html_404);
       };
-   auto lf_html_200 =
+   auto html_200 =
       [&packet]()
       {
 	 packet.Clear();
@@ -158,7 +157,6 @@ void net::http_server::server_thread(const socket& in_socket)
 	    {
 	       packet.SetLength(bytes_read);
 	       packet.PrintDetails();
-	       //  #todo: this should be a string_view but emacs wont stop complaining.
 	       std::string_view view((char*)packet.GetData());
 	       auto http_loc = view.find("HTTP/");
 	       if (view.find("Connection: keep-alive") != std::string::npos || view.find("Connection: Keep-Alive") != std::string::npos)
@@ -180,7 +178,7 @@ void net::http_server::server_thread(const socket& in_socket)
 		     //
 		     if (get_request.compare("ws") == 0)
 		     {
-			//  #todo: Move this to a custom handler and support multiple custom handlers.
+			//  #todo: Move this to a custom handler
 			//
 			// Handle WS upgrade request
 			//
@@ -229,13 +227,12 @@ void net::http_server::server_thread(const socket& in_socket)
 			//
 			const char *request = get_request.length() == 0 ? "index.html" : get_request.c_str();
 			std::string request_view(request);
-			//  #todo: check for multiple custom handlers.
 			bool handled = false;
 			if (!m_handlers.empty())
 			{
 			   for(auto* handler : m_handlers)
 			   {
-			      lf_html_200(); 
+			      html_200(); 
 			      auto get_response =
 				 [&handled, &packet]
 				 (const char *message, size_t size)
@@ -259,7 +256,7 @@ void net::http_server::server_thread(const socket& in_socket)
 			   {
 			      //  #todo: return access denied code.
 			      // not allowing ../, illegal access pattern.
-			      lf_html_404();
+			      html_404();
 			   }
 			   else
 			   {
@@ -297,7 +294,7 @@ void net::http_server::server_thread(const socket& in_socket)
 			      }
 			      else
 			      {
-				 lf_html_404();
+				 html_404();
 			      }
 			      packet.CloseFile();
 			   }
@@ -390,7 +387,7 @@ void net::http_server::server_thread(const socket& in_socket)
 
 void net::http_server::ws_thread(const net::socket& from, const net::address& to)
 {
-   auto topic = log::scope("websocket");
+   log::scope topic("websocket");
    // This thread is pointless if there is no
    // handler set.
    net::socket socket(from);
