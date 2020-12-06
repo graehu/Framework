@@ -31,5 +31,6 @@ aliases = {
 if __name__ == "__main__":
     if not os.path.exists("libs/libfwcore.a"):
         os.system("cd libs && ./build.py")
+    aliases["all"] = ";".join([val for key, val in aliases.items()])
     aliases["samples"] = ";".join([val for key, val in aliases.items() if key.endswith("sample")])
     launcher(sys.argv[1:], aliases)

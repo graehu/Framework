@@ -1,36 +1,38 @@
 #!../../../tools/confply/confply.py
 # generated using:
 # python tools/confply/confply.py --config cpp_compiler build.py
-from confply.cpp_compiler.config import *
+import sys
+sys.path.append('../../../tools/confply')
+import confply.cpp_compiler.config as confply
 import confply.log as log
-# import pathlib
+
 import os
-confply_log_topic = "log_sample"
+confply.confply_log_topic = "log_sample"
 log.normal("loading build.py with confply_args: "+str(confply_args))
 
 # import subprocess
 # def getGitRoot():
 #     return subprocess.Popen(['git', 'rev-parse', '--show-toplevel'], stdout=subprocess.PIPE).communicate()[0].rstrip().decode('utf-8')
 
-confply_tool = "clang++"
-include_paths = [
+confply.confply_tool = "clang++"
+confply.include_paths = [
     "../../../libs/fmt/include/"
 ]
 
-library_paths = [
+confply.library_paths = [
     "../../../libs/"
 ]
-defines = ["DEFAULT_PARAMS=\"-log.default.level debug\""]
-source_files = [
+confply.defines = ["DEFAULT_PARAMS=\"-log.default.level debug\""]
+confply.source_files = [
     "../../main.cpp",
     "log_sample.cpp",
     "../../utils/log/log.cpp",
     "../../utils/params.cpp"
 ]
-warnings = ["all"]
+confply.warnings = ["all", "extra", "pedantic"]
 # debug_info = True
-optimisation = 3
-link_libraries = ["stdc++", "m", "fwcore"]
-standard = "gnu++2a"
-output_file = "log_sample.bin"
-confply_log_config = False
+confply.optimisation = 3
+confply.link_libraries = ["stdc++", "m", "fwcore"]
+confply.standard = "gnu++2a"
+confply.output_file = "log_sample.bin"
+confply.confply_log_config = False

@@ -1,29 +1,29 @@
 #!../../../tools/confply/confply.py
 # generated using:
 # python ../../../tools/confply/confply.py --config cpp_compiler build.py
-from confply.cpp_compiler.config import *
+import sys
+sys.path.append('../../../tools/confply')
+import confply.cpp_compiler.config as confply
 import confply.log as log
-confply_log_topic = "param_sample"
-log.normal("loading build.py with confply_args: "+str(confply_args))
 
-confply_tool = "clang++"
-source_files = [
+confply.confply_tool = "clang++"
+confply.source_files = [
     "../../main.cpp",
     "param_sample.cpp",
     "../../utils/log/log.cpp",
     "../../utils/params.cpp"
 ]
-include_paths = [
+confply.include_paths = [
     "../../../libs/fmt/include/"
 ]
 
-library_paths = [
+confply.library_paths = [
     "../../../libs/"
 ]
-warnings = ["all"]
+confply.warnings = ["all", "extra", "pedantic"]
 # debug_info = True
-optimisation = 3
-link_libraries = ["stdc++", "m", "fwcore"]
-standard = "c++17"
-output_file = "param_sample.bin"
-confply_log_config = False
+confply.optimisation = 3
+confply.link_libraries = ["stdc++", "m", "fwcore"]
+confply.standard = "c++17"
+confply.output_file = "param_sample.bin"
+confply.confply_log_config = False

@@ -1,9 +1,11 @@
 #!../../../tools/confply/confply.py
-from confply.cpp_compiler.config import *
+import sys
+sys.path.append('../tools/confply')
+import confply.cpp_compiler.config as confply
 
-confply_tool = "clang++"
-confply_log_topic = "net_physics_sample"
-source_files = [
+confply.confply_tool = "clang++"
+confply.confply_log_topic = "net_physics_sample"
+confply.source_files = [
     "../../main.cpp",
     "net_physics_sample.cpp",
     "../../utils/params.cpp",
@@ -33,16 +35,16 @@ source_files = [
     "../../networking/packet/writePacket.cpp",
     "../../networking/utils/dataUtils.cpp"
 ]
-include_paths = [
+confply.include_paths = [
     "../../../libs/fmt/include/"
 ]
 
-library_paths = [
+confply.library_paths = [
     "../../../libs/"
 ]
-warnings = "all"
-debug_info = True
-link_libraries = ["stdc++", "m", "SDLmain", "SDL", "SDL_image", "OpenGL", "GL", "fwcore"]
-standard = "c++17"
-output_file = "net_physics_sample.bin"
-confply_log_config = False
+confply.warnings = ["all", "extra", "pedantic"]
+confply.debug_info = True
+confply.link_libraries = ["stdc++", "m", "SDLmain", "SDL", "SDL_image", "OpenGL", "GL", "fwcore"]
+confply.standard = "c++17"
+confply.output_file = "net_physics_sample.bin"
+confply.confply_log_config = False

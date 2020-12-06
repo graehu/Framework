@@ -1,9 +1,13 @@
 #!../../../tools/confply/confply.py
-from confply.cpp_compiler.config import *
+import sys
+sys.path.append('../../../tools/confply')
+import confply.cpp_compiler.config as confply
+import confply.log as log
 
-confply_tool = "clang++"
-confply_log_topic = "rc_sample"
-source_files = [
+confply.confply_tool = "clang++"
+confply.confply_log_topic = "rc_sample"
+confply.confply_log_config = False
+confply.source_files = [
     "../../main.cpp",
     "rc_sample.cpp",
     "../../input/inSimple/inSimple.cpp",
@@ -16,17 +20,16 @@ source_files = [
     "../../utils/log/log.cpp",
     "../../utils/params.cpp"
 ]
-include_paths = [
+confply.include_paths = [
     "../../../libs/fmt/include/"
 ]
 
-library_paths = [
+confply.library_paths = [
     "../../../libs/"
 ]
-warnings = ["all"]
-# debug_info = True
-# optimisation = 0
-link_libraries = ["stdc++", "pthread", "m", "fwcore"]
-standard = "c++17"
-output_file = "rc_sample.bin"
-confply_log_config = False
+confply.warnings = ["all", "extra", "pedantic"]
+# confply.debug_info = True
+# confply.optimisation = 0
+confply.link_libraries = ["stdc++", "pthread", "m", "fwcore"]
+confply.standard = "c++17"
+confply.output_file = "rc_sample.bin"
