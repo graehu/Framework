@@ -25,12 +25,14 @@ aliases = {
     "rc_sample":"src/application/rc_sample/build.py",
     "net_physics_sample":"src/application/net_physics_sample/build.py",
     "param_sample":"src/application/param_sample/build.py",
-    "log_sample":"src/application/log_sample/build.py"
+    "log_sample":"src/application/log_sample/build.py",
+    "mpeg_sample":"src/application/mpeg_sample/build.py",
+    "fwcore_lib":"libs/build_fwcore.py",
+    "glfw_lib":"libs/build_glfw.py"
 }
 
 if __name__ == "__main__":
-    if not os.path.exists("libs/libfwcore.a"):
-        os.system("cd libs && ./build.py")
     aliases["all"] = ";".join([val for key, val in aliases.items()])
     aliases["samples"] = ";".join([val for key, val in aliases.items() if key.endswith("sample")])
+    aliases["libs"] = ";".join([val for key, val in aliases.items() if key.endswith("lib")])
     launcher(sys.argv[1:], aliases)

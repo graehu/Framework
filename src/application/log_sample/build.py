@@ -8,7 +8,7 @@ import confply.log as log
 
 import os
 confply.confply_log_topic = "log_sample"
-log.normal("loading build.py with confply_args: "+str(confply_args))
+log.normal("loading build.py with confply_args: "+str(confply.confply_args))
 
 # import subprocess
 # def getGitRoot():

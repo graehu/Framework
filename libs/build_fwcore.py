@@ -5,11 +5,14 @@ import sys
 sys.path.append('../tools/confply')
 import confply.cpp_compiler.config as confply
 import confply.log as log
-confply.confply_log_topic = "libs"
-log.normal("loading build.py with confply_args: "+str(confply_args))
+import os
+
+confply.confply_log_topic = "fwcore"
+log.normal("loading build.py with confply_args: "+str(confply.confply_args))
 
 confply.confply_tool = "clang++"
 confply.output_executable = False
+confply.object_path = "objects/fwcore"
 confply.include_paths = [
     "fmt/include/"
 ]
@@ -23,7 +26,7 @@ def on_complete():
     import os
     if os.path.exists("libfwcore.a"):
         os.system("rm libfwcore.a")
-    os.system("ar rcs libfwcore.a objects/*.o")
+    os.system("ar rcs libfwcore.a objects/fwcore/*.o")
     log.normal("")
     log.normal("output built libs to libfwcore.a")
     

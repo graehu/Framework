@@ -250,7 +250,8 @@ namespace fw
 	 }
 	 printf("--------------\n");
       }
-      timer::timer(const char* _name, bool _condition)
+      timer::timer(const char* _name, bool _condition) :
+	 m_condition(_condition)
       {
 	 m_name = _name;
 	 m_start = m_clock.now();

@@ -16,6 +16,7 @@ namespace fw
 {
    namespace log
    {
+      // #todo: consider a namespace with static const uints?
       enum level {  e_no_logging, e_fatal, e_error, e_warning, e_info, e_debug, e_all };
       // 
       class topic final : private params::callback
@@ -132,6 +133,11 @@ namespace fw
       void hash_path(const hash::path& _path);
       
       // #todo: find a way to do this automatically, one for every entery in levels enum
+      template<typename... Args>
+      void error(const char* _message, Args... _args)
+      {
+	 topics::logline<e_error>(_message, _args...);
+      }
       template<typename... Args>
       void debug(const char* _message, Args... _args)
       {
