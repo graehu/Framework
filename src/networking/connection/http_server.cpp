@@ -17,7 +17,6 @@
 #include <memory>
 #include <netinet/in.h>
 #include <string>
-#include <string_view>
 #include <sstream>
 #include <thread>
 #include <chrono>

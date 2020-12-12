@@ -14,19 +14,55 @@ on:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # This workflow contains a single job called "build"
-  build:
+  build_samples:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_KEY }}
+          known_hosts: ${{ secrets.KNOWN_HOSTS }}
+      # Setup python 3.6
+      - name: Set up Python 3.6
+        uses: actions/setup-python@v2
+        with:
+          # Semantic version range syntax or exact version of a Python version
+          python-version: '3.6'
+          architecture: 'x64'
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-
-      # Compile libs
-      - name: Compile Libs
+      - name: Checkout submodules
+        shell: bash
+        run: |
+          auth_header="$(git config --local --get http.https://github.com/.extraheader)"
+          git submodule sync --recursive
+          git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
+          # Install xorg-dev libgl1-mesa-dev clang-9
+      - name: Install Dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq xorg-dev libavcodec-dev libgl1-mesa-dev clang-9 g++-10 libavformat-dev libavcodec-dev libswresample-dev libswscale-dev libavutil-dev libx264-dev
+      # Compilep libs
+      - name: Build Libs
         run: python build.py libs
-
-      # Compile all the samples
-      - name: Compile Samples
-        run: python build.py samples
+        
+      - name: Build rc_sample
+        if: ${{ always() }}
+        run: python build.py rc_sample
+          
+      # - name: Build net_physics_sample
+      #   if: ${{ always() }}
+      #   run: python build.py net_physics_sample
+          
+      - name: Build param_sample
+        if: ${{ always() }}
+        run: python build.py param_sample
+          
+      - name: Build log_sample
+        if: ${{ always() }}
+        run: python build.py log_sample
+          
+      - name: Build mpeg_sample
+        if: ${{ always() }}
+        run: python build.py mpeg_sample

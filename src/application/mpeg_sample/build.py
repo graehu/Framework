@@ -6,8 +6,8 @@ sys.path.append('../../../tools/confply')
 import confply.cpp_compiler.config as confply
 import confply.log as log
 import os
-os.system("cd ../../../libs; ./build_fwcore.py --no_header")
-os.system("cd ../../../libs; ./build_glfw.py --no_header")
+os.system("cd ../../../libs; python build_fwcore.py --no_header")
+os.system("cd ../../../libs; python build_glfw.py --no_header")
 confply.confply_log_topic = "mpeg_sample"
 confply.confply_tool = "clang++"
 log.normal("loading cpp_compiler with confply_args: "+str(confply.confply_args))
