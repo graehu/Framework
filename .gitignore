@@ -7,3 +7,5 @@
 *.d
 *.a
 *.h264
+out.bmp
+tracking.py
