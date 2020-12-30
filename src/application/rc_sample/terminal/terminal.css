@@ -44,7 +44,7 @@
     box-flex: 1;
 }
 .prompt {
-    white-space: nowrap;
+    /* white-space: nowrap; */
     color: #96b38a;
     margin-right: -5px;
     display: -webkit-box;

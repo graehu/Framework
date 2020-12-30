@@ -31,6 +31,20 @@ application* application::factory()
    return nullptr;
 }
 
+namespace net
+{
+   class mpeg_handler : public http_server::handler
+   {
+   public:
+      void ws_send(http_server::handler::ws_send_callback callback) override
+      {
+	 log::info("herp");
+	 callback("1", sizeof(1), true);
+      }
+      bool is_ws_handler() override { return true; }
+   };
+}
+
 void generate_rgb(int width, int height, uint8_t **rgbp, bool on = false);
 
 static const struct

@@ -24,13 +24,17 @@ from confply import launcher
 # fill this with your commands
 aliases = {
     #'mycommand':'path/to/command.py'
+    # libs
+    "fwcore_lib":"libs/build_fwcore.py",
+    "glfw_lib":"libs/build_glfw.py",
+    # samples
     "rc_sample":"src/application/rc_sample/build.py",
     "net_physics_sample":"src/application/net_physics_sample/build.py",
     "param_sample":"src/application/param_sample/build.py",
     "log_sample":"src/application/log_sample/build.py",
     "mpeg_sample":"src/application/mpeg_sample/build.py",
-    "fwcore_lib":"libs/build_fwcore.py",
-    "glfw_lib":"libs/build_glfw.py"
+    "bitmap_sample":"src/application/bitmap_sample/build.py",
+    "test":"src/application/mpeg_sample/build_test.py"
 }
 
 if __name__ == "__main__":

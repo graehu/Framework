@@ -20,12 +20,18 @@ namespace net
       {
       public:
 	 // typedef void (*send_callback)(const char* message, size_t size);
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
+	 // #todo: move to using string_view and string here.
 	 typedef std::function<void(const char*, size_t)> send_callback;
-	 virtual void get_response(const char* request, send_callback send_cb) {}
-	 virtual void post_response(std::string_view& request, std::string_view& body) {}
-	 virtual void ws_response(const char* data, send_callback send_cb) {}
-	 virtual void ws_send(send_callback send_cb) {}
+	 // #todo: consider uint opcodes, bool = text atm.
+	 typedef std::function<void(const char*, size_t, bool)> ws_send_callback;
+	 virtual void get_response(std::string_view request, send_callback send_cb) { }
+	 virtual void post_response(std::string_view request, std::string_view body) { }
+	 virtual void ws_response(const char* data, ws_send_callback send_cb) { }
+	 virtual void ws_send(ws_send_callback send_cb) { }
 	 virtual bool is_ws_handler() { return false; }
+#pragma clang diagnostic pop
       };
       http_server(unsigned int port);
       ~http_server();
@@ -51,7 +57,7 @@ namespace fw
       class http_handler : public net::http_server::handler
       {
       public:
-	 void post_response(std::string_view& request, std::string_view& body) override;
+	 void post_response(std::string_view request, std::string_view body) override;
       };
    }
 }

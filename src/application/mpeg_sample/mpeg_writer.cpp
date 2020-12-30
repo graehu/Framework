@@ -156,10 +156,12 @@ int mpeg_writer::add_frame(uint8_t *rgb)
       //scale
       if (scale != 1.0f)
       {
+	 
 	 sws_context = sws_getCachedContext(sws_context,
 					    frame->width, frame->height, AV_PIX_FMT_YUV420P,
 					    scaled_frame->width, scaled_frame->height, AV_PIX_FMT_YUV420P,
 					    SWS_BICUBIC, nullptr, nullptr, nullptr);
+
 	 sws_scale(sws_context, (const uint8_t * const *)frame->data, frame->linesize, 0,
 		   frame->height, scaled_frame->data, scaled_frame->linesize);  
       }

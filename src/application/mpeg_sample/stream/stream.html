@@ -19,13 +19,14 @@
       RCLib.Connect();
       const canvas = document.getElementById('stream_canvas');
       const ctx = canvas.getContext('2d');
-      canvas.width = 768;
-      canvas.height = 768;
+      canvas.width = 640;
+      canvas.height = 480;
       const width = canvas.width;
       const height = canvas.height;
       const imageData = ctx.createImageData(width, height);
       var ResponseCB = function(message)
       {
+	  var in_image = message;
 	  for (let i = 0; i < imageData.data.length; i += 4)
 	  {
 	      // Modify pixel data
@@ -46,7 +47,7 @@
 	  timer = timer + 1.0/30.0;
 	  if(timer > 0.3)
           {
-	      // RCLib.Send("boop");
+	      send("boop");
 	      timer = 0.0;
 	  }
       };

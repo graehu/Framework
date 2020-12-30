@@ -125,7 +125,17 @@ bitmap::bitmap(const char* _filename)
    // Close the bitmap file now that we have all the data we need
    fclose(pFile);
    m_loaded = true;
+   m_filename = _filename;
 }//*/
+bitmap::bitmap(int _width, int _height, signed char* _data, int _data_size)
+{
+   m_loaded = true;
+   m_width = _width;
+   m_data = _data;
+   m_data_size = _data_size;
+   m_height = _height;
+   m_filename = nullptr;
+}
 
 // lpBits stand for long point bits
 
@@ -192,7 +202,7 @@ signed char bitmap::get_red_value(unsigned int _u, unsigned int _v)
 
 bitmap::~bitmap()
 {
-   if(m_data != nullptr)
+   if(m_data != nullptr && m_filename != nullptr)
    {
       delete m_data;
    }

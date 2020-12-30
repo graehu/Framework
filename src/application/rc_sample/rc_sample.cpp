@@ -24,8 +24,7 @@ _______   ____        ___________    _____ ______ |  |   ____
  |__|    \___  >____/____  >(____  /__|_|  /   __/|____/\___  >
              \/_____/    \/      \/      \/|__|             \/ 
 )""\n");
-
-      params::add("rc.port", {"8000"});
+      params::add("rc.port", {"8080"});
       commandline::parse();
       log::topics::add("rc_sample");
       do_once = false;
@@ -38,16 +37,18 @@ namespace net
    class rc_handler : public http_server::handler
    {
    public:
-      void get_response(const char* request, http_server::handler::send_callback callback) override
+      void get_response(std::string_view request, http_server::handler::send_callback callback) override
       {
 	 // #todo: test this because i don't think it works.
-	 if(strcmp(request, "custom") == 0)
+	 if(request.compare("custom") == 0)
 	 {
 	    callback("you suck", sizeof("you suck"));
 	 }
       }
-      void ws_response(const char* data, http_server::handler::send_callback callback) override
+      void ws_response(const char* data, http_server::handler::ws_send_callback callback) override
       {
+	 // #todo: does this pattern make sense? websockets are less of a response driven protocol
+	 (void)callback;
 	 std::string lv_data(data);
 	 const char lv_dir_label[] = { "d:[" };
 	 auto lv_dir_start = lv_data.find(lv_dir_label);
@@ -70,11 +71,11 @@ namespace net
 	    log::debug("read as: x: {} y: {}", lv_dir[0], lv_dir[1]);
 	 }
       }
-      void ws_send(http_server::handler::send_callback callback) override
+      void ws_send(http_server::handler::ws_send_callback callback) override
       {
-	 if(mv_counter % 10 == 0) { callback("ten", sizeof("ten")); }
-	 if(mv_counter % 100 == 0) { callback("a hundred", sizeof("a hundred")); }
-	 if(mv_counter % 1000 == 0) { callback("a thousand", sizeof("a thousand")); }
+	 if(mv_counter % 10 == 0) { callback("ten", sizeof("ten"), true); }
+	 if(mv_counter % 100 == 0) { callback("a hundred", sizeof("a hundred"), true); }
+	 if(mv_counter % 1000 == 0) { callback("a thousand", sizeof("a thousand"), true); }
 	 mv_counter++;
       }
       bool is_ws_handler() override { return true; }

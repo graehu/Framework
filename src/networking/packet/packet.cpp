@@ -12,7 +12,6 @@ BasePacket::BasePacket()
 {
    m_file = new std::fstream;
 }
-
 BasePacket::~BasePacket()
 { ///this may require more later.
    if(m_file != nullptr)
@@ -39,7 +38,7 @@ bool BasePacket::OpenFile(const char* _file_name)
       mv_file_name = _file_name;
       return true;
    }
-   //todo return true if it's the same file, somehow.
+   // #todo: return true if it's the same file, somehow.
    return false;
 }
 bool BasePacket::IsFileOpen()
@@ -87,7 +86,7 @@ void BasePacket::PrintDetails()
       log::no_topic("{:.{}}\n\n", GetData(), end);
    }
    log::debug("[packet_end]");
-}    
+}
   
 
 

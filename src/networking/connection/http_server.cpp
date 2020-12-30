@@ -24,7 +24,7 @@
 
 using namespace fw;
 
-void fw::commandline::http_handler::post_response(std::string_view& request, std::string_view& body)
+void fw::commandline::http_handler::post_response(std::string_view request, std::string_view body)
 {
    if(std::ends_with(request, "/params"))
    {
@@ -59,10 +59,10 @@ namespace net
    // typedef NewPacket<16384> http_packet;
    // typedef NewPacket<8192> http_packet;
    // typedef NewPacket<1024> http_packet;
-  // typedef NewPacket<512> http_packet;
-  // typedef NewPacket<256> http_packet;
-     // typedef NewPacket<128> http_packet;
-  // typedef NewPacket<64> http_packet;
+   // typedef NewPacket<512> http_packet;
+   // typedef NewPacket<256> http_packet;
+   // typedef NewPacket<128> http_packet;
+   // typedef NewPacket<64> http_packet;
    struct websocket_header
    {
       //  this header is the first 16 bits.
@@ -76,15 +76,28 @@ namespace net
       // +-+-+-+-+-------+-+-------------+ - - - - - - - - - - - - - - - +
       websocket_header() : opcode(1), RSV3(0), RSV2(0), RSV1(0), FIN(1), length(0), MASK(0)
       {
-	 // consider c++20 for int a : 7 = 1; syntax
+	 // #todo: consider c++20 for int a : 7 = 1; syntax
       }
+      // opcodes
+      // 0x0 = concatinate with last frame (FIN = 0, until final concatination)
+      // 0x1 = text
+      // 0x2 = binary
+      // 0x9 = ping
+      // 0xA = pong
       uint8_t opcode : 4;
       uint8_t RSV3 : 1;
       uint8_t RSV2 : 1;
       uint8_t RSV1 : 1;
-      uint8_t FIN  : 1;
+      uint8_t FIN  : 1; // is this the final package
       uint8_t length : 7;
       uint8_t MASK : 1;
+   };
+   struct websocket_header_ext : websocket_header
+   {
+      websocket_header_ext() : websocket_header(), length_ext(0)
+      {
+      }
+      uint16_t length_ext : 16; 
    };
    const char ws_handshake[] =
    {
@@ -93,7 +106,61 @@ namespace net
       "Connection: Upgrade\r\n"
       "Sec-WebSocket-Accept: "
    };
+   // class ws_handler : http_server::handler
+   // {
+   //    void get_response(std::string_view _request, std::string_view _view, send_callback send_cb)
+   //    {
+   // 	 if (_request.compare("ws") == 0)
+   // 	 {
+   // 	    //  #todo: Move this to a custom handler
+   // 	    //
+   // 	    // Handle WS upgrade request
+   // 	    //
+
+   // 	    char key_start_str[] = {"Sec-WebSocket-Key: "};
+   // 	    auto key_start_loc = _view.find(key_start_str) + sizeof(key_start_str) - 1;
+   // 	    //
+   // 	    char key_end_str[] = {"==\r\n"};
+   // 	    auto key_end_loc = (_view.find(key_end_str) + 2) - key_start_loc;
+   // 	    //
+   // 	    unsigned char hash[28];
+   // 	    memset(&hash[0], 0, sizeof(hash));
+   // 	    // The stuff here is pretty cryptic sadly,
+   // 	    // Generating a sha key and encoding it into
+   // 	    // base64 hash.
+   // 	    {
+   // 	       //  #todo: generate different GUIDs?
+   // 	       const char GUID[] = {"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"};
+   // 	       std::string key(_view.substr(key_start_loc, key_end_loc));
+   // 	       key += GUID;
+   // 	       unsigned char sha[20];
+   // 	       net::encrypt::SHA1(sha, (unsigned char *)key.data(), key.length());
+   // 	       net::encode::Base64(&hash[0], &sha[0], sizeof(sha));
+   // 	    }
+   // 	    packet.IterWrite(net::ws_handshake);
+   // 	    packet.IterWrite(hash);
+   // 	    unsigned char packet_end[] = {"\r\n\r\n"};
+   // 	    packet.IterWrite(packet_end);
+   // 	    //
+   // 	    log::debug("sending: websocket upgrade");
+   // 	    socket.send(address, packet.GetData(), packet.GetSize());
+   // 	    packet.Clear();
+		  
+   // 	    // starting ws thread.
+   // 	    close_socket = false;
+   // 	    timeout = 0;
+   // 	    socket.set_keepalive(true);
+   // 	    m_ws_threads.push_back(new std::thread(&net::http_server::ws_thread, this, socket, address));
+   // 	    // sleep here because those objects are passed by ref and I don't want them to be destroyed.
+   // 	    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+   // 	 }
+   //    }
+   // };
 }
+
+
+
+
 
 bool send_file(const net::address& address,  net::socket& socket,  net::http_packet& packet, uint32_t start, uint32_t end);
 int write_response_header(net::http_packet& packet, std::string_view request, int& start, int& end);
@@ -239,7 +306,7 @@ void net::http_server::server_thread(const socket& in_socket)
 				    handled = true;
 				    packet.IterWrite(message, size);
 				 };
-			      handler->get_response(request, get_response);
+			      handler->get_response(get_request, get_response);
 			      if(handled)
 			      {
 				 break;
@@ -395,6 +462,7 @@ void net::http_server::ws_thread(const net::socket& from, const net::address& to
    log::debug("begin websocket thread");
    socket.set_nonblocking(true);
    websocket_header ws_header;
+   websocket_header_ext ws_header_ext;
    bool is_connected = true;
    handler* ws_handler = nullptr;
    for(auto* handler : m_handlers)
@@ -409,13 +477,32 @@ void net::http_server::ws_thread(const net::socket& from, const net::address& to
    {
       //  #todo: test if this is thread safe
       auto ws_send =
-	 [&packet, &ws_header, &socket, &address, &is_connected]
-	 (const char *message,size_t size)
+	 [&packet, &ws_header, &ws_header_ext, &socket, &address, &is_connected]
+	 (const char *message, size_t size, bool text)
 	 {
-	    //  #todo: split packets that are too big for websocket, or bail
 	    packet.Clear();
-	    ws_header.length = size - 1;
-	    packet.IterWrite(ws_header);
+	    if ((size - 1) < 126)
+	    {
+	       ws_header.length = size - 1;
+	       ws_header.opcode = text ? 0x1 : 0x2;
+	       packet.IterWrite(ws_header);
+	    }
+	    //16 bit max
+	    else if((size - 1) < 65536)
+	    {
+	       ws_header_ext.length = 126;
+	       ws_header_ext.length_ext = size - 1;
+	       ws_header_ext.opcode = text ? 0x1 : 0x2;
+	       packet.IterWrite(ws_header_ext);
+	    }
+	    else
+	    {
+	       // #todo: handle 64bit package size here here
+	       // 64 bit int must have most significant 
+	       // ws_header_ext2.length = 127;
+	       // ws_header_ext2.length_ext = size - 1;
+	       log::error("attempted to send unsupported packet length: {}", size - 1);
+	    }
 	    packet.IterWrite(message, size);
 	    if(socket.send(address, packet.GetData(), packet.GetSize()) == -1)
 	    {

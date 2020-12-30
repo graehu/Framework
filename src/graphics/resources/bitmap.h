@@ -11,6 +11,7 @@ class bitmap
 {
 public:
    bitmap(const char* _filename);
+   bitmap(int _width, int _height, signed char* _data, int _data_size);
    ~bitmap();
    bool save(const char* _filename);
    signed char* get_data(void) { return m_data; }
@@ -25,6 +26,7 @@ protected:
    int m_width;
    int m_height;
    bool m_loaded;
+   const char* m_filename;
 	
 private:
 };
