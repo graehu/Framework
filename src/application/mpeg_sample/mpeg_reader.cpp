@@ -228,9 +228,9 @@ void mpeg_reader::dump_random_screenshot()
       while (data_size > 0)
       {
 	 av_init_packet(packet);
-	 packet->data = nullptr;
-	 packet->size = 0;
-	 frame->pts++;
+	 // packet->data = nullptr;
+	 // packet->size = 0;
+	 // frame->pts++;
 	 ret = av_parser_parse2(parser, codec_context, &packet->data, &packet->size,
 				data, data_size, AV_NOPTS_VALUE, AV_NOPTS_VALUE, 0);
 	 if (ret < 0)
@@ -248,84 +248,54 @@ void mpeg_reader::dump_random_screenshot()
 	    fprintf(stderr, "Error decoding frame: %s\n", error_buf);
 	    exit(1);
 	 }
-	 ret = avcodec_receive_frame(codec_context, frame);
-	 static bool do_once = true;
-	 static int count = 0;
-	 count++;
-	 if (ret >= 0 && do_once && count == 4)
+	 int fytest = 0;
+	 while(ret >= 0)
 	 {
-	      pgm_save(frame->data[0], frame->linesize[0],
-			   frame->width, frame->height, (char*)"out.pgm");
-	    // int numBytes = av_image_get_buffer_size(AV_PIX_FMT_RGB24, codec_context->width, codec_context->height, 3*codec_context->width);
-	    // uint8_t* buffer = (uint8_t*)malloc(numBytes * sizeof(uint8_t));
-	    // Assign appropriate parts of buffer to image planes in pFrameRGB
-	    // avpicture_fill is deprecated fix with this.
-	    // av_image_fill_arrays();
-	    // avpicture_fill((AVPicture *)rgb_frame, buffer, AV_PIX_FMT_RGB24, codec_context->width, codec_context->height);
-	    ret = av_image_alloc(rgb_frame->data, rgb_frame->linesize, codec_context->width, codec_context->height, AV_PIX_FMT_RGB24, 32);
-	    // if(do_once && count == 2)
-	    if (ret >= 0)
+	    fytest++;
+	    printf("%d\n", fytest);
+	    ret = avcodec_receive_frame(codec_context, frame);
+	    if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+	       break;
+	    else if (ret < 0) {
+	       fprintf(stderr, "Error during decoding\n");
+	       exit(1);
+	    }
+	 
+	    static bool do_once = true;
+	    static int count = 0;
+	    count++;
+	    // printf("%d\n", count);
+	    if (ret >= 0 && do_once && count == 20)
 	    {
+	       printf("doing it\n");
+	       do_once = false;
+	       pgm_save(frame->data[0], frame->linesize[0],
+			frame->width, frame->height, (char*)"out.pgm");
+
+	       av_image_alloc(rgb_frame->data, rgb_frame->linesize, codec_context->width, codec_context->height, AV_PIX_FMT_RGB24, 32);
+	       // yuv to rgb24 causes the image to flip vertically, doing this prior to the conversion negates the effect
+	       frame->data[0] += frame->linesize[0] * (codec_context->height-1);
+	       frame->linesize[0] *= -1;
+	       frame->data[1] += frame->linesize[1] * (codec_context->height/2 - 1);
+	       frame->linesize[1] *= -1;
+	       frame->data[2] += frame->linesize[2] * (codec_context->height/2 - 1);
+	       frame->linesize[2] *= -1;
+	       
 	       sws_context = sws_getCachedContext(sws_context,
-						 codec_context->width,codec_context->height, AV_PIX_FMT_YUV420P,
-						 codec_context->width,codec_context->height, AV_PIX_FMT_RGB24,
-						  SWS_POINT, nullptr, nullptr, nullptr);
+						  codec_context->width,codec_context->height, AV_PIX_FMT_YUV420P,
+						  codec_context->width,codec_context->height, AV_PIX_FMT_RGB24,
+						  SWS_X, nullptr, nullptr, nullptr);
 
-	       sws_scale(sws_context, (uint8_t const * const *)frame->data, frame->linesize, 0,
+	       sws_scale(sws_context, frame->data, frame->linesize, 0,
 			 frame->height, rgb_frame->data, rgb_frame->linesize);
-	    
-	       // sws_scale(sws_context, (const uint8_t * const *)&rgb, in_linesize, 0,
-	       // 	      frame->height, frame->data, frame->linesize);
-	       {
-		  do_once = false;
-		  int comp_size = frame->width*frame->height;
-		  // int data_size = 3*comp_size;
-		  // uint8_t rgb_linear[data_size];
-		  // int testy = 0;
-		  // for(int x = 0; x < frame->width; x++)
-		  // {
-		  //    for(int y = 0; y < frame->height; y++)
-		  //    {			
-		  // 	int p1=(x*3)+(y*frame->linesize[0]);
-		  // 	int p2 = x+y*frame->width;
-		  // 	rgb_linear[p2+0]=rgb_frame->data[0][p1+0];
-		  // 	rgb_linear[p2+1]=rgb_frame->data[0][p1+1];
-		  // 	rgb_linear[p2+2]=rgb_frame->data[0][p1+2];
-		  // 	testy++;
-		  //    }
-		  // }
-		  // printf("test: %d\n", testy);
-		  // bitmap test(width, height, (signed char*)&rgb_linear[0], data_size);
-		  // test.save("out.bmp");
-		  for(int i = 0; i < 3; i++)
-		  {
-		     bitmap comp(width, height, (signed char*)&rgb_frame->data[i], comp_size);
-		     if(i == 0)
-		     {
-			comp.save("red.bmp");
-		     }
-		     if (i == 1)
-		     {
-			comp.save("green.bmp");
-		     }
-		     if (i == 2)
-		     {
-			comp.save("blue.bmp");
-		     }
-			    
-		  }
 
-	       }
+
+	       int data_size = 3*frame->width*frame->height;
+	       bitmap bmp(width, height, (signed char*)&rgb_frame->data[0][0], data_size);
+	       bmp.save("out.bmp");
 	    }
-	    else
-	    {
-	       	    char error_buf [AV_ERROR_MAX_STRING_SIZE] = {0};
-		    av_strerror(ret, error_buf, AV_ERROR_MAX_STRING_SIZE);
-		    fprintf(stderr, "Error allocating image: %s\n", error_buf);
-		    exit(1);
-	    }
-	    av_packet_unref(packet);
 	 }
+	 av_packet_unref(packet);
       }
    }
    printf("leaving\n");
