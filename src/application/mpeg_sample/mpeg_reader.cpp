@@ -215,22 +215,19 @@ void mpeg_reader::dump_random_screenshot()
    {
       /* read raw data from the input file */
       // #todo: fix magic numbers
-#define INBUF_SIZE 4096
-      uint8_t inbuf[INBUF_SIZE+AV_INPUT_BUFFER_PADDING_SIZE];
-      memset(inbuf + INBUF_SIZE, 0, AV_INPUT_BUFFER_PADDING_SIZE);
-      size_t data_size = fread(inbuf, 1, INBUF_SIZE, in_file);
+      uint8_t inbuf[4096+AV_INPUT_BUFFER_PADDING_SIZE];
+      memset(inbuf + 4096, 0, AV_INPUT_BUFFER_PADDING_SIZE);
+      size_t data_size = fread(inbuf, 1, 4096, in_file);
+      
       if (!data_size)
+      {
 	 break;
-   
+      }
       /* use the parser to split the data into frames */
       uint8_t* data = inbuf;
-      
+      av_init_packet(packet);
       while (data_size > 0)
       {
-	 av_init_packet(packet);
-	 // packet->data = nullptr;
-	 // packet->size = 0;
-	 // frame->pts++;
 	 ret = av_parser_parse2(parser, codec_context, &packet->data, &packet->size,
 				data, data_size, AV_NOPTS_VALUE, AV_NOPTS_VALUE, 0);
 	 if (ret < 0)
@@ -240,65 +237,68 @@ void mpeg_reader::dump_random_screenshot()
 	 }
 	 data      += ret;
 	 data_size -= ret;
-	 ret = avcodec_send_packet(codec_context, packet);
-	 if (ret < 0)
+	 //sometimes the parser doesn't put data in the packet, not sure why.
+	 if (packet->size)
 	 {
-	    char error_buf [AV_ERROR_MAX_STRING_SIZE] = {0};
-	    av_strerror(ret, error_buf, AV_ERROR_MAX_STRING_SIZE);
-	    fprintf(stderr, "Error decoding frame: %s\n", error_buf);
-	    exit(1);
-	 }
-	 int fytest = 0;
-	 while(ret >= 0)
-	 {
-	    fytest++;
-	    printf("%d\n", fytest);
-	    ret = avcodec_receive_frame(codec_context, frame);
-	    if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
-	       break;
-	    else if (ret < 0) {
-	       fprintf(stderr, "Error during decoding\n");
+	    //func starts here
+	    ret = avcodec_send_packet(codec_context, packet);
+	    if (ret < 0)
+	    {
+	       char error_buf [AV_ERROR_MAX_STRING_SIZE] = {0};
+	       av_strerror(ret, error_buf, AV_ERROR_MAX_STRING_SIZE);
+	       fprintf(stderr, "Error decoding frame: %s\n", error_buf);
 	       exit(1);
 	    }
-	 
-	    static bool do_once = true;
-	    static int count = 0;
-	    count++;
-	    // printf("%d\n", count);
-	    if (ret >= 0 && do_once && count == 20)
+	    while(ret >= 0)
 	    {
-	       printf("doing it\n");
-	       do_once = false;
-	       pgm_save(frame->data[0], frame->linesize[0],
-			frame->width, frame->height, (char*)"out.pgm");
+	       ret = avcodec_receive_frame(codec_context, frame);
+	       if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+	       {
+		  break;
+	       }
+	       else if (ret < 0) {
+		  fprintf(stderr, "Error during decoding\n");
+		  exit(1);
+	       }
+	 
+	       static bool do_once = true;
+	       static int count = 0;
+	       count++;
+	       if (ret >= 0 && do_once && count == 200)
+	       {
+		  do_once = false;
+		  pgm_save(frame->data[0], frame->linesize[0],
+			   frame->width, frame->height, (char*)"mpeg_dump.pgm");
 
-	       av_image_alloc(rgb_frame->data, rgb_frame->linesize, codec_context->width, codec_context->height, AV_PIX_FMT_RGB24, 32);
-	       // yuv to rgb24 causes the image to flip vertically, doing this prior to the conversion negates the effect
-	       frame->data[0] += frame->linesize[0] * (codec_context->height-1);
-	       frame->linesize[0] *= -1;
-	       frame->data[1] += frame->linesize[1] * (codec_context->height/2 - 1);
-	       frame->linesize[1] *= -1;
-	       frame->data[2] += frame->linesize[2] * (codec_context->height/2 - 1);
-	       frame->linesize[2] *= -1;
-	       
-	       sws_context = sws_getCachedContext(sws_context,
-						  codec_context->width,codec_context->height, AV_PIX_FMT_YUV420P,
-						  codec_context->width,codec_context->height, AV_PIX_FMT_RGB24,
-						  SWS_X, nullptr, nullptr, nullptr);
+		  av_image_alloc(rgb_frame->data, rgb_frame->linesize, codec_context->width, codec_context->height, AV_PIX_FMT_RGB24, 32);
+		  // yuv to rgb24 causes the image to flip vertically, doing this prior to the conversion negates the effect
+		  frame->data[0] += frame->linesize[0] * (codec_context->height-1);
+		  frame->linesize[0] *= -1;
+		  frame->data[1] += frame->linesize[1] * (codec_context->height/2 - 1);
+		  frame->linesize[1] *= -1;
+		  frame->data[2] += frame->linesize[2] * (codec_context->height/2 - 1);
+		  frame->linesize[2] *= -1;
 
-	       sws_scale(sws_context, frame->data, frame->linesize, 0,
-			 frame->height, rgb_frame->data, rgb_frame->linesize);
+		  // #todo: there seems to be an issue with image quality during conversion.
+		  //        test out SWS_X vs SWS_POINT etc. 
+		  sws_context = sws_getCachedContext(sws_context,
+						     codec_context->width,codec_context->height, AV_PIX_FMT_YUV420P,
+						     codec_context->width,codec_context->height, AV_PIX_FMT_RGB24,
+						     SWS_X, nullptr, nullptr, nullptr);
+
+		  sws_scale(sws_context, frame->data, frame->linesize, 0,
+			    frame->height, rgb_frame->data, rgb_frame->linesize);
 
 
-	       int data_size = 3*frame->width*frame->height;
-	       bitmap bmp(width, height, (signed char*)&rgb_frame->data[0][0], data_size);
-	       bmp.save("out.bmp");
+		  int bmp_data_size = 3*frame->width*frame->height;
+		  bitmap bmp(width, height, (signed char*)&rgb_frame->data[0][0], bmp_data_size);
+		  bmp.save("mpeg_dump.bmp");
+	       }
 	    }
 	 }
-	 av_packet_unref(packet);
       }
+      av_packet_unref(packet);
    }
-   printf("leaving\n");
 }
 
 int main(int argc, char *argv[])
@@ -378,8 +378,9 @@ static void decode(AVCodecContext *dec_ctx, AVFrame *frame, AVPacket *pkt,
       fprintf(stderr, "Error sending a packet for decoding\n");
       exit(1);
    }
-    
+
    while (ret >= 0) {
+      printf("--\n");
       ret = avcodec_receive_frame(dec_ctx, frame);
       if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
 	 return;
