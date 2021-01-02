@@ -106,7 +106,7 @@ bitmap::bitmap(const char* _filename)
    //fallback
    if(lBitSize == 0)
    {
-      lBitSize = (m_width * pBitmapInfo->header.bits + 7) / 8 * abs(m_height);
+      lBitSize = (m_width * pBitmapInfo->header.bits + 7) / 8 * m_height;
    }
 
    // Allocate space for the actual bitmap

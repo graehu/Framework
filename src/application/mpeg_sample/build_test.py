@@ -14,6 +14,7 @@ log.normal("loading cpp_compiler with confply_args: "+str(confply.confply_args))
 confply.source_files = ["mpeg_reader.cpp", "../../graphics/resources/bitmap.cpp"]
 confply.confply_log_config = False
 confply.link_libraries = []
+confply.warnings = ["all", "extra", "pedantic"]
 confply.link_libraries.extend(["avformat", "avcodec", "avutil",  "x264", "stdc++", "swscale"])
 # confply.link_libraries.extend([, "pthread", "m", "fwcore"])
 confply.standard = "c++17"

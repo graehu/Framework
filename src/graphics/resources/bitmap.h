@@ -23,8 +23,8 @@ protected:
    //writen with opengl in mind
    signed char* m_data;
    int m_data_size;
-   int m_width;
-   int m_height;
+   unsigned int m_width;
+   unsigned int m_height;
    bool m_loaded;
    const char* m_filename;
 	
