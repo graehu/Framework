@@ -16,7 +16,7 @@ public:
    mpeg_reader(const char* _filename);
    ~mpeg_reader();
    // #todo: make a proper type for image data
-   void dump_random_screenshot();
+   void dump_screenshot(int _frame_number);
 private:
    AVFrame* frame;
    AVFrame* rgb_frame;

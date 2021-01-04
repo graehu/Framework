@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <filesystem>
+#include "../../utils/string_helpers.h"
 namespace fs = std::filesystem;
 
 // needed because ffmpeg is a pure C library.
@@ -89,7 +90,7 @@ mpeg_reader::~mpeg_reader()
 }
 // #todo: put this somewhere else
 static void pgm_save(unsigned char *buf, int wrap, int xsize, int ysize,
-		     char *filename)
+		     const char *filename)
 {
    FILE *f;
    int i;
@@ -100,8 +101,10 @@ static void pgm_save(unsigned char *buf, int wrap, int xsize, int ysize,
    fclose(f);
 }
 
-void mpeg_reader::dump_random_screenshot()
+void mpeg_reader::dump_screenshot(int _frame_number)
 {
+   std::string screenshot_str = std::string(filename);
+   screenshot_str = screenshot_str.substr(0, screenshot_str.length()-4);
    //yuv->rgb conversion
    int ret = 0;
    while (!feof(in_file))
@@ -158,11 +161,12 @@ void mpeg_reader::dump_random_screenshot()
 	       static bool do_once = true;
 	       static int count = 0;
 	       count++;
-	       if (ret >= 0 && do_once && count == 200)
+	       if (ret >= 0 && do_once && count == _frame_number)
 	       {
 		  do_once = false;
+		  printf("saving: %s\n", (screenshot_str + "pgm").c_str());
 		  pgm_save(frame->data[0], frame->linesize[0],
-			   frame->width, frame->height, (char*)"mpeg_dump.pgm");
+			   frame->width, frame->height, (screenshot_str + "pgm").c_str());
 
 		  av_image_alloc(rgb_frame->data, rgb_frame->linesize, codec_context->width, codec_context->height, AV_PIX_FMT_RGB24, 32);
 		  // yuv to rgb24 causes the image to flip vertically, doing this prior to the conversion negates the effect
@@ -188,7 +192,8 @@ void mpeg_reader::dump_random_screenshot()
 
 		  int bmp_data_size = 3*frame->width*frame->height;
 		  bitmap bmp(width, height, (signed char*)&rgb_frame->data[0][0], bmp_data_size);
-		  bmp.save("mpeg_dump.bmp");
+		  printf("saving: %s\n", (screenshot_str + "bmp").c_str());
+		  bmp.save((screenshot_str + "bmp").c_str());
 	       }
 	    }
 	 }
@@ -196,7 +201,7 @@ void mpeg_reader::dump_random_screenshot()
       av_packet_unref(packet);
    }
 }
-
+#ifdef UNIT_TEST
 int main(int argc, char *argv[])
 {
    const char *filename = argv[1];
@@ -208,5 +213,6 @@ int main(int argc, char *argv[])
    }
    printf("reading: %s\n", filename);
    mpeg_reader reader(filename);
-   reader.dump_random_screenshot();
+   reader.dump_screenshot(200);
 }
+#endif

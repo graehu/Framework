@@ -15,6 +15,8 @@ confply.source_files = [
     "../../main.cpp",
     "mpeg_sample.cpp",
     "mpeg_writer.cpp",
+    "mpeg_reader.cpp",
+    "../../graphics/resources/bitmap.cpp",
     "../../networking/connection/http_server.cpp",
     "../../networking/connection/address.cpp",
     "../../networking/connection/socket.cpp",

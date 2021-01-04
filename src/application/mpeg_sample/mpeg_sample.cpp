@@ -3,6 +3,7 @@
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include "mpeg_writer.h"
+#include "mpeg_reader.h"
 #include "linmath.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -81,7 +82,7 @@ void main()
     gl_FragColor = vec4(color, 1.0);
 }
 )";
- 
+
 static void glfw_error_callback(int error, const char* description)
 {
    (void)error;
@@ -123,7 +124,7 @@ void mpeg_sample::run(void)
    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
  
-   window = glfwCreateWindow(640, 480, "Simple example", NULL, NULL);
+   window = glfwCreateWindow(640, 480, "mpeg_sample", NULL, NULL);
    if (!window)
    {
       glfwTerminate();
@@ -196,9 +197,11 @@ void mpeg_sample::run(void)
    }
    delete [] data;
    glfwDestroyWindow(window);
+   
  
    glfwTerminate();
-   exit(EXIT_SUCCESS);
-   
+   mpeg_reader reader("gl_mpeg.1.00.h264");
+   reader.dump_screenshot(200);
    log::debug("ending loop");
+   exit(EXIT_SUCCESS);
 }
