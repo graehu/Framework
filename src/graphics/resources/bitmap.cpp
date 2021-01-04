@@ -111,7 +111,7 @@ bitmap::bitmap(const char* _filename)
 
    // Allocate space for the actual bitmap
    delete pBitmapInfo;
-   m_data = new signed char[lBitSize];// (sizeof(byte)*lBitSize);
+   m_data = new signed char[lBitSize];
 
    // Read in the bitmap bits, check for corruption
    if(fread(m_data, lBitSize, 1, pFile) != 1)
@@ -137,12 +137,8 @@ bitmap::bitmap(int _width, int _height, signed char* _data, int _data_size)
    m_filename = nullptr;
 }
 
-// lpBits stand for long point bits
-
-// szPathName : Specifies the pathname        -> the file path to save the image
-// lpBits    : Specifies the bitmap bits      -> the buffer (content of the) image
-// w    : Specifies the image width
-// h    : Specifies the image height
+// lpBits stands for long point bits
+// filename: the file path to save the image
 bool bitmap::save(const char* _filename)
 {
    // Create a new file for writing
@@ -167,26 +163,22 @@ bool bitmap::save(const char* _filename)
    int nBitsOffset = sizeof(BMPHeader) + sizeof(BMPInfoHeader);
    bmfh.type = 'B' + ('M' << 8);
    bmfh.offset = nBitsOffset;
-   bmfh.size = nBitsOffset + bmih.imageSize;;
+   bmfh.size = nBitsOffset + bmih.imageSize;
    bmfh.unused = bmfh.unused = 0;
 
    // Write the bitmap file header
    fwrite((const char*)&bmfh, 1, sizeof(BMPHeader), pFile);
-   // pFile.write((const char*)&bmfh, sizeof(BMPHeader));
 
    // And then the bitmap info header
    fwrite((const char*)&bmih, 1, sizeof(BMPInfoHeader), pFile);
-   // pFile.write((const char*)&bmih, sizeof(BMPInfoHeader));
 
    // Finally, write the image data itself
    //-- the data represents our drawing
    fwrite(&m_data[0], 1, m_data_size, pFile);
-   // pFile.write(&m_data[0], lpBits.size());
    fclose(pFile);
 
    return true;
 }
-
 
 signed char bitmap::get_red_value(unsigned int _u, unsigned int _v)
 {

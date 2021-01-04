@@ -117,7 +117,6 @@ void gWinGl4::loadTexture(char* _fileName) //assumes 2d texture.
 	//make an abstract image class.
 	bitmap* image = new bitmap(_fileName);
 	m_textures[_fileName] = std::pair<bitmap*,GLuint>(image, 0);
-	int happy = image->getRedVal(16,16);
 
 	glGenTextures(1, &m_textures[_fileName].second);
 	glBindTexture(GL_TEXTURE_2D, m_textures[_fileName].second);

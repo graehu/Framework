@@ -5,6 +5,7 @@
 #doc: loads a bitmap file into memory, only supports 24byte bitmaps
 #todo: support 256bit bitmap
 #todo: add logs
+#todo: make an image class to wrap this
 */
 
 class bitmap
