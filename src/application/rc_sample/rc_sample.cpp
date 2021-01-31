@@ -24,7 +24,7 @@ _______   ____        ___________    _____ ______ |  |   ____
  |__|    \___  >____/____  >(____  /__|_|  /   __/|____/\___  >
              \/_____/    \/      \/      \/|__|             \/ 
 )""\n");
-      params::add("rc.port", {"8080"});
+      params::add("rc.port", {"8000"});
       commandline::parse();
       log::topics::add("rc_sample");
       do_once = false;

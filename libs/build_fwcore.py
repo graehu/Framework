@@ -3,26 +3,26 @@
 # python ../tools/confply/confply.py --config cpp_compiler build.py
 import sys
 sys.path.append('../tools/confply')
-import confply.cpp_compiler.config as confply
+import confply.cpp_compiler.config as config
 import confply.log as log
 import os
 
-confply.confply_log_topic = "fwcore"
-log.normal("loading build.py with confply_args: "+str(confply.confply_args))
+config.confply.log_topic = "fwcore"
+log.normal("loading build.py with confply_args: "+str(config.confply.args))
 
-confply.confply_tool = "clang++"
-confply.output_executable = False
-confply.object_path = "objects/fwcore"
-confply.include_paths = [
+config.confply.tool = "clang++"
+config.output_executable = False
+config.object_path = "objects/fwcore"
+config.include_paths = [
     "fmt/include/"
 ]
-confply.source_files = [
+config.source_files = [
     "fmt/src/format.cc",
     "fmt/src/os.cc",
 ]
 
 def on_complete():
-    import confply.log as log
+    import config.log as log
     import os
     if os.path.exists("libfwcore.a"):
         os.system("rm libfwcore.a")
@@ -31,4 +31,4 @@ def on_complete():
     log.normal("output built libs to libfwcore.a")
     
 
-confply.confply_post_run = on_complete
+config.confply.post_run = on_complete

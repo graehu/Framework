@@ -1,13 +1,14 @@
 #!../../../tools/confply/confply.py
 import sys
 sys.path.append('../../../tools/confply')
-import confply.cpp_compiler.config as confply
+import confply.cpp_compiler.config as config
+import confply.cpp_compiler.options as options
 import confply.log as log
 
-confply.confply_tool = "clang++"
-confply.confply_log_topic = "rc_sample"
-confply.confply_log_config = False
-confply.source_files = [
+config.confply.tool = "clang++"
+config.confply.log_topic = "rc_sample"
+config.confply.log_config = False
+config.source_files = [
     "../../main.cpp",
     "rc_sample.cpp",
     "../../input/inSimple/inSimple.cpp",
@@ -20,16 +21,16 @@ confply.source_files = [
     "../../utils/log/log.cpp",
     "../../utils/params.cpp"
 ]
-confply.include_paths = [
+config.include_paths = [
     "../../../libs/fmt/include/"
 ]
 
-confply.library_paths = [
+config.library_paths = [
     "../../../libs/"
 ]
-confply.warnings = ["all", "extra", "pedantic"]
-# confply.debug_info = True
-# confply.optimisation = 0
-confply.link_libraries = ["stdc++", "pthread", "m", "fwcore"]
-confply.standard = "c++17"
-confply.output_file = "rc_sample.bin"
+config.warnings = ["all", "extra", "pedantic"]
+# config.debug_info = True
+# config.optimisation = 0
+config.link_libraries = ["stdc++", "pthread", "m", "fwcore"]
+config.standard = options.standards.cpp17
+config.output_file = "rc_sample.bin"

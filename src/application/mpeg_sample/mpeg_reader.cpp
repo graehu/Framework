@@ -1,5 +1,6 @@
 #include "mpeg_reader.h"
 #include "../../graphics/resources/bitmap.h"
+#include <cstdio>
 #include <string>
 
 #include <iostream>
@@ -12,15 +13,14 @@ extern "C"
 {
 #include <libavcodec/avcodec.h>
 #include <libavutil/imgutils.h>
-// #include <libavutil/opt.h>
 #include <libavutil/pixfmt.h>
 #include <libswscale/swscale.h>
-// #include <libavutil/error.h>
 }
 
 mpeg_reader::mpeg_reader(const char* _filename) :
    frame(nullptr),
    packet(nullptr),
+   packet_data_size(0),
    filename(_filename),
    in_file(nullptr),
    codec_context(nullptr),
@@ -200,6 +200,41 @@ void mpeg_reader::dump_screenshot(int _frame_number)
       }
       av_packet_unref(packet);
    }
+}
+bool mpeg_reader::fill_packet()
+{
+   int ret = 0;
+   if (in_file != nullptr && !feof(in_file))
+   {
+      /* read raw data from the input file */
+      packet_data_size = fread(packet_data, 1, 4096, in_file);
+      if (!packet_data_size)
+      {
+	 return false;
+      }
+      /* use the parser to split the data into frames */
+      bool success = false;
+      av_init_packet(packet);
+      ret = av_parser_parse2(parser, codec_context, &packet->data, &packet->size,
+			     packet_data, packet_data_size, AV_NOPTS_VALUE, AV_NOPTS_VALUE, 0);
+      if (ret < 0)
+      {
+	 fprintf(stderr, "Error while parsing\n");
+	 exit(1);
+      }
+      //sometimes the parser doesn't put data in the packet, not sure why.
+      packet_data_size = packet->size;
+      success = packet_data_size > 0;
+      av_packet_unref(packet);
+      return success;
+   }
+   else if(in_file != nullptr)
+   {
+      fseek(in_file, 0, SEEK_SET);
+      printf("resetting file\n");
+      return false;
+   }
+   return false;
 }
 #ifdef UNIT_TEST
 int main(int argc, char *argv[])

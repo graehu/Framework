@@ -17,10 +17,17 @@ public:
    ~mpeg_reader();
    // #todo: make a proper type for image data
    void dump_screenshot(int _frame_number);
+   bool fill_packet();
 private:
    AVFrame* frame;
    AVFrame* rgb_frame;
    AVPacket* packet;
+public:
+   //hacks
+   uint8_t packet_data[4096+64];
+   size_t packet_data_size;
+private:
+   
    AVCodecParserContext *parser;
    const char* filename;
    FILE* in_file;

@@ -3,22 +3,23 @@
 # python confply/confply.py --config cpp_compiler build_glfw.py
 import sys
 sys.path.append('../tools/confply')
-import confply.cpp_compiler.config as confply
+import confply.cpp_compiler.config as config
 import confply.log as log
 ############# modify_below ################
 
-confply.confply_log_topic = "glfw"
-log.normal("loading cpp_compiler with confply_args: "+str(confply.confply_args))
+config.confply.log_topic = "glfw"
+log.normal("loading cpp_compiler with confply_args: "+str(config.confply.args))
 
-confply.confply_tool = "clang"
-confply.output_executable = False
-confply.include_paths = ["glfw/deps", "glfw/include"]
-confply.standard = "gnu99"
-confply.object_path = "objects/glfw"
-confply.confply_log_config = False
-if confply.confply_platform == "linux":
-    confply.defines = ["_GLFW_X11"]
-    confply.source_files = [
+config.confply.tool = "clang"
+config.output_executable = False
+config.include_paths = ["glfw/deps", "glfw/include"]
+config.standard = "gnu99"
+config.object_path = "objects/glfw"
+config.confply.log_config = False
+
+if config.confply.platform == "linux":
+    config.defines = ["_GLFW_X11"]
+    config.source_files = [
         "glfw/src/context.c",
         "glfw/src/init.c",
         "glfw/src/input.c",
@@ -37,8 +38,8 @@ if confply.confply_platform == "linux":
         "glfw/src/linux_joystick.c"
     ]
     # #todo: building glad into glfw, not strictly correct
-    confply.include_paths.append("glad/include")
-    confply.source_files.append("glad/src/glad.c")
+    config.include_paths.append("glad/include")
+    config.source_files.append("glad/src/glad.c")
     
 def on_complete():
     import confply.log as log
@@ -50,4 +51,4 @@ def on_complete():
     log.normal("output built libs to libglfwstatic.a")
     
 
-confply.confply_post_run = on_complete
+config.confply.post_run = on_complete

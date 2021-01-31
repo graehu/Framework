@@ -93,6 +93,51 @@ function WSConnect()
     }
 }
 
+function HookLogs()
+{
+    console.defaultLog = console.log.bind(console);
+    console.logs = [];
+    console.onhookupdated = function(){};
+    console.log = function()
+    {
+	// default &  console.log()
+	console.defaultLog.apply(console, arguments);
+	// new & array data
+	console.logs.push(Array.from(arguments));
+	console.onhookupdated();
+    }
+    console.defaultError = console.error.bind(console);
+    console.errors = [];
+    console.error = function()
+    {
+	// default &  console.error()
+	console.defaultError.apply(console, arguments);
+	// new & array data
+	console.errors.push(Array.from(arguments));
+	console.onhookupdated();
+    }
+    console.defaultWarn = console.warn.bind(console);
+    console.warns = [];
+    console.warn = function()
+    {
+	// default &  console.warn()
+	console.defaultWarn.apply(console, arguments);
+	// new & array data
+	console.warns.push(Array.from(arguments));
+	console.onhookupdated();
+    }
+    console.defaultDebug = console.debug.bind(console);
+    console.debugs = [];
+    console.debug = function()
+    {
+	// default &  console.debug()
+	console.defaultDebug.apply(console, arguments);
+	// new & array data
+	console.debugs.push(Array.from(arguments));
+	console.onhookupdated();
+    }
+}
+
 
 //find a way to make these readonly
 RCLib.Connect = function() { WSConnect(); };
@@ -102,6 +147,7 @@ RCLib.ResponseCB = function(message) { console.loog("ws response: "+message); };
 RCLib.ErrorCB = function(message) { console.log("ws error: "+message); };
 RCLib.CloseCB = function(message) { console.log("ws close: "+message); };
 RCLib.OpenCB = function(message) { console.log("ws opened: "+message); };
+RC.Init = function() { HookLogs(); };
 
 export {RCLib};
  

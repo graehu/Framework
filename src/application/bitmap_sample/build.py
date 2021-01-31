@@ -21,3 +21,4 @@ confply.include_paths = ["../../../libs/fmt/include/"]
 confply.standard = "c++17"
 confply.library_paths = ["../../../libs/"]
 confply.link_libraries = ["stdc++", "m", "fwcore"]
+confply.confply_log_config = False

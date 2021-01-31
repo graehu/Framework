@@ -7,6 +7,7 @@
 #include "linmath.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include "../../input/input.h"
 #include "../../networking/connection/http_server.h"
 #include "../../utils/log/log.h"
 #include "../../utils/params.h"
@@ -23,7 +24,7 @@ application* application::factory()
    static bool do_once = true;
    if(do_once)
    {
-      params::add("mpeg.port", {"8080"});
+      params::add("mpeg.port", {"8000"});
       commandline::parse();
       log::topics::add("mpeg_sample");
       do_once = false;
@@ -31,6 +32,8 @@ application* application::factory()
    }
    return nullptr;
 }
+static const char big_message[] = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin efficitur nulla ullamcorper, posuere nunc id, elementum diam. Morbi arcu tellus, scelerisque a ex sit amet, volutpat auctor erat.";
+
 
 namespace net
 {
@@ -39,10 +42,33 @@ namespace net
    public:
       void ws_send(http_server::handler::ws_send_callback callback) override
       {
-	 log::info("herp");
-	 callback("1", sizeof(1), true);
+	 if(data != nullptr && size > 0)
+	 {
+	    if(!sending_frames)
+	    {
+	       sending_frames = true;
+	       log::info("mpeg_handler send frame: {}", sizeof(big_message));
+	    }
+	    callback(big_message, sizeof(big_message), true);
+	    callback("hello", sizeof("hello"), true);
+	    callback(big_message, sizeof(big_message), false);
+	    callback("hello", sizeof("hello"), false);
+	    data = nullptr;
+	    size = 0;
+	 }
+	 else
+	 {
+	    if(sending_frames)
+	    {
+	       sending_frames = false;
+	    }
+	 }
       }
       bool is_ws_handler() override { return true; }
+      unsigned char* data;
+      int size;
+   private:
+      bool sending_frames = false;
    };
 }
 
@@ -60,7 +86,7 @@ static const struct
 };
 
 static const char* vertex_shader_text =
-R"(
+   R"(
 #version 110
 uniform mat4 MVP;
 attribute vec3 vCol;
@@ -74,7 +100,7 @@ void main()
 )";
  
 static const char* fragment_shader_text =
-R"(
+   R"(
 #version 110
 varying vec3 color;
 void main()
@@ -111,6 +137,8 @@ void mpeg_sample::run(void)
    net::http_server l_http_server(port);
    commandline::http_handler lv_params_handler;
    l_http_server.add_handler(&lv_params_handler);
+   net::mpeg_handler lv_mpeg_handler;
+   l_http_server.add_handler(&lv_mpeg_handler);
    
    GLFWwindow* window;
    GLuint vertex_buffer, vertex_shader, fragment_shader, program;
@@ -118,90 +146,115 @@ void mpeg_sample::run(void)
  
    glfwSetErrorCallback(glfw_error_callback);
  
-   if (!glfwInit())
-      exit(EXIT_FAILURE);
+   // if (glfwInit())
+   if(false)
+   { 
+      glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
+      glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
  
-   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
-   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+      window = glfwCreateWindow(640, 480, "mpeg_sample", NULL, NULL);
+      if (!window)
+      {
+	 glfwTerminate();
+	 exit(EXIT_FAILURE);
+      }
  
-   window = glfwCreateWindow(640, 480, "mpeg_sample", NULL, NULL);
-   if (!window)
-   {
-      glfwTerminate();
-      exit(EXIT_FAILURE);
-   }
- 
-   glfwSetKeyCallback(window, key_callback);
+      glfwSetKeyCallback(window, key_callback);
    
-   glfwMakeContextCurrent(window);
-   gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-   glfwSwapInterval(1);
+      glfwMakeContextCurrent(window);
+      gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+      glfwSwapInterval(1);
  
-   // NOTE: OpenGL error checks have been omitted for brevity
+      // NOTE: OpenGL error checks have been omitted for brevity
  
-   glGenBuffers(1, &vertex_buffer);
-   glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-   glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+      glGenBuffers(1, &vertex_buffer);
+      glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+      glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
  
-   vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-   glShaderSource(vertex_shader, 1, &vertex_shader_text, NULL);
-   glCompileShader(vertex_shader);
+      vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+      glShaderSource(vertex_shader, 1, &vertex_shader_text, NULL);
+      glCompileShader(vertex_shader);
  
-   fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-   glShaderSource(fragment_shader, 1, &fragment_shader_text, NULL);
-   glCompileShader(fragment_shader);
+      fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+      glShaderSource(fragment_shader, 1, &fragment_shader_text, NULL);
+      glCompileShader(fragment_shader);
  
-   program = glCreateProgram();
-   glAttachShader(program, vertex_shader);
-   glAttachShader(program, fragment_shader);
-   glLinkProgram(program);
+      program = glCreateProgram();
+      glAttachShader(program, vertex_shader);
+      glAttachShader(program, fragment_shader);
+      glLinkProgram(program);
  
-   mvp_location = glGetUniformLocation(program, "MVP");
-   vpos_location = glGetAttribLocation(program, "vPos");
-   vcol_location = glGetAttribLocation(program, "vCol");
+      mvp_location = glGetUniformLocation(program, "MVP");
+      vpos_location = glGetAttribLocation(program, "vPos");
+      vcol_location = glGetAttribLocation(program, "vCol");
  
-   glEnableVertexAttribArray(vpos_location);
-   glVertexAttribPointer(vpos_location, 2, GL_FLOAT, GL_FALSE,
-   			 sizeof(vertices[0]), (void*) 0);
-   glEnableVertexAttribArray(vcol_location);
-   glVertexAttribPointer(vcol_location, 3, GL_FLOAT, GL_FALSE,
-   			 sizeof(vertices[0]), (void*) (sizeof(float) * 2));
+      glEnableVertexAttribArray(vpos_location);
+      glVertexAttribPointer(vpos_location, 2, GL_FLOAT, GL_FALSE,
+			    sizeof(vertices[0]), (void*) 0);
+      glEnableVertexAttribArray(vcol_location);
+      glVertexAttribPointer(vcol_location, 3, GL_FLOAT, GL_FALSE,
+			    sizeof(vertices[0]), (void*) (sizeof(float) * 2));
 
-   int width, height;
-   glfwGetFramebufferSize(window, &width, &height);
-   mpeg_writer gl_writer("gl_mpeg", width, height, 30);
-   uint8_t* data = new uint8_t[3*width*height];
-   while (!glfwWindowShouldClose(window))
-   {
-      float ratio;
-      mat4x4 m, p, mvp;
+      int width, height;
       glfwGetFramebufferSize(window, &width, &height);
-      glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, data);
-      gl_writer.add_frame(data);
-      ratio = width / (float) height;
+      mpeg_writer gl_writer("gl_mpeg", width, height, 30);
+      uint8_t* data = new uint8_t[3*width*height];
+      while (!glfwWindowShouldClose(window))
+      {
+	 float ratio;
+	 mat4x4 m, p, mvp;
+	 glfwGetFramebufferSize(window, &width, &height);
+	 glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, data);
+	 gl_writer.add_frame(data);
+	 lv_mpeg_handler.data = gl_writer.pleb;
+	 lv_mpeg_handler.size = gl_writer.pleb_size;
+	 ratio = width / (float) height;
  
-      glViewport(0, 0, width, height);
-      glClear(GL_COLOR_BUFFER_BIT);
+	 glViewport(0, 0, width, height);
+	 glClear(GL_COLOR_BUFFER_BIT);
  
-      mat4x4_identity(m);
-      mat4x4_rotate_Z(m, m, (float) glfwGetTime());
-      mat4x4_ortho(p, -ratio, ratio, -1.f, 1.f, 1.f, -1.f);
-      mat4x4_mul(mvp, p, m);
+	 mat4x4_identity(m);
+	 mat4x4_rotate_Z(m, m, (float) glfwGetTime());
+	 mat4x4_ortho(p, -ratio, ratio, -1.f, 1.f, 1.f, -1.f);
+	 mat4x4_mul(mvp, p, m);
  
-      glUseProgram(program);
-      glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*) mvp);
-      glDrawArrays(GL_TRIANGLES, 0, 3);
+	 glUseProgram(program);
+	 glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*) mvp);
+	 glDrawArrays(GL_TRIANGLES, 0, 3);
  
-      glfwSwapBuffers(window);
-      glfwPollEvents();
+	 glfwSwapBuffers(window);
+	 glfwPollEvents();
+      }
+      delete [] data;
+      glfwDestroyWindow(window);
+ 
+      glfwTerminate();
+      mpeg_reader reader("gl_mpeg.1.00.h264");
+      reader.dump_screenshot(200);
    }
-   delete [] data;
-   glfwDestroyWindow(window);
-   
- 
-   glfwTerminate();
-   mpeg_reader reader("gl_mpeg.1.00.h264");
-   reader.dump_screenshot(200);
+   else
+   {
+      input* l_input = input::inputFactory();
+      l_input->init();
+      bool l_looping = true;
+      mpeg_reader reader("gl_mpeg.1.00.h264");
+      while(l_looping)
+      {
+	 if(l_input->update()) l_looping = false;
+	 if(reader.fill_packet())
+	 {
+	    lv_mpeg_handler.data = reader.packet_data;
+	    lv_mpeg_handler.size = reader.packet_data_size;
+	 }
+	 else
+	 {
+	    lv_mpeg_handler.data = nullptr;
+	    lv_mpeg_handler.size = 0;
+	 }
+	 std::this_thread::sleep_for(std::chrono::milliseconds(30));
+      }
+      delete l_input;
+   }
    log::debug("ending loop");
    exit(EXIT_SUCCESS);
 }

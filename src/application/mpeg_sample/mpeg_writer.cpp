@@ -1,4 +1,5 @@
 #include "mpeg_writer.h"
+#include <cstring>
 #include <string>
 
 // needed because ffmpeg is a pure C library.
@@ -189,7 +190,17 @@ int mpeg_writer::add_frame(uint8_t *rgb)
       ret = avcodec_receive_packet(codec_context, packet);
       if (ret >= 0)
       {
-	 fwrite(packet->data, 1, packet->size, out_file);
+	 // #todo: cache this data so it can be sent later?
+	 // mpeg_stream.cpp?
+	 // static auto last_size = 0;
+	 // if (packet->size > last_size)
+	 // {
+	 //    last_size = packet->size;
+	 //    printf("max size %d\n", last_size);
+	 // }
+	 pleb_size = packet->size;
+	 memcpy(pleb, packet->data, pleb_size);
+	 fwrite(pleb, 1, packet->size, out_file);
 	 av_packet_unref(packet);
       }
    }

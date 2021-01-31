@@ -42,6 +42,16 @@ function WSSendMessage(message)
 
 function WSMessage(e)
 {
+    if (WS.binaryType == "blob")
+    {
+	console.log("blob");
+	console.log(e.data);
+    }
+    else
+    {
+	console.log("text");
+	console.log(e.data);
+    }
     RCLib.ResponseCB(e.data);
 }
 
@@ -54,6 +64,7 @@ function WSError(e)
 function WSClose(e)
 {
     console.log("WSClosed code: " + e.code); // + " "+ e.reason);
+    console.log("WSClosed reason: " + e.reason);
     WSIsOpen = 0;
     RCLib.CloseCB(e);
 }

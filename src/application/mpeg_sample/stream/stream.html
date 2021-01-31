@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<meta http-equiv="refresh" content="30">
 <html>
   <head>
     <link rel="stylesheet" href="/rcstyle.css"/>
     <link rel="stylesheet" href="stream.css"/>
-    
+    <link href="http://fonts.googleapis.com/css?family=Inconsolata"
+          rel="stylesheet" type="text/css" />
+    <link href="/terminal/terminal.css" rel="stylesheet" type="text/css" />
     <title>Stream Demo</title>
   </head>
   <body>
@@ -13,6 +16,20 @@
     </div>
     <div class="center-box">
       <canvas id="stream_canvas" class="stream_canvas">not supported</canvas>
+      <div id="container"
+	   style="
+		  <!-- position: absolute; -->
+		  <!-- top: 7.5%; -->
+		  <!-- left: 5%; -->
+		  <!-- right: 5%; -->
+		  width: 10%;
+		  height: 15%;
+		  ">
+	<output></output>
+	<div id="input-line" class="input-line">
+          <div class="prompt">[stream_sample]:</div><div><input class="cmdline" autofocus /></div>
+	</div>
+      </div>
     </div>
     <script type="module">
       import {RCLib} from "/RCLib.js";
@@ -26,7 +43,7 @@
       const imageData = ctx.createImageData(width, height);
       var ResponseCB = function(message)
       {
-	  var in_image = message;
+	  // var in_image = message;
 	  for (let i = 0; i < imageData.data.length; i += 4)
 	  {
 	      // Modify pixel data
@@ -47,11 +64,16 @@
 	  timer = timer + 1.0/30.0;
 	  if(timer > 0.3)
           {
-	      send("boop");
+	      // send("boop");
 	      timer = 0.0;
 	  }
       };
       requestAnimationFrame(loop);
+    </script>
+    <script src="/terminal/terminal.js"></script>
+    <script>
+      var term = new Terminal('#input-line .cmdline', '#container output');
+      term.init();
     </script>
   </body>
 </html>

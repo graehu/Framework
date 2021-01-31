@@ -92,13 +92,7 @@ namespace net
       uint8_t length : 7;
       uint8_t MASK : 1;
    };
-   struct websocket_header_ext : websocket_header
-   {
-      websocket_header_ext() : websocket_header(), length_ext(0)
-      {
-      }
-      uint16_t length_ext : 16; 
-   };
+   
    const char ws_handshake[] =
    {
       "HTTP/1.1 101 Switching Protocols\r\n"
@@ -462,7 +456,6 @@ void net::http_server::ws_thread(const net::socket& from, const net::address& to
    log::debug("begin websocket thread");
    socket.set_nonblocking(true);
    websocket_header ws_header;
-   websocket_header_ext ws_header_ext;
    bool is_connected = true;
    handler* ws_handler = nullptr;
    for(auto* handler : m_handlers)
@@ -477,7 +470,7 @@ void net::http_server::ws_thread(const net::socket& from, const net::address& to
    {
       //  #todo: test if this is thread safe
       auto ws_send =
-	 [&packet, &ws_header, &ws_header_ext, &socket, &address, &is_connected]
+	 [&packet, &ws_header,  &socket, &address, &is_connected]
 	 (const char *message, size_t size, bool text)
 	 {
 	    packet.Clear();
@@ -490,20 +483,26 @@ void net::http_server::ws_thread(const net::socket& from, const net::address& to
 	    //16 bit max
 	    else if((size - 1) < 65536)
 	    {
-	       ws_header_ext.length = 126;
-	       ws_header_ext.length_ext = size - 1;
-	       ws_header_ext.opcode = text ? 0x1 : 0x2;
-	       packet.IterWrite(ws_header_ext);
+	       //#todo: this doesn't work.
+	       ws_header.length = 126;
+	       ws_header.opcode = text ? 0x1 : 0x2;
+	       packet.IterWrite(ws_header);
+	       uint16_t ext_size = htons((uint16_t)(size-1));
+	       packet.IterWrite(ext_size);
 	    }
 	    else
 	    {
-	       // #todo: handle 64bit package size here here
-	       // 64 bit int must have most significant 
-	       // ws_header_ext2.length = 127;
-	       // ws_header_ext2.length_ext = size - 1;
-	       log::error("attempted to send unsupported packet length: {}", size - 1);
+	       // #todo: test this. 64 bit int extended length.
+	       // 64 bit int must have most significant set to 0,
+	       // not currently done.
+	       ws_header.length = 127;
+	       ws_header.opcode = text ? 0x1 : 0x2;
+	       packet.IterWrite(ws_header);
+	       uint64_t ext_size = htons((uint64_t)(size-1));
+	       packet.IterWrite(ext_size);
 	    }
-	    packet.IterWrite(message, size);
+	    packet.IterWrite(message, size-1);
+	    packet.PrintDetails();
 	    if(socket.send(address, packet.GetData(), packet.GetSize()) == -1)
 	    {
 	       log::debug("websocket connection broken");

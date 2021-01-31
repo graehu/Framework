@@ -127,7 +127,7 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer) {
 		}
 		break;
 	    case 'logs':
-		output(console.alllogs.join('\n'))
+		console.alllogs.forEach(function(item, index){output(item);});
 		break;
             default:
 		if (cmd) {
