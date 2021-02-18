@@ -13,6 +13,7 @@ log.normal("loading build.py with confply_args: "+str(config.confply.args))
 config.confply.tool = "clang++"
 config.output_executable = False
 config.object_path = "objects/fwcore"
+config.confply.log_config = False
 config.include_paths = [
     "fmt/include/"
 ]
@@ -22,7 +23,7 @@ config.source_files = [
 ]
 
 def on_complete():
-    import config.log as log
+    import confply.log as log
     import os
     if os.path.exists("libfwcore.a"):
         os.system("rm libfwcore.a")

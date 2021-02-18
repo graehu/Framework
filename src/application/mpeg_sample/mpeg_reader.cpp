@@ -231,7 +231,6 @@ bool mpeg_reader::fill_packet()
    else if(in_file != nullptr)
    {
       fseek(in_file, 0, SEEK_SET);
-      printf("resetting file\n");
       return false;
    }
    return false;

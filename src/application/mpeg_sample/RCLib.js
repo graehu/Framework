@@ -1,4 +1,27 @@
 "use strict";
+import functions_js from "/functions.js";
+var functions = null;
+var image_buffer = null;
+function functions_ready()
+{
+    console.log("functions ready");
+    console.log(functions);
+    var fillArray = functions.cwrap('fillArray', null, ['number', 'number']);
+    console.log("first passed!");
+    // var nByte = 4
+    // var length = image_len;
+    //call the function
+    // fillArray(buffer, length);
+    // for (var i = 0; i < length; i++)
+    // {
+    // 	console.log(functions.getValue(buffer+i*nByte, 'i32'));
+    // }
+};
+
+functions_js().then(result => {
+    functions = result;
+    functions_ready();
+});
 
 var WS = null;
 var WSConnected = 0;
@@ -24,7 +47,6 @@ function WSOpen(e)
     WSIsOpen = 1;
     RCLib.OpenCB(e);
 }
-
 function WSSendMessage(message)
 {
     if(WSIsOpen)
@@ -39,7 +61,6 @@ function WSSendMessage(message)
 	console.log("WS not open, failed to send: " + message)
     }
 }
-
 function WSMessage(e)
 {
     if (WS.binaryType == "blob")
@@ -54,13 +75,11 @@ function WSMessage(e)
     }
     RCLib.ResponseCB(e.data);
 }
-
 function WSError(e)
 {
     console.log("WSError: " + e);
     RCLib.ErrorCB(e);
 }
-
 function WSClose(e)
 {
     console.log("WSClosed code: " + e.code); // + " "+ e.reason);
@@ -104,15 +123,32 @@ function WSConnect()
     }
 }
 
-
 //find a way to make these readonly
 RCLib.Connect = function() { WSConnect(); };
 RCLib.Send = function(message) { WSSendMessage(message); };
 //find a way to make this writable.
-RCLib.ResponseCB = function(message) { console.loog("ws response: "+message); };
+RCLib.ResponseCB = function(message) { console.log("ws response: "+message); };
 RCLib.ErrorCB = function(message) { console.log("ws error: "+message); };
 RCLib.CloseCB = function(message) { console.log("ws close: "+message); };
 RCLib.OpenCB = function(message) { console.log("ws opened: "+message); };
+RCLib.GetStream = function(canvas_image_len)
+{
+    // allocating r-32bits g-32bits b-32bits a-32bits image
+    return new Promise(resolve => {
+	setTimeout(canvas_image_len => {
+	    var nBytes = 4;
+	    var len = canvas_image_len*nBytes;
+	    image_buffer = functions._malloc(len);
+	    console.log("returning image_buffer");
+	    resolve(image_buffer);
+	    //
+	}, 1000);
+    });
+};
+// .then(resolve => {
 
+// });
+
+
+console.log("RCLib Imported");
 export {RCLib};
- 

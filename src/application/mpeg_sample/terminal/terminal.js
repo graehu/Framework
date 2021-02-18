@@ -4,14 +4,28 @@ var util = util || {};
 util.toArray = function(list) {
     return Array.prototype.slice.call(list || [], 0);
 };
-var Terminal = Terminal || function(cmdLineContainer, outputContainer) {
+var Terminal = Terminal || function(cmdLineContainer, outputContainer, sidePanel = null) {
     window.URL = window.URL || window.webkitURL;
     window.requestFileSystem = window.requestFileSystem || window.webkitRequestFileSystem;
     var cmdLine_ = document.querySelector(cmdLineContainer);
     var output_ = document.querySelector(outputContainer);
-
+    var panel_ = document.querySelector(sidePanel);
+    var showbtn_ = document.querySelector(".term_openbtn");
+    var hidebtn_ = document.querySelector(sidePanel+" .term_closebtn");
+    function show()
+    {
+	panel_.style.width = "40%";
+	panel_.style.minWidth = "375px";
+    }
+    function hide()
+    {
+	panel_.style.width = "0";
+	panel_.style.minWidth = "0px";
+    }
+    if(hidebtn_ != null) { hidebtn_.onclick = hide; }
+    if(showbtn_ != null) { showbtn_.onclick = show; }
     const CMDS_ = [
-	'clear', 'date', 'echo', 'help', 'uname', 'params', 'logs'
+	'clear', 'date', 'echo', 'help', 'uname', 'params', 'logs', 'hide'
     ];
     
     var fs_ = null;
@@ -82,7 +96,7 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer) {
 	    var line = this.parentNode.parentNode.cloneNode(true);
 	    line.removeAttribute('id')
 	    line.classList.add('line');
-	    var input = line.querySelector('input.cmdline');
+	    var input = line.querySelector('input.term_cmdline');
 	    input.autofocus = false;
 	    input.readOnly = true;
 	    output_.appendChild(line);
@@ -129,6 +143,10 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer) {
 	    case 'logs':
 		console.alllogs.forEach(function(item, index){output(item);});
 		break;
+	    case 'hide':
+		hide();
+		output("bye bye");
+		break;
             default:
 		if (cmd) {
 		    output(cmd + ': command not found');
@@ -140,7 +158,7 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer) {
 
     //
     function output(html) {
-	output_.insertAdjacentHTML('beforeEnd', '<p>' + html + '</p>');
+	output_.insertAdjacentHTML('beforeEnd', '<p style="white-space: pre-wrap">' + html + '</p>');
     }
 
     // Cross-browser impl to get document's height.
@@ -200,6 +218,17 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer) {
 	    console.alllogs.push(Array.from(arguments));
 	    console.onhookupdated();
 	}
+	console.defaultAssert = console.assert.bind(console);
+	console.asserts = [];
+	console.assert = function()
+	{
+	    // default &  console.debug()
+	    console.defaultAssert.apply(console, arguments);
+	    // new & array data
+	    console.asserts.push(Array.from(arguments));
+	    console.alllogs.push(Array.from(arguments));
+	    console.onhookupdated();
+	}
 	console.log("----logs hooked----");
     }
     HookLogs();
@@ -208,7 +237,9 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer) {
 	init: function() {
 	    output('<h2 style="letter-spacing: 2px">Terminal</h2><p>Enter "help" for more information.</p>');
 	},
-	output: output
+	output: output,
+	show: show,
+	hide: hide
     }
     
 };

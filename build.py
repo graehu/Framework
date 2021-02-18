@@ -32,7 +32,7 @@ aliases = {
     "net_physics_sample":"src/application/net_physics_sample/build.py",
     "param_sample":"src/application/param_sample/build.py",
     "log_sample":"src/application/log_sample/build.py",
-    "mpeg_sample":"src/application/mpeg_sample/build.py",
+    "mpeg_sample":"src/application/mpeg_sample/build.cpp.py",
     "bitmap_sample":"src/application/bitmap_sample/build.py",
     "test":"src/application/mpeg_sample/build_test.py"
 }

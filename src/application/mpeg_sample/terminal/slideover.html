@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link href="/terminal/terminal.css" rel="stylesheet" type="text/css"/>
+  </head>
+  <body>
+    <div id="term_panel" class="term_sidepanel">
+      <div id="term_container"
+	   style="
+		  position: absolute;
+		  top: 2%;
+		  left: 5%;
+		  right: 5%;
+		  bottom: 10%;
+		  ">
+	      <div class="term_closebtn">[x]</div>
+	<output></output>
+	<div id="term_input-line" class="term_input-line">
+          <div class="term_prompt">[cmd]:</div><div><input class="term_cmdline" autofocus /></div>
+	</div>
+      </div>
+    </div>
+</div>
+
+<button class="term_openbtn">[_]</button>
+<script src="/terminal/terminal.js"></script>
+<script>
+  var term = new Terminal('#term_input-line .term_cmdline', '#term_container output', '#term_panel');
+  term.init();
+</script>
+<script>
+
+</script>
+
+</body>
+</html> 
+

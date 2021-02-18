@@ -3,7 +3,7 @@
     background: #FF5E99;
 }
 
-#container {
+#term_container {
     padding-left: 1em;
     box-sizing: border-box;
     color: white;
@@ -14,17 +14,20 @@
     font-size: 11pt;
     font-family: Inconsolata, monospace;
 }
-#container output {
+::-webkit-scrollbar {
+    width: 0px;
+}
+#term_container output {
     clear: both;
     width: 100%;
 }
-#container output h3 {
+#term_container output h3 {
     margin: 0;
 }
-#container output pre {
+#term_container output pre {
     margin: 0;
 }
-.input-line {
+.term_input-line {
     margin-bottom: -10px;
     margin-top: -10px;
     display: -webkit-box;
@@ -38,12 +41,12 @@
     box-align: stretch;
     clear: both;
 }
-.input-line > div:nth-child(2) {
+.term_input-line > div:nth-child(2) {
     -webkit-box-flex: 1;
     -moz-box-flex: 1;
     box-flex: 1;
 }
-.prompt {
+.term_prompt {
     /* white-space: nowrap; */
     color: #96b38a;
     margin-right: -5px;
@@ -60,7 +63,7 @@
     -moz-user-select: none;
     user-select: none;
 }
-.cmdline {
+.term_cmdline {
     outline: none;
     background-color: transparent;
     margin: 0;
@@ -74,4 +77,62 @@
     /* -moz-column-width: 50%; */
     /* -o-column-width: 50%; */
     /* column-width: 50%; */
+}
+.term_sidepanel  {
+    width: 0;
+    min-width: 0;
+    position: fixed;
+    z-index: 1;
+    height: 100%;
+    top: 0;
+    left: 0%;
+    background-color: #444;
+    overflow-x: hidden;
+    transition: width 0.5s, min-width 0.5s;
+    padding-top: 60px;
+}
+
+
+.term_sidepanel .term_openbtn:hover {
+    color: #f1f1f1;
+}
+
+.term_sidepanel .term_closebtn {
+    font-family: "Lato", sans-serif;
+    /* display: flex; */
+    color: lightgrey;
+    /* align-content: center; */
+    /* justify-content: center; */
+    /* flex-direction: column; */
+    /* text-align: center; */
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 25px;
+    height: 25px;
+    font-size: 15px;
+    cursor: pointer;
+    /* background-color: #333; */
+    /* border-radius:50%; */
+    /* box-shadow: 0 0 0 2px grey; */
+    transition: font-size 0.3s, color 0.3s;
+}
+.term_sidepanel .term_closebtn:hover {
+    /* background-color: #555; */
+    /* box-shadow: 0 0 0 2px #aaa; */
+    font-size: 18px;
+}
+
+.term_openbtn {
+    font-size: 20px;
+    cursor: pointer;
+    background-color: #111;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    position: fixed;
+}
+
+.term_openbtn:hover {
+    background-color:#444;
 }

@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <meta http-equiv="content-type" content="text/html; charset=utf-8" />
-<meta http-equiv="refresh" content="30">
+<!-- <meta http-equiv="refresh" content="30"> -->
 <html>
   <head>
     <link rel="stylesheet" href="/rcstyle.css"/>
@@ -11,26 +11,35 @@
     <title>Stream Demo</title>
   </head>
   <body>
+    <button class="term_openbtn">[_]</button>
     <div>
       <h1>Stream Demo</h1>
     </div>
-    <div class="center-box">
-      <canvas id="stream_canvas" class="stream_canvas">not supported</canvas>
-      <div id="container"
+    <div id="term_panel" class="term_sidepanel">
+      <div id="term_container"
 	   style="
-		  <!-- position: absolute; -->
-		  <!-- top: 7.5%; -->
-		  <!-- left: 5%; -->
-		  <!-- right: 5%; -->
-		  width: 10%;
-		  height: 15%;
+		  position: absolute;
+		  top: 2%;
+		  left: 5%;
+		  right: 5%;
+		  bottom: 10%;
 		  ">
+	<div class="term_closebtn">[x]</div>
 	<output></output>
-	<div id="input-line" class="input-line">
-          <div class="prompt">[stream_sample]:</div><div><input class="cmdline" autofocus /></div>
+	<div id="term_input-line" class="term_input-line">
+	  <div class="term_prompt">[cmd]:</div><div><input class="term_cmdline" autofocus /></div>
 	</div>
       </div>
     </div>
+    <div class="center-box">
+      <canvas id="stream_canvas" class="stream_canvas">not supported</canvas>
+    </div>
+    <script src="/terminal/terminal.js"></script>
+    <script>
+      var term = new Terminal('#term_input-line .term_cmdline', '#term_container output','#term_panel');
+      term.init();
+      // term.show();
+    </script>
     <script type="module">
       import {RCLib} from "/RCLib.js";
       RCLib.Connect();
@@ -41,6 +50,11 @@
       const width = canvas.width;
       const height = canvas.height;
       const imageData = ctx.createImageData(width, height);
+      RCLib.GetStream(imageData.data.length)
+    .then(result =>{
+	console.log(result);
+    });
+      console.log("derpy");
       var ResponseCB = function(message)
       {
 	  // var in_image = message;
@@ -48,7 +62,7 @@
 	  {
 	      // Modify pixel data
 	      let noise = Math.random()*255;
-	      imageData.data[i + 0] = noise;  // R value
+	      imageData.data[i + 0] = noise;  // R value/
 	      imageData.data[i + 1] = noise;    // G value
 	      imageData.data[i + 2] = noise;  // B value
 	      imageData.data[i + 3] = 255;  // A value
@@ -64,16 +78,11 @@
 	  timer = timer + 1.0/30.0;
 	  if(timer > 0.3)
           {
-	      // send("boop");
 	      timer = 0.0;
 	  }
       };
       requestAnimationFrame(loop);
-    </script>
-    <script src="/terminal/terminal.js"></script>
-    <script>
-      var term = new Terminal('#input-line .cmdline', '#container output');
-      term.init();
+      export {RCLib};
     </script>
   </body>
 </html>

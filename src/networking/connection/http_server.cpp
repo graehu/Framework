@@ -616,6 +616,10 @@ int write_response_header(net::http_packet& packet, std::string_view request, in
       {
 	 content_type = "Content-Type: video/mp4\r\n";
       }
+      else if (file_name.find(".wasm") != std::string::npos)
+      {
+	 content_type = "Content-Type: application/wasm\r\n";
+      }
       
       std::string file_size = std::to_string(packet.GetFileSize());
       char range_str[] = { "Range: bytes=" };

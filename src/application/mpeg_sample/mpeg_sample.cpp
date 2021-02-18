@@ -47,12 +47,10 @@ namespace net
 	    if(!sending_frames)
 	    {
 	       sending_frames = true;
-	       log::info("mpeg_handler send frame: {}", sizeof(big_message));
+	       // log::info("mpeg_handler send frame: {}", size);
 	    }
-	    callback(big_message, sizeof(big_message), true);
-	    callback("hello", sizeof("hello"), true);
-	    callback(big_message, sizeof(big_message), false);
-	    callback("hello", sizeof("hello"), false);
+	    // callback((const char*)data, size, false);
+	    // callback("hello", sizeof("hello"), true);
 	    data = nullptr;
 	    size = 0;
 	 }
