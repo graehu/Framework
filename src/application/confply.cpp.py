@@ -9,12 +9,11 @@ import confply.log as log
 ############# modify_below ################
 import os
 
-os.system("cd ../../libs; ./build_fwcore.py --no_header")
-os.system("cd ../../libs; ./build_glfw.py --no_header")
-
-config.confply.tool = options.tools.clangpp
+dependencies = map(os.path.abspath, ["../../libs/build_fwcore.py", "../../libs/build_glfw.py"])
+config.confply.dependencies.extend(dependencies)
+config.confply.tool = options.tool.clangpp
 config.warnings = options.warnings.all_warnings
-config.standard = options.standards.cpp17
+config.standard = options.standard.cpp17
 config.debug_info = True
 config.optimisation = 0
 config.object_path = os.path.abspath('.')+"/objects"

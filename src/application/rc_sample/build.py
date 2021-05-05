@@ -32,5 +32,5 @@ config.warnings = ["all", "extra", "pedantic"]
 # config.debug_info = True
 # config.optimisation = 0
 config.link_libraries = ["stdc++", "pthread", "m", "fwcore"]
-config.standard = options.standards.cpp17
+config.standard = options.standard.cpp17
 config.output_file = "rc_sample.bin"

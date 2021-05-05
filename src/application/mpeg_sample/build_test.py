@@ -10,7 +10,7 @@ os.system("cd ../../../libs; python build_fwcore.py --no_header")
 os.system("cd ../../../libs; python build_glfw.py --no_header")
 confply.confply_log_topic = "mpeg_test"
 confply.confply_tool = "clang"
-log.normal("loading cpp_compiler with confply_args: "+str(confply.confply_args))
+log.normal("loading cpp_compiler with confply_args: "+str(confply.args))
 confply.source_files = ["mpeg_reader.cpp", "../../graphics/resources/bitmap.cpp"]
 confply.confply_log_config = False
 confply.link_libraries = []

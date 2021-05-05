@@ -4,7 +4,7 @@
 from confply.cpp_compiler.config import *
 import confply.log as log
 confply_log_topic = "scratch_sample"
-log.normal("loading build.py with confply_args: "+str(confply.confply_args))
+log.normal("loading build.py with confply_args: "+str(confply.args))
 
 confply_tool = "g++"
 source_files = [
