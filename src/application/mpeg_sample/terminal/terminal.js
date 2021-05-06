@@ -94,7 +94,7 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer, sidePanel
 
 	    // Duplicate current input and append to output section.
 	    var line = this.parentNode.parentNode.cloneNode(true);
-	    line.removeAttribute('id')
+	    line.removeAttribute('id');
 	    line.classList.add('line');
 	    var input = line.querySelector('input.term_cmdline');
 	    input.autofocus = false;
@@ -158,7 +158,7 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer, sidePanel
 
     //
     function output(html) {
-	output_.insertAdjacentHTML('beforeEnd', '<p style="white-space: pre-wrap">' + html + '</p>');
+	output_.insertAdjacentHTML('beforeEnd', '<p style="white-space: pre-wrap; margin: 2px 2px;">' + html + '</p>');
     }
 
     // Cross-browser impl to get document's height.

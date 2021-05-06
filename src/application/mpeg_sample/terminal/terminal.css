@@ -65,8 +65,8 @@
 }
 .term_cmdline {
     outline: none;
-    background-color: transparent;
-    margin: 0;
+    background-color: #333;
+    margin: 20px 0px;
     width: 100%;
     font: inherit;
     border: none;
