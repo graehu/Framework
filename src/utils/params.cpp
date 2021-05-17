@@ -4,14 +4,18 @@
 #include <cstdint>
 #include <cstring>
 #include <string>
+#include <filesystem>
+#include <fstream>
 
 namespace fw
 {
+   namespace fs = std::filesystem;
    params::param params::m_params;
    std::recursive_mutex params::m_mutex;
 
    namespace commandline
    {
+      
       int arg_count = 0;
       char** arg_variables = nullptr;
       void parse(int argc, char *argv[])
@@ -27,7 +31,22 @@ namespace fw
 	 auto current = std::make_unique<params::param>();
 	 for(int i = 0; i < argc; i++)
 	 {
-	    if(argv[i][0] == '-')
+	    if (argv[i][0] == '@')
+	    {
+	       if(fs::exists(&argv[i][1]))
+	       {
+		  log::info("reading params from {}", &argv[i][1]);
+		  std::ifstream in_file(&argv[i][1]);
+		  std::stringstream buffer;
+		  buffer << in_file.rdbuf();
+		  parse((char*)buffer.str().c_str());
+	       }
+	       else
+	       {
+		  log::info("not found {}", &argv[i][1]);
+	       }
+	    }
+	    else if(argv[i][0] == '-')
 	    {
 	       if(current->m_name.empty())
 	       {
@@ -81,11 +100,11 @@ namespace fw
 	 std::uint32_t kMaxArgs = 64;
 	 std::uint32_t argc = 0;
 	 char *argv[kMaxArgs];
-	 char *p2 = std::strtok(_string, " ");
+	 char *p2 = std::strtok(_string, " \n");
 	 while (p2 && argc < kMaxArgs-1)
 	 {
 	    argv[argc++] = p2;
-	    p2 = strtok(0, " ");
+	    p2 = strtok(0, " \n");
 	 }
 	 argv[argc] = 0;
 	 parse(argc, argv);
