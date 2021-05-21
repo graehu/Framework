@@ -6,7 +6,6 @@
 #include <iostream>
 #include <filesystem>
 #include "../../utils/string_helpers.h"
-namespace fs = std::filesystem;
 
 // needed because ffmpeg is a pure C library.
 extern "C"
@@ -236,6 +235,7 @@ bool mpeg_reader::fill_packet()
    return false;
 }
 #ifdef UNIT_TEST
+namespace fs = std::filesystem;
 int main(int argc, char *argv[])
 {
    const char *filename = argv[1];

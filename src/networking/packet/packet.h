@@ -68,6 +68,7 @@ class packet
   public:
      BasePacket();
      ~BasePacket();
+    void hack();
     // Clears the packet of data
     virtual void Clear(void) = 0;
 
@@ -89,28 +90,42 @@ class packet
     // Write the type data into the packet and
     // shift the write point forward by type size
     template <typename T>
-    void IterWrite(T& _type)
+    void IterWrite(T& _type, bool use_hack = true)
     {
       // printf("writing: %ld\n", sizeof(T));
       memcpy(&GetData()[end], &_type, sizeof(T));
       end += sizeof(T);
-      if(GetData()[end-1] == '\0')
-	{
-	  end--;
-	}
+      // #todo: fix this, it's a hack for strings
+      // it has unintended affects on other types!
+      if(GetData()[end-1] == '\0' && use_hack)
+      {
+	 hack();
+	 end--;
+      }
+      // if(end < GetCapacity())
+      // 	 GetData()[end] = '\0';
+
     }
 
-    // Write the data into the packet and
-    // shift the write point forward by size
-    void IterWrite(const char* in, size_t size)
-    {
-      // printf("writing: %ld\n", sizeof(T));
-      memcpy(&GetData()[end], in, size);
-      end += size;
-      if(GetData()[end-1] == '\0')
+     // Write the data into the packet and
+     // shift the write point forward by size
+     void IterWrite(const char* in, size_t size, bool use_hack = true)
+     {
+	// printf("writing: %ld\n", sizeof(T));
+	memcpy(&GetData()[end], in, size);
+	end += size;
+	// #todo: fix this, it's a hack for strings
+	// it has unintended affects on other types!
+	if(GetData()[end-1] == '\0' && use_hack)
 	{
-	  end--;
+	   hack();
+	   end--;
 	}
+	// else
+	// {
+	// if(end < GetCapacity())
+	//    GetData()[end] = '\0';
+	// }
     }
 
     

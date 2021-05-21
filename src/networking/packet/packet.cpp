@@ -20,6 +20,10 @@ BasePacket::~BasePacket()
       m_file = nullptr;
    }
 }
+void BasePacket::hack()
+{
+   log::debug("string hack used");
+}
 bool BasePacket::OpenFile(const char* _file_name)
 {
    if (m_file == nullptr)

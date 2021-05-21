@@ -5,17 +5,8 @@ var image_buffer = null;
 function functions_ready()
 {
     console.log("functions ready");
-    console.log(functions);
-    var fillArray = functions.cwrap('fillArray', null, ['number', 'number']);
-    console.log("first passed!");
-    // var nByte = 4
-    // var length = image_len;
-    //call the function
-    // fillArray(buffer, length);
-    // for (var i = 0; i < length; i++)
-    // {
-    // 	console.log(functions.getValue(buffer+i*nByte, 'i32'));
-    // }
+    functions.fill_it = functions.cwrap('fillArray', null, ['number', 'number']);
+    console.log("functions bound");
 };
 
 functions_js().then(result => {
@@ -65,13 +56,12 @@ function WSMessage(e)
 {
     if (WS.binaryType == "blob")
     {
-	console.log("blob");
-	console.log(e.data);
+	// #todo: this doesn't appear to ever work. WS.binarytype is always blob
+	console.log("blob size: "+e.data.size);
     }
     else
     {
-	console.log("text");
-	console.log(e.data);
+	console.log("text: "+e.data);
     }
     RCLib.ResponseCB(e.data);
 }
@@ -133,17 +123,22 @@ RCLib.CloseCB = function(message) { console.log("ws close: "+message); };
 RCLib.OpenCB = function(message) { console.log("ws opened: "+message); };
 RCLib.GetStream = function(canvas_image_len)
 {
-    // allocating r-32bits g-32bits b-32bits a-32bits image
+    // allocating r-8bits g-8bits b-8bits a-8bits image
     return new Promise(resolve => {
-	setTimeout(canvas_image_len => {
-	    var nBytes = 4;
-	    var len = canvas_image_len*nBytes;
-	    image_buffer = functions._malloc(len);
+	const in_len = canvas_image_len;
+	setTimeout(() => {
+	    console.log("allocating: "+in_len+" bytes");
+	    image_buffer = functions._malloc(in_len);
+	    functions.fill_it(image_buffer, in_len);
 	    console.log("returning image_buffer");
 	    resolve(image_buffer);
 	    //
 	}, 1000);
     });
+};
+RCLib.GetFunctions = function()
+{
+    return functions;
 };
 // .then(resolve => {
 

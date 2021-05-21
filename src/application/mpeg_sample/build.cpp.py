@@ -7,10 +7,8 @@ import confply.cpp_compiler.config as config
 import confply.cpp_compiler.options as options
 import confply.log as log
 ############# modify_below ################
-import os
 
 config.confply.dependencies.extend(["build_wasm.cpp.py"])
-
 config.confply.log_topic = "mpeg_sample"
 log.normal("loading cpp_compiler with confply_args: "+str(config.confply.args))
 config.source_files = [

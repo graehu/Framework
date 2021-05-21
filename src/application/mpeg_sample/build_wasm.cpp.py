@@ -7,7 +7,6 @@ import confply.cpp_compiler.config as config
 import confply.cpp_compiler.options as options
 import confply.log as log
 ############# modify_below ################
-
 config.confply.log_topic = "wasm"
 config.confply.tool = "em++"
 exported_functions = ['_fillArray', '_malloc']

@@ -38,7 +38,7 @@
     <script>
       var term = new Terminal('#term_input-line .term_cmdline', '#term_container output','#term_panel');
       term.init();
-      // term.show();
+      term.show();
     </script>
     <script type="module">
       import {RCLib} from "/RCLib.js";
@@ -50,25 +50,47 @@
       const width = canvas.width;
       const height = canvas.height;
       const imageData = ctx.createImageData(width, height);
-      RCLib.GetStream(imageData.data.length)
+      const imageSize = imageData.data.length;
+      console.log("pre canvas length: "+imageData.data.length);
+      RCLib.GetStream(imageSize)
     .then(result =>{
-	console.log(result);
+	console.log("stream addr: "+result);
+	var functions = RCLib.GetFunctions();
+	for (let i = 0; i < imageData.data.length; i += 4)
+	{
+	    var value = functions.getValue(result+i, 'i32');
+	    var val = value >>> 0;
+	    var r = 0xff000000;
+	    var g = 0x00ff0000;
+	    var b = 0x0000ff00;
+	    var a = 0x000000ff;
+	    r = (val & r) >> 24; g = (val & g) >> 16; b = (val & b) >> 8; a = (val & a);
+	    if (r < 0) r = 255;
+	    // Modify pixel data
+	    imageData.data[i + 0] = r;  // R value/
+	    imageData.data[i + 1] = g;    // G value
+	    imageData.data[i + 2] = b;  // B value
+	    imageData.data[i + 3] = a;  // A value
+	}
+	// Draw image data to the canvas
+	ctx.putImageData(imageData, 0, 0);
+
     });
-      console.log("derpy");
       var ResponseCB = function(message)
       {
 	  // var in_image = message;
-	  for (let i = 0; i < imageData.data.length; i += 4)
-	  {
-	      // Modify pixel data
-	      let noise = Math.random()*255;
-	      imageData.data[i + 0] = noise;  // R value/
-	      imageData.data[i + 1] = noise;    // G value
-	      imageData.data[i + 2] = noise;  // B value
-	      imageData.data[i + 3] = 255;  // A value
-	  }
-	  // Draw image data to the canvas
-	  ctx.putImageData(imageData, 0, 0);
+	  // for (let i = 0; i < imageData.data.length; i += 4)
+	  // {
+	  //     // Modify pixel data
+	  //     let noise = Math.random()*255;
+	  //     imageData.data[i + 0] = noise;  // R value/
+	  //     imageData.data[i + 1] = noise;    // G value
+	  //     imageData.data[i + 2] = noise;  // B value
+	  //     imageData.data[i + 3] = 255;  // A value
+	  // }
+	  // // Draw image data to the canvas
+	  // ctx.putImageData(imageData, 0, 0);
+	  // console.log("blob size: "+message.size);
       };
       RCLib.ResponseCB = ResponseCB;
       var timer = 0;

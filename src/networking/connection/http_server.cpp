@@ -92,6 +92,11 @@ namespace net
       uint8_t length : 7;
       uint8_t MASK : 1;
    };
+   struct websocket_header_ext : public websocket_header
+   {
+      websocket_header_ext() : ext_length(0) {}
+      uint16_t ext_length : 16; 
+   };
    
    const char ws_handshake[] =
    {
@@ -474,21 +479,26 @@ void net::http_server::ws_thread(const net::socket& from, const net::address& to
 	 (const char *message, size_t size, bool text)
 	 {
 	    packet.Clear();
-	    if ((size - 1) < 126)
+	    if (size < 126)
 	    {
-	       ws_header.length = size - 1;
+	       ws_header.length = size;
 	       ws_header.opcode = text ? 0x1 : 0x2;
 	       packet.IterWrite(ws_header);
+	       auto header = (websocket_header*)packet.GetData();
+	       log::info("text? {}", header->opcode);
 	    }
 	    //16 bit max
-	    else if((size - 1) < 65536)
+	    else if(size < 65536)
 	    {
 	       //#todo: this doesn't work.
 	       ws_header.length = 126;
 	       ws_header.opcode = text ? 0x1 : 0x2;
 	       packet.IterWrite(ws_header);
-	       uint16_t ext_size = htons((uint16_t)(size-1));
-	       packet.IterWrite(ext_size);
+	       uint16_t ext_size = htons(size);
+	       packet.IterWrite(ext_size, false);
+	       auto* ext_head =  (websocket_header_ext*)packet.GetData();
+	       ext_size = ext_head->ext_length;
+	       // log::info("sending mid packet: {} : {}", (uint16_t)(size), htons(ext_size));
 	    }
 	    else
 	    {
@@ -498,11 +508,13 @@ void net::http_server::ws_thread(const net::socket& from, const net::address& to
 	       ws_header.length = 127;
 	       ws_header.opcode = text ? 0x1 : 0x2;
 	       packet.IterWrite(ws_header);
-	       uint64_t ext_size = htons((uint64_t)(size-1));
-	       packet.IterWrite(ext_size);
+	       uint64_t ext_size = htonl((uint64_t)(size));
+	       packet.IterWrite(ext_size, false);
+	       // log::info("sending big packet: {}", (uint64_t)(size));
 	    }
-	    packet.IterWrite(message, size-1);
+	    packet.IterWrite(message, size, false);
 	    packet.PrintDetails();
+	    // log::info("packet final size: {} : {}", packet.GetSize()-sizeof(websocket_header_ext), packet.GetSize());
 	    if(socket.send(address, packet.GetData(), packet.GetSize()) == -1)
 	    {
 	       log::debug("websocket connection broken");

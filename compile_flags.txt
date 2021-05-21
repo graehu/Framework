@@ -1,3 +1,0 @@
--Wall
--std=c++2a
--I libs/fmt/include/

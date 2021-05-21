@@ -49,8 +49,9 @@ namespace net
 	       sending_frames = true;
 	       // log::info("mpeg_handler send frame: {}", size);
 	    }
-	    // callback((const char*)data, size, false);
+	    // log::info("mpeg_handler send frame: {}", size);
 	    // callback("hello", sizeof("hello"), true);
+	    callback((const char*)data, size, false);
 	    data = nullptr;
 	    size = 0;
 	 }

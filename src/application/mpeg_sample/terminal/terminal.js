@@ -172,6 +172,10 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer, sidePanel
     }
     function HookLogs()
     {
+	console.onmessage += function(message)
+	{
+	    console.log(message);
+	};
 	console.defaultLog = console.log.bind(console);
 	console.logs = [];
 	console.alllogs = [];
