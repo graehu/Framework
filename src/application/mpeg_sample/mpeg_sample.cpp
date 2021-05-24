@@ -32,8 +32,6 @@ application* application::factory()
    }
    return nullptr;
 }
-static const char big_message[] = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin efficitur nulla ullamcorper, posuere nunc id, elementum diam. Morbi arcu tellus, scelerisque a ex sit amet, volutpat auctor erat.";
-
 
 namespace net
 {
@@ -147,7 +145,7 @@ void mpeg_sample::run(void)
  
    // if (glfwInit())
    if(false)
-   { 
+   {
       glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
       glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
  
@@ -231,7 +229,7 @@ void mpeg_sample::run(void)
       mpeg_reader reader("gl_mpeg.1.00.h264");
       reader.dump_screenshot(200);
    }
-   else
+   else if(true)
    {
       input* l_input = input::inputFactory();
       l_input->init();
@@ -244,6 +242,13 @@ void mpeg_sample::run(void)
 	 {
 	    lv_mpeg_handler.data = reader.packet_data;
 	    lv_mpeg_handler.size = reader.packet_data_size;
+	    static int dump_count = 0;
+	    dump_count++;
+	    if (dump_count >= 60 && dump_count < 90)
+	    {
+	       // log::info("entering dump_packet");
+	       reader.dump_packet(lv_mpeg_handler.data, lv_mpeg_handler.size);
+	    }
 	 }
 	 else
 	 {
@@ -253,6 +258,11 @@ void mpeg_sample::run(void)
 	 std::this_thread::sleep_for(std::chrono::milliseconds(30));
       }
       delete l_input;
+   }
+   else if(false)
+   {
+      mpeg_reader reader("gl_mpeg.1.00.h264");
+      reader.dump_screenshot(200);
    }
    log::debug("ending loop");
    exit(EXIT_SUCCESS);

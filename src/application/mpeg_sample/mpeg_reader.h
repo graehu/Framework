@@ -17,7 +17,9 @@ public:
    ~mpeg_reader();
    // #todo: make a proper type for image data
    void dump_screenshot(int _frame_number);
+   void dump_packet(void* in_packet, size_t in_size);
    bool fill_packet();
+   void print_packet();
 private:
    AVFrame* frame;
    AVFrame* rgb_frame;

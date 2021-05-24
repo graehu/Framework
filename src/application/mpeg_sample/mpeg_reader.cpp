@@ -1,5 +1,9 @@
 #include "mpeg_reader.h"
 #include "../../graphics/resources/bitmap.h"
+#include "../../utils/log/log.h"
+#include "../../utils/string_helpers.h"
+#include <chrono>
+#include <thread>
 #include <cstdio>
 #include <string>
 
@@ -15,7 +19,7 @@ extern "C"
 #include <libavutil/pixfmt.h>
 #include <libswscale/swscale.h>
 }
-
+using namespace fw;
 mpeg_reader::mpeg_reader(const char* _filename) :
    frame(nullptr),
    packet(nullptr),
@@ -113,7 +117,6 @@ void mpeg_reader::dump_screenshot(int _frame_number)
       uint8_t inbuf[4096+AV_INPUT_BUFFER_PADDING_SIZE];
       memset(inbuf + 4096, 0, AV_INPUT_BUFFER_PADDING_SIZE);
       size_t data_size = fread(inbuf, 1, 4096, in_file);
-      
       if (!data_size)
       {
 	 break;
@@ -130,7 +133,14 @@ void mpeg_reader::dump_screenshot(int _frame_number)
 	    fprintf(stderr, "Error while parsing\n");
 	    exit(1);
 	 }
+	 static int packet_num = 0;
+	 log::info(QUOTE(packet_num)": {}", packet_num);
+	 packet_num++;
 	 data      += ret;
+	 if (data > (packet_data + sizeof(inbuf)))
+	 {
+	    log::info("overrun buffer!!");
+	 }
 	 data_size -= ret;
 	 //sometimes the parser doesn't put data in the packet, not sure why.
 	 if (packet->size)
@@ -160,6 +170,8 @@ void mpeg_reader::dump_screenshot(int _frame_number)
 	       static bool do_once = true;
 	       static int count = 0;
 	       count++;
+	       log::info(QUOTE(count)": {}", count);
+	       print_packet();
 	       if (ret >= 0 && do_once && count == _frame_number)
 	       {
 		  do_once = false;
@@ -200,39 +212,130 @@ void mpeg_reader::dump_screenshot(int _frame_number)
       av_packet_unref(packet);
    }
 }
-bool mpeg_reader::fill_packet()
+
+void mpeg_reader::print_packet()
 {
-   int ret = 0;
-   if (in_file != nullptr && !feof(in_file))
+   // log::info("begin_{}:", "packet");
+   log::info("-----------------------------------------------");
+   log::info("begin_packet:");
+   log::info(QUOTE(packet->size)": {}", packet->size);
+   // log::info(QUOTE(packet->data)": {}", packet->data);
+   log::info(QUOTE(packet->duration)": {}", packet->duration);
+   log::info(QUOTE(packet->pos)": {}", packet->pos);
+   log::info(QUOTE(packet->pts)": {}", packet->pts);
+   log::info(QUOTE(packet->dts)": {}", packet->dts);
+   // log::info(QUOTE(packet->buf)": {}", packet->buf); // causes log errors
+   log::info(QUOTE(packet->stream_index)": {}", packet->stream_index);
+   // log::info(QUOTE(packet->side_data)": {}", packet->side_data); // causes log errors
+   log::info(QUOTE(packet->side_data_elems)": {}", packet->side_data_elems);
+   log::info(QUOTE(packet->flags)": {}", packet->flags);
+   log::info("-----------------------------------------------");
+}
+
+void mpeg_reader::dump_packet(void* in_packet, size_t in_size)
+{
+   if(in_packet == nullptr || in_size <= 0)
+      return;
+
+   std::string screenshot_str = std::string(filename);
+   screenshot_str = screenshot_str.substr(0, screenshot_str.length()-4);
+   uint8_t* data = (uint8_t*)in_packet;
+   size_t data_size = in_size;
+   av_init_packet(packet);
+   int index = 0;
+   while (data_size > 0)
    {
-      /* read raw data from the input file */
-      packet_data_size = fread(packet_data, 1, 4096, in_file);
-      if (!packet_data_size)
-      {
-	 return false;
-      }
-      /* use the parser to split the data into frames */
-      bool success = false;
-      av_init_packet(packet);
-      ret = av_parser_parse2(parser, codec_context, &packet->data, &packet->size,
-			     packet_data, packet_data_size, AV_NOPTS_VALUE, AV_NOPTS_VALUE, 0);
+      int ret = av_parser_parse2(parser, codec_context, &packet->data, &packet->size,
+				 data, data_size, AV_NOPTS_VALUE, AV_NOPTS_VALUE, 0);
       if (ret < 0)
       {
 	 fprintf(stderr, "Error while parsing\n");
-	 exit(1);
+	 return;
       }
+      data      += ret;
+      data_size -= ret;
       //sometimes the parser doesn't put data in the packet, not sure why.
-      packet_data_size = packet->size;
-      success = packet_data_size > 0;
-      av_packet_unref(packet);
-      return success;
+      if (packet->size)
+      {
+	 //func starts here
+	 ret = avcodec_send_packet(codec_context, packet);
+	 if (ret < 0)
+	 {
+	    char error_buf [AV_ERROR_MAX_STRING_SIZE] = {0};
+	    av_strerror(ret, error_buf, AV_ERROR_MAX_STRING_SIZE);
+	    fprintf(stderr, "Error decoding frame: %s\n", error_buf);
+	    break;
+	 }
+	 while(ret >= 0)
+	 {
+	    ret = avcodec_receive_frame(codec_context, frame);
+	    if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+	    {
+	       break;
+	    }
+	    else if (ret < 0)
+	    {
+	       fprintf(stderr, "Error during decoding\n");
+	       break;
+	    }
+	    // print_packet();
+	    if (ret >= 0)
+	    {
+	       std::string i_str = std::to_string(index);
+	       printf("saving: %s\n", (screenshot_str + i_str +".pkg.pgm").c_str());
+	       pgm_save(frame->data[0], frame->linesize[0],
+			frame->width, frame->height, (screenshot_str + i_str +".pkg.pgm").c_str());
+
+	       av_image_alloc(rgb_frame->data, rgb_frame->linesize, codec_context->width, codec_context->height, AV_PIX_FMT_RGB24, 32);
+	       // yuv to rgb24 causes the image to flip vertically, doing this prior to the conversion negates the effect
+	       // taken from here:
+	       // https://topic.alibabacloud.com/a/decoding-h264-to-rgb-using-ffmpeg_8_8_10243900.html
+	       frame->data[0] += frame->linesize[0] * (codec_context->height-1);
+	       frame->linesize[0] *= -1;
+	       frame->data[1] += frame->linesize[1] * (codec_context->height/2 - 1);
+	       frame->linesize[1] *= -1;
+	       frame->data[2] += frame->linesize[2] * (codec_context->height/2 - 1);
+	       frame->linesize[2] *= -1;
+
+	       // #todo: there seems to be an issue with image quality during conversion.
+	       //        test out SWS_X vs SWS_POINT etc. 
+	       sws_context = sws_getCachedContext(sws_context,
+						  codec_context->width,codec_context->height, AV_PIX_FMT_YUV420P,
+						  codec_context->width,codec_context->height, AV_PIX_FMT_RGB24,
+						  SWS_X, nullptr, nullptr, nullptr);
+
+	       sws_scale(sws_context, frame->data, frame->linesize, 0,
+			 frame->height, rgb_frame->data, rgb_frame->linesize);
+
+
+	       int bmp_data_size = 3*frame->width*frame->height;
+	       bitmap bmp(width, height, (signed char*)&rgb_frame->data[0][0], bmp_data_size);
+	       printf("saving: %s\n", (screenshot_str + i_str+".pkg.bmp").c_str());
+	       bmp.save((screenshot_str + i_str+".pkg.bmp").c_str());
+	       index++;
+	    }
+	 }
+      }
+   }
+   av_packet_unref(packet);
+}
+
+
+bool mpeg_reader::fill_packet()
+{
+   packet_data_size = 0;
+   if (in_file != nullptr && !feof(in_file))
+   {
+      /* read raw data from the input file */
+      memset(packet_data + 4096, 0, AV_INPUT_BUFFER_PADDING_SIZE);
+      packet_data_size = fread(packet_data, 1, 4096, in_file);
    }
    else if(in_file != nullptr)
    {
       fseek(in_file, 0, SEEK_SET);
       return false;
    }
-   return false;
+   return packet_data_size > 0;
 }
 #ifdef UNIT_TEST
 namespace fs = std::filesystem;
