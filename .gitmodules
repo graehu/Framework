@@ -7,6 +7,12 @@
 [submodule "libs/fmt"]
 	path = libs/fmt
 	url = git@github.com:fmtlib/fmt.git
+	shallow = true
 [submodule "libs/glfw"]
 	path = libs/glfw
 	url = git@github.com:glfw/glfw.git
+	shallow = true
+[submodule "libs/FFmpeg"]
+	path = libs/FFmpeg
+	url = git@github.com:FFmpeg/FFmpeg.git
+	shallow = true

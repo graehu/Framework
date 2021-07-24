@@ -37,7 +37,8 @@ config.library_paths = [
     "../../../libs/"
 ]
 config.link_libraries = []
-config.link_libraries.extend(["avformat", "avcodec", "swresample", "swscale", "avutil", "x264", "glfwstatic", "GL", "OpenGL", "dl"])
-config.link_libraries.extend(["stdc++", "pthread", "m", "fwcore"])
+config.link_libraries.extend(["avformat", "avcodec", "swresample", "swscale", "avutil", "x264"]) # ffmpeg libs
+config.link_libraries.extend(["glfwstatic", "GL", "OpenGL", "dl"]) # opengl
+config.link_libraries.extend(["stdc++", "pthread", "m", "fwcore"]) # core
 
 config.output_file = "mpeg_sample.bin"

@@ -71,6 +71,7 @@ namespace net
 
 void generate_rgb(int width, int height, uint8_t **rgbp, bool on = false);
 
+
 static const struct
 {
    float x, y;
@@ -242,13 +243,6 @@ void mpeg_sample::run(void)
 	 {
 	    lv_mpeg_handler.data = reader.packet_data;
 	    lv_mpeg_handler.size = reader.packet_data_size;
-	    static int dump_count = 0;
-	    dump_count++;
-	    if (dump_count >= 60 && dump_count < 90)
-	    {
-	       // log::info("entering dump_packet");
-	       reader.dump_packet(lv_mpeg_handler.data, lv_mpeg_handler.size);
-	    }
 	 }
 	 else
 	 {

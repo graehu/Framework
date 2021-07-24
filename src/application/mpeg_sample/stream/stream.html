@@ -41,70 +41,82 @@
       term.show();
     </script>
     <script type="module">
+      // try
+      // {
       import {RCLib} from "/RCLib.js";
-      RCLib.Connect();
-      const canvas = document.getElementById('stream_canvas');
-      const ctx = canvas.getContext('2d');
-      canvas.width = 640;
-      canvas.height = 480;
-      const width = canvas.width;
-      const height = canvas.height;
-      const imageData = ctx.createImageData(width, height);
-      const imageSize = imageData.data.length;
-      console.log("pre canvas length: "+imageData.data.length);
-      RCLib.GetStream(imageSize)
-    .then(result =>{
-	console.log("stream addr: "+result);
-	var functions = RCLib.GetFunctions();
-	for (let i = 0; i < imageData.data.length; i += 4)
-	{
-	    var value = functions.getValue(result+i, 'i32');
-	    var val = value >>> 0;
-	    var r = 0xff000000;
-	    var g = 0x00ff0000;
-	    var b = 0x0000ff00;
-	    var a = 0x000000ff;
-	    r = (val & r) >> 24; g = (val & g) >> 16; b = (val & b) >> 8; a = (val & a);
-	    if (r < 0) r = 255;
-	    // Modify pixel data
-	    imageData.data[i + 0] = r;  // R value/
-	    imageData.data[i + 1] = g;    // G value
-	    imageData.data[i + 2] = b;  // B value
-	    imageData.data[i + 3] = a;  // A value
-	}
-	// Draw image data to the canvas
-	ctx.putImageData(imageData, 0, 0);
-
-    });
-      var ResponseCB = function(message)
+      RCLib.FunctionsReady = function()
       {
-	  // var in_image = message;
-	  // for (let i = 0; i < imageData.data.length; i += 4)
-	  // {
-	  //     // Modify pixel data
-	  //     let noise = Math.random()*255;
-	  //     imageData.data[i + 0] = noise;  // R value/
-	  //     imageData.data[i + 1] = noise;    // G value
-	  //     imageData.data[i + 2] = noise;  // B value
-	  //     imageData.data[i + 3] = 255;  // A value
-	  // }
-	  // // Draw image data to the canvas
-	  // ctx.putImageData(imageData, 0, 0);
-	  // console.log("blob size: "+message.size);
-      };
-      RCLib.ResponseCB = ResponseCB;
-      var timer = 0;
-      function loop()
-      {
-	  requestAnimationFrame(loop);
-	  timer = timer + 1.0/30.0;
-	  if(timer > 0.3)
-          {
-	      timer = 0.0;
+	  const canvas = document.getElementById('stream_canvas');
+	  const ctx = canvas.getContext('2d');
+	  canvas.width = 640;
+	  canvas.height = 480;
+	  const width = canvas.width;
+	  const height = canvas.height;
+	  const imageData = ctx.createImageData(width, height);
+	  const imageSize = imageData.data.length;
+	  console.log("pre canvas length: "+imageData.data.length);
+	  RCLib.GetStream(imageSize)
+	      .then(result =>{
+		  console.log("stream addr: "+result);
+		  var functions = RCLib.GetFunctions();
+		  for (let i = 0; i < imageData.data.length; i += 4)
+		  {
+		      var value = functions.getValue(result+i, 'i32');
+		      var val = value >>> 0;
+		      var r = 0xff000000;
+		      var g = 0x00ff0000;
+		      var b = 0x0000ff00;
+		      var a = 0x000000ff;
+		      r = (val & r) >> 24; g = (val & g) >> 16; b = (val & b) >> 8; a = (val & a);
+		      if (r < 0) r = 255;
+		      // Modify pixel data
+		      imageData.data[i + 0] = r;  // R value/
+		      imageData.data[i + 1] = g;    // G value
+		      imageData.data[i + 2] = b;  // B value
+		      imageData.data[i + 3] = a;  // A value
+		  }
+		  // Draw image data to the canvas
+		  ctx.putImageData(imageData, 0, 0);
+	      });
+	  var ResponseCB = function(message)
+	  {
+	      console.log("hmmm");
+	      if(RCLib.DecodePacket(message, imageData.data))
+	      {
+		  console.log("putting image data!");
+		  ctx.putImageData(imageData, 0, 0);
+	      }
+	      else
+	      {
+		  console.log("packet decode failed?");
+	      }
+	  };
+	  console.log("setup connection");
+	  RCLib.ResponseCB = ResponseCB;
+	  RCLib.Connect();
+	  RCLib.OpenCB = function()
+	  {
+	      RCLib.Send("hello");
 	  }
-      };
-      requestAnimationFrame(loop);
+	  // var timer = 0;
+	  // function loop()
+	  // {
+	  //     requestAnimationFrame(loop);
+	  //     timer = timer + 1.0/30.0;
+	  //     if(timer > 0.3)
+	  //     {
+	  // 	  timer = 0.0;
+	  //     }
+	  // };
+	  // requestAnimationFrame(loop);
+      }
       export {RCLib};
+      // }
+      // catch(e)
+      // {
+      // 	  console.log("AHHHHHHH DADDY DADDY");
+      // 	  console.log(e.name + ": " + e.message);
+      // }
     </script>
   </body>
 </html>
