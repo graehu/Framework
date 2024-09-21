@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #                      _____       .__         
 #   ____  ____   _____/ ____\_____ |  | ___.__.
 # _/ ___\/  _ \ /    \   __\\____ \|  |<   |  |
@@ -23,18 +23,18 @@ from confply import launcher
 
 # fill this with your commands
 aliases = {
-    #'mycommand':'path/to/command.py'
-    "rc_sample":"src/application/rc_sample/build.py",
-    "net_physics_sample":"src/application/net_physics_sample/build.py",
-    "param_sample":"src/application/param_sample/build.py",
-    "log_sample":"src/application/log_sample/build.py",
-    "mpeg_sample":"src/application/mpeg_sample/build.py",
-    "fwcore_lib":"libs/build_fwcore.py",
-    "glfw_lib":"libs/build_glfw.py"
+    #'mycommand':'--in path/to/command.py'
+    "new_sample":"--in src/application/new_sample/build.py",
+    "rc_sample":"--in src/application/rc_sample/build.py",
+    "net_physics_sample":"--in src/application/net_physics_sample/build.py",
+    "param_sample":"--in src/application/param_sample/build.py",
+    "log_sample":"--in src/application/log_sample/build.py",
+    "mpeg_sample":"--in src/application/mpeg_sample/build.py",
+    "fwcore_lib":"--in libs/build_fwcore.py",
+    "glfw_lib":"--in libs/build_glfw.py"
 }
-
+aliases["all"] = " -- ".join([val for key, val in aliases.items()])
 if __name__ == "__main__":
-    aliases["all"] = ";".join([val for key, val in aliases.items()])
-    aliases["samples"] = ";".join([val for key, val in aliases.items() if key.endswith("sample")])
-    aliases["libs"] = ";".join([val for key, val in aliases.items() if key.endswith("lib")])
+    aliases["samples"] = " -- ".join([val for key, val in aliases.items() if key.endswith("sample")])
+    aliases["libs"] = " -- ".join([val for key, val in aliases.items() if key.endswith("lib")])
     launcher(sys.argv[1:], aliases)

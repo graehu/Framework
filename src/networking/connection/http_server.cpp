@@ -444,7 +444,7 @@ void net::http_server::ws_thread(const net::socket& from, const net::address& to
 	    data[i] ^= mask[i & 3];
 	 }
 	 // #todo: test this debug.
-	 log::debug("{}", data);
+	 log::debug("{}", (const char*)&data);
 	 if (ws_handler != nullptr)
 	 {
 	    ws_handler->ws_response((const char *)&data[0], ws_send);

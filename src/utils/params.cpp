@@ -78,7 +78,7 @@ namespace fw
       }
       void parse(char* _string)
       {
-	 std::uint32_t kMaxArgs = 64;
+	 const std::uint32_t kMaxArgs = 64;
 	 std::uint32_t argc = 0;
 	 char *argv[kMaxArgs];
 	 char *p2 = std::strtok(_string, " ");
