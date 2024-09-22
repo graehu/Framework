@@ -18,6 +18,7 @@ config.output_type = options.output_type.lib
 config.include_paths = ["glfw/deps", "glfw/include"]
 config.standard = "gnu99"
 config.object_path = "objects/glfw"
+config.output_file = "libglfwstatic"
 config.confply_log_config = False
 if config.confply.platform == "linux":
     config.defines = ["_GLFW_X11"]
