@@ -30,6 +30,6 @@ config.warnings = ["all", "extra", "pedantic"]
 # debug_info = True
 config.optimisation = 3
 config.link_libraries = ["stdc++", "m", "fwcore"]
-config.standard = "gnu++2a"
+config.standard = "c++17"
 config.output_file = "new_sample.bin"
 config.confply_log_config = False
