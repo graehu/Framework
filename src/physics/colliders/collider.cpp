@@ -16,6 +16,14 @@ namespace physics
 	 m_mtvs.push_back(newMTV);
 	 m_mtv = newMTV;
       }
+      const char* collider::get_debug_name()
+      {
+	 if (m_physics != nullptr)
+	 {
+	    return m_physics->get_debug_name();
+	 }
+	 return nullptr;
+      }
       void collider::collide(const collider& collider)
       {
 	 return;

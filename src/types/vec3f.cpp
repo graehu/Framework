@@ -9,9 +9,6 @@ vec3f::vec3f(float _i, float _j, float _k)
    :i(_i),j(_j),k(_k)
 {
 }
-vec3f::~vec3f(void)
-{
-}
 
 vec3f& vec3f::operator +=(const vec3f& rhs)
 {
@@ -65,13 +62,12 @@ vec3f& vec3f::operator *=(const float s)
 
 vec3f& vec3f::operator /=(const float s)
 {
-   if(s>0 || s<0)
+   if(s != 0)
    {
       i /= s;
       j /= s;
       k /= s;
    }
-
    return *this;
 }
 
@@ -96,10 +92,14 @@ void vec3f::operator=(const float& rhs)
 }
 vec3f vec3f::normalise()
 {
-   return (*this / this->length());
+   float len = this->length();
+   if (len != 0) return (*this / this->length());
+   else return vec3f();
 }
 
 void vec3f::normalise_self()
 {
-   *this /= this->length();
+   float len = this->length();
+   if (len != 0) *this /= len;
+   else *this = vec3f();
 }

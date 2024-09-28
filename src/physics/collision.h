@@ -46,7 +46,7 @@ namespace physics
 	 for(int i = 0; i < num_polys; i++)
 	 {
 	    // printf("v: %zu n: %zu\n", polys[i].m_transformed_vertices.size(), polys[i].m_transformed_normals.size());
-	    for(int ii = 0; ii < polys[i].m_transformed_vertices.size(); ii++)
+	    for(unsigned int ii = 0; ii < polys[i].m_transformed_vertices.size(); ii++)
 	    {
 	       vec3f normal = polys[i].m_transformed_normals[ii];
 	       if(std::find(tested.begin(), tested.end(), normal) != tested.end())
@@ -93,7 +93,7 @@ namespace physics
 	 float  minOverlap = -99999.0f;
 	 std::vector<vec3f> tested;
 	 vec3f testVert;
-	 for(int i = 0; i < _poly.m_transformed_vertices.size(); i++)
+	 for(unsigned int i = 0; i < _poly.m_transformed_vertices.size(); i++)
 	 {
 	    vec3f normal = _poly.m_transformed_normals[i];
 	    if(std::find(tested.begin(), tested.end(), normal) != tested.end())
@@ -165,12 +165,13 @@ namespace physics
       {
 	 float diff = points[0].dot_product2(projection);
 	 vec3f range = vec3f(diff, diff);
-	 for(int i = 0; i < points.size(); i++)
+	 for(unsigned int i = 0; i < points.size(); i++)
 	 {
 	    diff = points[i].dot_product2(projection);
 	    if (diff < range.i) range.i = diff;
 	    else if(diff > range.j) range.j = diff;
 	 }
+	 (void)debug;
 	 // if(debug)
 	 // {
 	 //    Debug.DrawLine(projection*range.x, projection*range.y, new Color (1f, 0.92f, 0.016f, 0.5f));  

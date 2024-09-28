@@ -19,7 +19,7 @@ class netEntity : public entity
 		//Or just overide... i dunno.
 		void readPacket(packet* _data);
 		void writePacket(packet* _data);
-		void update(float _dt){}
+		void update(float){}
 
 		unsigned char getCommands(void){return m_command;}
 		void setCommands(unsigned char command){m_command = command;}

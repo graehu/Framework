@@ -1,7 +1,12 @@
 #include "rigid_body.h"
 #include "colliders/polygon.h"
 #include "collision.h"
+#include <cmath>
 #include <vector>
+#include "../utils/log/log.h"
+#include "../utils/string_helpers.h"
+#include "signal.h"
+
 
 	 // update::subscribe(update::e_late, [this](float _delta){this->late_update(_delta);});
 namespace physics
@@ -11,14 +16,16 @@ namespace physics
       m_current_state.size = 1;
       m_current_state.mass = 1;
       m_current_state.inverseMass = 1.0f / m_current_state.mass;
-      m_current_state.position = vec3f(2,0,0);
-      m_current_state.momentum = vec3f(0,0,-10);
+      m_current_state.position = vec3f();
+      m_current_state.momentum = vec3f();
       m_current_state.orientation.identity();
-      m_current_state.angularMomentum = vec3f(0,0,0);
-      m_current_state.inertiaTensor = m_current_state.mass * m_current_state.size * m_current_state.size * 1.0f / 6.0f;
+      m_current_state.angularMomentum = vec3f();
+      m_current_state.inertiaTensor = m_current_state.mass * m_current_state.size * m_current_state.size * (1.0f / 6.0f);
       m_current_state.inverseInertiaTensor = 1.0f / m_current_state.inertiaTensor;
       m_current_state.recalculate();
       m_previous_state = m_current_state;
+      m_debug_name = nullptr;
+      m_debug = false;
    }
 
 // #TODO: this needs to be done differently.
@@ -26,7 +33,7 @@ namespace physics
 //      updating bodies and resolving collisions.
    void rigid_body::update(float t, float dt)
    {
-       m_previous_state = m_current_state;
+      m_previous_state = m_current_state;
       integrate(m_current_state, t, dt);
       m_current_state.forces.clear();
       //if physics are 2d. do this:
@@ -39,6 +46,15 @@ namespace physics
 	 m_collider->m_physics = this;
 	 m_collider->recalculate();
       }
+      if (m_debug)
+      {
+	 auto pos = m_current_state.position;
+	 auto vel = m_current_state.velocity;
+	 float mass = m_current_state.mass;
+	 std::string spos = fmt::format("({},{},{})", pos.i, pos.j, pos.k);
+	 std::string svel = fmt::format("({},{},{})", vel.i, vel.j, vel.k);
+	 fw::log::debug("name: {} pos: {} vel: {} mass: {}", m_debug_name, spos, svel, mass);
+      }
    }
    
    void rigid_body::integrate(state &_state, float t, float dt)
@@ -48,14 +64,15 @@ namespace physics
       derivative c = evaluate(_state, t, dt*0.5f, b);
       derivative d = evaluate(_state, t, dt, c);
 	
-      _state.position += 1.0f/6.0f * dt * (a.velocity + 2.0f*(b.velocity + c.velocity) + d.velocity);
-      _state.momentum += 1.0f/6.0f * dt * (a.force + 2.0f*(b.force + c.force) + d.force);
+      _state.position += (1.0f/6.0f) * dt * (a.velocity + 2.0f*(b.velocity + c.velocity) + d.velocity);
+      _state.momentum += (1.0f/6.0f) * dt * (a.force + 2.0f*(b.force + c.force) + d.force);
 
-      _state.orientation += (a.spin + (b.spin + c.spin)*2.0 + d.spin)*(1.0f/6.0f * dt);
-
-      _state.angularMomentum += 1.0f/6.0f * dt * (a.torque + 2.0f*(b.torque + c.torque) + d.torque);
+      _state.orientation += (a.spin + (b.spin + c.spin)*2.0 + d.spin)*((1.0f/6.0f) * dt);
+      _state.angularMomentum += (1.0f/6.0f) * dt * (a.torque + 2.0f*(b.torque + c.torque) + d.torque);
 
       _state.recalculate();
+      // something has gone wrong if we have a nan position.
+      if (_state.position.i != _state.position.i) raise(SIGTRAP);
    }
 
    void rigid_body::add_collider(collider::collider* _collider)

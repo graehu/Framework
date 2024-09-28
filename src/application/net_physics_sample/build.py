@@ -6,7 +6,6 @@ import confply.cpp_compiler.options as options
 import confply.log as log
 config.version_hash='77a83ef65a5e032b989b8a76ac0083e9'
 
-
 config.confply.tool = "clang++"
 config.confply_log_topic = "net_physics_sample"
 config.source_files = [
@@ -21,6 +20,7 @@ config.source_files = [
     "../../graphics/gSdlGl/renderers/cameraRenderer.cpp",
     "../../graphics/camera/camera.cpp",
     "../../physics/rigid_body.cpp",
+    "../../physics/collision_manager.cpp",
     "../../physics/colliders/polygon.cpp",
     "../../physics/colliders/collider.cpp",
     "../../physics/colliders/circle.cpp",
