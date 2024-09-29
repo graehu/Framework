@@ -11,7 +11,7 @@ application* application::factory()
 {
    return new log_sample();
 }
-
+void log_sample::init(){}
 void log_sample::run()
 {
    commandline::parse();
@@ -36,3 +36,4 @@ void log_sample::run()
       }
    }
 }
+void log_sample::shutdown(){}

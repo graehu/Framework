@@ -6,7 +6,6 @@ input::~input()
 }
 int inSdl::init()
 {
-  
   return 0;
 }
 
@@ -17,23 +16,12 @@ bool inSdl::update(void)
 
   char* internalKeys = (char*)SDL_GetKeyState(NULL);
   
-  if(internalKeys['w'] )
-    m_keys[e_up] = true;
-
-  if(internalKeys['a'])
-    m_keys[e_left] = true;
-
-  if(internalKeys['s'])
-    m_keys[e_down] = true;
-
-  if(internalKeys['d'])
-    m_keys[e_right] = true;
-
-  if(internalKeys['r'])
-    m_keys[e_respawn] = true;
-
-  if(internalKeys['q'])
-    m_keys[e_quit] = true;
+  if(internalKeys[(int)'w']) { m_keys[e_up] = true; }
+  if(internalKeys[(int)'a']) { m_keys[e_left] = true; }
+  if(internalKeys[(int)'s']) { m_keys[e_down] = true; }
+  if(internalKeys[(int)'d']) { m_keys[e_right] = true; }
+  if(internalKeys[(int)'r']) { m_keys[e_respawn] = true; }
+  if(internalKeys[(int)'q']) { m_keys[e_quit] = true; }
 
   int cx,cy;
   Uint8 ms = SDL_GetMouseState(&cx, &cy);

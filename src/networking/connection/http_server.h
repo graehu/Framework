@@ -21,10 +21,10 @@ namespace net
       public:
 	 // typedef void (*send_callback)(const char* message, size_t size);
 	 typedef std::function<void(const char*, size_t)> send_callback;
-	 virtual void get_response(const char* request, send_callback send_cb) {}
-	 virtual void post_response(std::string_view& request, std::string_view& body) {}
-	 virtual void ws_response(const char* data, send_callback send_cb) {}
-	 virtual void ws_send(send_callback send_cb) {}
+	 virtual void get_response(const char* /*request*/, send_callback /*send_cb*/) {}
+	 virtual void post_response(std::string_view& /*request*/, std::string_view& /*body*/) {}
+	 virtual void ws_response(const char* /*data*/, send_callback /*send_cb*/) {}
+	 virtual void ws_send(send_callback /*send_cb*/) {}
 	 virtual bool is_ws_handler() { return false; }
       };
       http_server(unsigned int port);

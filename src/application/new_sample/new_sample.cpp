@@ -2,16 +2,18 @@
 #include "../../utils/log/log.h"
 #include "../../utils/params.h"
 #include "../../utils/string_helpers.h"
+#include "../../networking/packet/packet.h"
+#include <cstdint>
 #include <string>
 #include <cstring>
 #include <type_traits>
 
 using namespace fw;
 
-application* application::factory()
-{
-   return new new_sample();
-}
+application *application::factory() { return new new_sample(); }
+void new_sample::init() { commandline::parse(); }
+void new_sample::shutdown() { }
+
 
 struct struct_a
 {
@@ -62,7 +64,6 @@ void CallMethodAPtr(MethodABase* base, MethodAPtr ptr)
 
 void new_sample::run()
 {
-   commandline::parse();
    log::scope new_sample("new_sample", true);
    {
       struct_a test_a;
@@ -78,5 +79,15 @@ void new_sample::run()
       CallMethodAPtr((MethodABase*)&test_b, ptr); // calls incorrect fuction, kind of.
       ptr = MethodAHelper<decltype(test_c)>::GetPtr();
       CallMethodAPtr((MethodABase*)&test_c, ptr); // handles nullptr
+      {
+	 typedef net::NewPacket<32> test_packet;
+	 test_packet test; test.Clear();
+	 log::info("test packet size should be zero == {}", test.GetSize());
+      }
+      {
+	 typedef net::NewPacket<32, short> test_packet;
+	 test_packet test; test.Clear();
+	 log::info("test packet size should be 2 == {}", test.GetSize());
+      }
    }
 }

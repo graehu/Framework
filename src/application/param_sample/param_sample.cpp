@@ -38,6 +38,7 @@ application* application::factory()
    return new param_sample();
 }
 
+void param_sample::init(void){}
 void param_sample::run(void)
 {
    log::topics::add("param_sample");
@@ -150,3 +151,4 @@ void param_sample::run(void)
       }
    }
 }
+void param_sample::shutdown(void){}

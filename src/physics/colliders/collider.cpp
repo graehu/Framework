@@ -24,7 +24,7 @@ namespace physics
 	 }
 	 return nullptr;
       }
-      void collider::collide(const collider& collider)
+      void collider::collide(const collider& /*collider*/)
       {
 	 return;
       }
@@ -38,7 +38,7 @@ namespace physics
       }
       void collider::recalculate(){return;}
       
-      void collider::late_update(float _deltatime)
+      void collider::late_update(float /*_deltatime*/)
       {
 	 m_mtv = vec3f();
 	 for(auto tv : m_mtvs)

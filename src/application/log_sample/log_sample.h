@@ -5,6 +5,8 @@
 class log_sample : public application
 {
  public:
-  void run(void) override;
+   void init(void) override;
+   void run(void) override;
+   void shutdown(void) override;
 };
 #endif//LOG_SAMPLE_H

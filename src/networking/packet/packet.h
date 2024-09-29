@@ -154,15 +154,26 @@ class packet
      const char* mv_file_name = nullptr;
     std::fstream* m_file;
   };
-  
-  //allows for zero size header.
-  typedef int null_type[0];
-  //
+   
+
+  // todo: this will need different pragmas for windows.
+// #pragma warning (push)
+// #pragma warning (disable : 4200)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wzero-length-array"
+   // This goes against the C++ spec.
+   // No types should be of zero size, but needed for headerless packets.
+   typedef int null_type[0];
+#pragma GCC diagnostic pop
+// #pragma warning (pop)
+
+   
   template<size_t T_size, typename T_header = null_type>
   class NewPacket : public BasePacket
   {
   public:
-    
+     // Claer, to move past the header.
+     NewPacket() { Clear(); }
     // Clears the packet of data
     void Clear(void){ end = sizeof(T_header); }
 

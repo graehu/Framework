@@ -37,18 +37,25 @@ config.source_files = [
     "../../networking/packet/packetqueue.cpp",
     "../../networking/packet/readPacket.cpp",
     "../../networking/packet/writePacket.cpp",
-    "../../networking/utils/dataUtils.cpp"
+    "../../networking/utils/dataUtils.cpp",
+    
 ]
 config.include_paths = [
-    "../../../libs/fmt/include/"
+    "../../../libs/fmt/include/",
+    "../../../../Libs/Vulkan/1.3.280.1/x86_64/include/",
 ]
 
 config.library_paths = [
-    "../../../libs/"
+    "../../../libs/",
+    "../../../../Libs/glfw-3.4/src/",
+    "../../../../Libs/Vulkan/1.3.280.1/x86_64/lib",
 ]
 config.warnings = ["all", "extra", "pedantic"]
 config.debug_info = True
-config.link_libraries = ["stdc++", "m", "SDLmain", "SDL", "SDL_image", "OpenGL", "GL", "fwcore"]
+# config.rebuild_on_change = False
+config.link_libraries = ["stdc++", "m",
+                         "SDLmain", "SDL", "SDL_image",
+                         "OpenGL", "GL", "fwcore"]
 config.standard = "c++17"
 config.output_file = "net_physics_sample.bin"
 config.confply_log_config = False

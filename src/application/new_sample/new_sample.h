@@ -6,5 +6,7 @@ class new_sample : public application
 {
  public:
   void run(void) override;
+   void init(void) override;
+   void shutdown(void) override;
 };
 #endif//NEW_SAMPLE_H

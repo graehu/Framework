@@ -3,41 +3,56 @@
 #include "../../physics/colliders/box.h"
 #include "../../graphics/camera/camera.h"
 #include "../../physics/collision_manager.h"
-// #include "../../physics/colliders/polygon.h"
 #include "../../utils/log/log.h"
 #include "../../utils/params.h"
+#include "../../window/window.h"
+#include "../../graphics/graphics.h"
+#include "../../input/input.h"
 #include <queue>
 #include <cassert>
 #include <chrono>
 #include <thread>
 
-net_physics_sample::net_physics_sample() : m_name("physics")
-{
-   m_looping = true;
-}
 application* application::factory()
 {
    return new net_physics_sample();
 }
+
+// todo: think of a nice way to have some of this defined in application.h
 void net_physics_sample::init(void)
 {
+   m_name = "physics";
+   fw::log::topics::add("physics_sample");
+   fw::commandline::parse();
+   fw::log::topics::add("fw");
+   fw::log::scope fw("fw");
+
+   fw::log::topics::add("window");
    m_window = window::windowFactory();
-   m_window->init(512, 512, m_name);
+   m_window->init(m_width, m_height, m_name);
+
+   fw::log::topics::add("graphics");
    m_graphics = graphics::graphicsFactory();
    m_graphics->init();
+
+   fw::log::topics::add("input");
    m_input = input::inputFactory();
    m_input->init();
+
+   fw::log::topics::add("physics");
+   fw::log::topics::add("network");
+
+   fw::log::debug("init");
+   m_running = true;   
 }
 
 void net_physics_sample::run(void)
 {
-   fw::log::topics::add("physics_sample");
    fw::log::scope("physics_sample");
    fw::log::topics::set_level("physics_sample", fw::log::e_info);
-   init();
    
    camera game_cam;
-   game_cam.m_view.perspective(60.0f, (float)m_window->getWidth() / (float)m_window->getHeight(), 0.1f, 100.f);
+   game_cam.m_view.perspective(60.0f, (float)m_window->get_width() / (float)m_window->get_height(), 0.1f, 100.f);
    mat4x4f translation;
    translation.translate(0, 0, -32);
    game_cam.m_view = translation*game_cam.m_view;
@@ -100,14 +115,14 @@ void net_physics_sample::run(void)
    bool spawning = false;
    std::chrono::high_resolution_clock clock;
    auto clock_before = clock.now();
-   while(m_looping)
+   while(m_running)
    {
       auto clock_now = clock.now();
       float dt = std::chrono::duration<float>(clock_now-clock_before).count();
       clock_before = clock_now;
       // fw::log::debug("{}",dt);
       fw::log::timer loop("loop");
-      if(m_input->update() || m_input->isKeyPressed(input::e_quit)) m_looping = false;
+      if(m_input->update() || m_input->isKeyPressed(input::e_quit)) m_running = false;
       player.update(time, dt);
       {
 	 // fw::log::timer("update");
@@ -152,3 +167,4 @@ void net_physics_sample::run(void)
       m_graphics->render();
    }
 }
+void net_physics_sample::shutdown(){}

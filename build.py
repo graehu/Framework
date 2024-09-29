@@ -24,6 +24,7 @@ from confply import launcher
 # fill this with your commands
 aliases = {
     #'mycommand':'--in path/to/command.py'
+    "vulkan_sample":"--in src/application/vulkan_sample/build.py",
     "new_sample":"--in src/application/new_sample/build.py",
     "rc_sample":"--in src/application/rc_sample/build.py",
     "net_physics_sample":"--in src/application/net_physics_sample/build.py",

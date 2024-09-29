@@ -5,6 +5,8 @@
 class param_sample : public application
 {
  public:
-  void run(void) override;
+   void init(void) override;
+   void run(void) override;
+   void shutdown(void) override;
 };
 #endif//PARAM_SAMPLE_H

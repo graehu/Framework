@@ -19,16 +19,7 @@ using namespace fw;
 
 application* application::factory()
 {
-   static bool do_once = true;
-   if(do_once)
-   {
-      params::add("mpeg.port", {"8080"});
-      commandline::parse();
-      log::topics::add("mpeg_sample");
-      do_once = false;
-      return new mpeg_sample();
-   }
-   return nullptr;
+   return new mpeg_sample();
 }
 
 void generate_rgb(int width, int height, uint8_t **rgbp, bool on = false);
@@ -82,6 +73,12 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
    {
       glfwSetWindowShouldClose(window, GLFW_TRUE);       
    }
+}
+void mpeg_sample::init(void)
+{
+   params::add("mpeg.port", {"8080"});
+   commandline::parse();
+   log::topics::add("mpeg_sample");
 }
 
 void mpeg_sample::run(void)
@@ -187,4 +184,8 @@ void mpeg_sample::run(void)
    exit(EXIT_SUCCESS);
    
    log::debug("ending loop");
+}
+
+void mpeg_sample::shutdown(void)
+{
 }

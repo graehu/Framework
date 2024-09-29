@@ -50,12 +50,12 @@ int wSdlGl::init(int _width, int _height, const char* _name)
   return 0;
 }
 
-int wSdlGl::move(int _x, int _y)
+int wSdlGl::move(int /*_x*/, int /*_y*/)
 {
   return 0;
 }
 
-int wSdlGl::resize(int _width, int _height)
+int wSdlGl::resize(int /*_width*/, int /*_height*/)
 {
   return 0;
 }

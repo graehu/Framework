@@ -432,7 +432,7 @@ void net::http_server::ws_thread(const net::socket& from, const net::address& to
 	 log::debug("------");
 	 auto in_header = packet.IterRead<websocket_header>();
 	 unsigned char mask[4];
-	 unsigned char data[in_header.length + 1];
+	 unsigned char data[sizeof(websocket_header) + 1];
 	 data[in_header.length] = '\0';
 	 packet.IterRead(mask[0], 4);
 	 packet.IterRead(data[0], in_header.length);

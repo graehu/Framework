@@ -16,23 +16,13 @@ application* application::factory()
    static bool do_once = true;
    if(do_once)
    {
-      log::no_topic(R"(
-                                                  .__          
-_______   ____        ___________    _____ ______ |  |   ____  
-\_  __ \_/ ___\      /  ___/\__  \  /     \\____ \|  | _/ __ \ 
- |  | \/\  \___      \___ \  / __ \|  Y Y  \  |_> >  |_\  ___/ 
- |__|    \___  >____/____  >(____  /__|_|  /   __/|____/\___  >
-             \/_____/    \/      \/      \/|__|             \/ 
-)""\n");
 
-      params::add("rc.port", {"8000"});
-      commandline::parse();
-      log::topics::add("rc_sample");
       do_once = false;
       return new rc_sample();
    }
    return nullptr;
 }
+
 namespace net
 {
    class rc_handler : public http_server::handler
@@ -46,7 +36,7 @@ namespace net
 	    callback("you suck", sizeof("you suck"));
 	 }
       }
-      void ws_response(const char* data, http_server::handler::send_callback callback) override
+      void ws_response(const char* data, http_server::handler::send_callback /*callback*/) override
       {
 	 std::string lv_data(data);
 	 const char lv_dir_label[] = { "d:[" };
@@ -84,6 +74,21 @@ namespace net
    };
 }
 
+void rc_sample::init()
+{
+         log::no_topic(R"(
+                                                  .__          
+_______   ____        ___________    _____ ______ |  |   ____  
+\_  __ \_/ ___\      /  ___/\__  \  /     \\____ \|  | _/ __ \ 
+ |  | \/\  \___      \___ \  / __ \|  Y Y  \  |_> >  |_\  ___/ 
+ |__|    \___  >____/____  >(____  /__|_|  /   __/|____/\___  >
+             \/_____/    \/      \/      \/|__|             \/ 
+)""\n");
+
+      params::add("rc.port", {"8000"});
+      commandline::parse();
+      log::topics::add("rc_sample");
+}
 void rc_sample::run(void)
 {
    log::scope topic("rc_sample");
@@ -109,3 +114,5 @@ void rc_sample::run(void)
    delete l_input;
    log::debug("ending loop");
 }
+
+void rc_sample::shutdown(){}

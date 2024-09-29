@@ -21,10 +21,12 @@ config.library_paths = [
     "../../../libs/"
 ]
 config.source_files = [
-    "../../main.cpp",
     "new_sample.cpp",
+    "../../main.cpp",
+    "../../application/application.cpp",
     "../../utils/log/log.cpp",
-    "../../utils/params.cpp"
+    "../../utils/params.cpp",
+    "../../networking/packet/packet.cpp"
 ]
 config.warnings = ["all", "extra", "pedantic"]
 # debug_info = True

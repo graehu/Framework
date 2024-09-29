@@ -81,7 +81,7 @@ inline vec3f normalise (const vec3f &v)
 {
    float len = v.length();
    if (len != 0) return v / len;
-   else vec3f();
+   else return vec3f();
 }
 
 #endif // vec3f_H

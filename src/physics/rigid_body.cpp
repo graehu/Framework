@@ -106,12 +106,12 @@ namespace physics
       return output;
    }
    
-   void rigid_body::forces(const state &_state, float t, vec3f &force, vec3f &torque)
+   void rigid_body::forces(const state& /*_state*/, float /*t*/, vec3f& force, vec3f& /*torque*/)
    {
       // attract towards origin
       force.j = -9.8f;// * _state.position.j;
 
-      for(int i = 0; i < m_current_state.forces.size(); i++)
+      for(unsigned int i = 0; i < m_current_state.forces.size(); i++)
 	 force = force + m_current_state.forces[i];
    }
    
