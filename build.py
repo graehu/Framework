@@ -11,15 +11,9 @@
 
 import sys
 import os
-
-# set current working directory and add confply to path
-# so we can import the launcher function
-
-file_dir = os.path.dirname(__file__)
-if (not file_dir == ""):
-    os.chdir(file_dir)
-sys.path.append("tools/confply")
+sys.path.append(os.path.abspath("tools/confply"))
 from confply import launcher
+from confply import run_commandline
 
 # fill this with your commands
 aliases = {
@@ -35,7 +29,19 @@ aliases = {
     "glfw_lib":"--in libs/build_glfw.py"
 }
 aliases["all"] = " -- ".join([val for key, val in aliases.items()])
+aliases["samples"] = " -- ".join([val for key, val in aliases.items() if key.endswith("sample")])
+aliases["libs"] = " -- ".join([val for key, val in aliases.items() if key.endswith("lib")])
+
 if __name__ == "__main__":
-    aliases["samples"] = " -- ".join([val for key, val in aliases.items() if key.endswith("sample")])
-    aliases["libs"] = " -- ".join([val for key, val in aliases.items() if key.endswith("lib")])
-    launcher(sys.argv[1:], aliases)
+    args = sys.argv[1:]
+    file_path = os.path.relpath(__file__)
+    file_dir = os.path.dirname(__file__)
+    if "--listen" in args:
+        run_commandline(["--listen", file_path])
+    else:
+        if (not file_dir == ""):
+            os.chdir(file_dir)
+        if args:
+            launcher(args, aliases)
+        else:
+            launcher(["default"], aliases)

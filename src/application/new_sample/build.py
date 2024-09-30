@@ -23,7 +23,6 @@ config.library_paths = [
 config.source_files = [
     "new_sample.cpp",
     "../../main.cpp",
-    "../../application/application.cpp",
     "../../utils/log/log.cpp",
     "../../utils/params.cpp",
     "../../networking/packet/packet.cpp"
