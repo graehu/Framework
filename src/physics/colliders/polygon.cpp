@@ -43,7 +43,7 @@ namespace physics
 	 m_bounds.extents = vec3f();
 	 if(m_physics != nullptr)
 	 {
-	    // printf("re cal p %p\n", this);	 
+	    // printf("re cal p %p\n", this);
 	    m_bounds.center = m_position+m_physics->get_position();
 	 }
 	 else
@@ -57,7 +57,7 @@ namespace physics
 	    m_transformed_vertices.resize(m_vertices.size());  
 	 }
 	 //todo: add a transform to this physics stuff?
-	 for(int i = 0; i < m_vertices.size(); i++)
+	 for(unsigned int i = 0; i < m_vertices.size(); i++)
 	 {
 	    if(m_physics != nullptr)
 	    {

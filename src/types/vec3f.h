@@ -11,8 +11,6 @@ public:
    vec3f(float _i = 0, float _j = 0, float _k = 0);
    vec3f(const vec2f& rhs);
 
-   ~vec3f(void);
-
    // Operations with other vectors
    vec3f& operator+=(const vec3f& rhs);
    vec3f& operator-=(const vec3f& rhs);
@@ -22,12 +20,13 @@ public:
    float dot_product2(const vec3f& rhs) const;
    vec3f cross_product(const vec3f& rhs) const;
    vec3f limit(float _length) const;
+   bool is_zero() const { return *this == vec3f(); }
 
    vec3f & operator*=(const float s);
    vec3f & operator/=(const float s);
 
    bool operator==(const vec3f & rhs) const;
-   bool operator!=(const vec3f& rhs) const {if(i!=rhs.i || j!=rhs.j || k!=rhs.k)return true;return false;}
+   bool operator!=(const vec3f& rhs) const {if(i!=rhs.i || j!=rhs.j || k!=rhs.k)return true; return false;}
    void operator=(const float& rhs);
    // Miscellaneous
    float length() const;
@@ -63,7 +62,9 @@ inline vec3f operator * (const float & s, const vec3f &v)
 
 inline vec3f operator / (const vec3f &v, const float & s)
 {
-   return vec3f(v.i / s, v.j / s, v.k / s);
+   if (s != 0)
+      return vec3f(v.i / s, v.j / s, v.k / s);
+   else return vec3f();
 }
 
 inline vec3f cross_product (const vec3f &v1, const vec3f &v2)
@@ -78,7 +79,9 @@ inline float dot_product(const vec3f &v1, const vec3f &v2)
 }
 inline vec3f normalise (const vec3f &v)
 {
-   return v / v.length();
+   float len = v.length();
+   if (len != 0) return v / len;
+   else return vec3f();
 }
 
 #endif // vec3f_H

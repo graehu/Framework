@@ -1,12 +1,8 @@
-#ifndef GRAPHICS_H
-#define GRAPHICS_H
+#pragma once
 
-#include <vector>
 #include "iRenderVisitor.h"
-
 // data loading and unloading is done dynamically.
 // just try rendering something and it'll load all the needed assests.
-
 
 class graphics
 {
@@ -21,10 +17,4 @@ class graphics
 
   static graphics* graphicsFactory(void);
 
- protected:
-
-
- private:
 };
-
-#endif//GRAPHICS_H

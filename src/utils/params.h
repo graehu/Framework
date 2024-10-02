@@ -1,5 +1,6 @@
 #ifndef PARAMS_H
 #define PARAMS_H
+#include <cassert>
 #include <cstdint>
 #include <memory>
 #include <map>
@@ -95,6 +96,16 @@ namespace fw
 	 m_mutex.unlock();
 	 return return_val;
       }
+      // todo: make this work? T out = string_helpers.h::from_string<T>(return_val)
+      // template<typename T> static const char* get_value(const hash::path& _path, int index, T& _out)
+      // {
+      // 	 assert(false, "this isn't implemented");
+      // 	 m_mutex.lock();
+      // 	 const char* return_val = nullptr;
+      // 	 return_val = m_params.get_value(_path, index);
+      // 	 m_mutex.unlock();
+      // 	 return return_val;
+      // }
       
       // gets the arguenents at path.
       // usage: params::get_args(hash::path(var, len));

@@ -13,8 +13,9 @@ class vec2f
    vec2f operator-() { return vec2f(-i,-j ); }
    float operator*(vec2f B) { return i*B.i + j*B.j; }
    void operator/=(float s) { i /= s; j /= s; }
-   bool operator == (vec2f B) { return i == B.i && j == B.j; }
-   bool operator!=(vec2f B) { return i != B.i || j != B.j; }
+   bool operator == (vec2f B) const { return i == B.i && j == B.j; }
+   bool operator!=(vec2f B) const { return i != B.i || j != B.j; }
+   bool is_zero() const { return *this == vec2f(); }
 
   vec2f(float _i, float _j) : i(_i), j(_j) {}
    vec2f()
@@ -71,10 +72,7 @@ class vec2f
    vec2f normalise()
    {
       float length = vec2f::length();
-      /*if (length < b2_epsilon)
-	{
-	return 0.0f;
-	}*/
+      if (length == 0) return vec2f();
       float inverse_length = 1.0f / length;
       float _i = i*inverse_length;
       float _j = j*inverse_length;
@@ -84,22 +82,13 @@ class vec2f
    float normalise_self()
    {
       float length = vec2f::length();
-      /*if (length < b2_epsilon)
-	{
-	return 0.0f;
-	}*/
+      if (length == 0) return length;
       float inverse_length = 1.0f / length;
       i *= inverse_length;
       j *= inverse_length;
 
       return length;
    }
-
-   /// Does this vector contain finite coordinates?
-   /*bool IsValid() const
-     {
-     return b2IsValid(i) && b2IsValid(j);
-     }*/
 
    float i, j;
 };

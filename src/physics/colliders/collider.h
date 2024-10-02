@@ -24,7 +24,8 @@ namespace physics
 	 virtual void collide(const collider& collider);
 	 virtual void recalculate();
 	 void late_update(float _deltatime);
-	 virtual void render(iRenderVisitor* _renderer) {}
+	 virtual void render(iRenderVisitor*) {}
+	 const char* get_debug_name();
 	 //types
 	 bool m_debug = false;
 	 bool m_kinematic = false;

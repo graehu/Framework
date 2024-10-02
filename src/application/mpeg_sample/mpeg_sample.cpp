@@ -21,16 +21,7 @@ using namespace fw;
 
 application* application::factory()
 {
-   static bool do_once = true;
-   if(do_once)
-   {
-      params::add("mpeg.port", {"8000"});
-      commandline::parse();
-      log::topics::add("mpeg_sample");
-      do_once = false;
-      return new mpeg_sample();
-   }
-   return nullptr;
+   return new mpeg_sample();
 }
 
 namespace net
@@ -121,6 +112,12 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
    {
       glfwSetWindowShouldClose(window, GLFW_TRUE);       
    }
+}
+void mpeg_sample::init(void)
+{
+   params::add("mpeg.port", {"8080"});
+   commandline::parse();
+   log::topics::add("mpeg_sample");
 }
 
 void mpeg_sample::run(void)
@@ -260,4 +257,8 @@ void mpeg_sample::run(void)
    }
    log::debug("ending loop");
    exit(EXIT_SUCCESS);
+}
+
+void mpeg_sample::shutdown(void)
+{
 }

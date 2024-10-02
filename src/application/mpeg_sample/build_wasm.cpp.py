@@ -29,6 +29,7 @@ config.command_prepend += "-s EXTRA_EXPORTED_RUNTIME_METHODS=\""+str(extra_expor
 config.source_files = ["functions.cpp", "mpeg_decoder.cpp"]
 config.output_file = "./functions.js"
 ff_dir = "../../../libs/FFmpeg/"
+
 config.library_paths.extend([
     ff_dir+"libavformat",
     ff_dir+"libavcodec",
@@ -36,6 +37,7 @@ config.library_paths.extend([
     ff_dir+"libswscale",
     ff_dir+"libavutil"
 ])
+
 config.link_libraries.extend([
     "avformat",
     "avcodec",
@@ -44,6 +46,7 @@ config.link_libraries.extend([
     "avutil"
     # "x264"p
 ])
+
 config.include_paths.extend([
     ff_dir
 ])

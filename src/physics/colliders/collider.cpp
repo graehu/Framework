@@ -16,7 +16,15 @@ namespace physics
 	 m_mtvs.push_back(newMTV);
 	 m_mtv = newMTV;
       }
-      void collider::collide(const collider& collider)
+      const char* collider::get_debug_name()
+      {
+	 if (m_physics != nullptr)
+	 {
+	    return m_physics->get_debug_name();
+	 }
+	 return nullptr;
+      }
+      void collider::collide(const collider& /*collider*/)
       {
 	 return;
       }
@@ -30,7 +38,7 @@ namespace physics
       }
       void collider::recalculate(){return;}
       
-      void collider::late_update(float _deltatime)
+      void collider::late_update(float /*_deltatime*/)
       {
 	 m_mtv = vec3f();
 	 for(auto tv : m_mtvs)

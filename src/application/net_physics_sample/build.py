@@ -1,10 +1,15 @@
-#!../../../tools/confply/confply.py
+#!../../../tools/confply/confply.py --in
 import sys
-sys.path.append('../tools/confply')
+
+sys.path.append('../../../tools/confply')
 import confply.cpp_compiler.config as config
+import confply.cpp_compiler.options as options
+import confply.log as log
+config.version_hash='77a83ef65a5e032b989b8a76ac0083e9'
 
 config.confply.tool = "clang++"
-config.confply.log_topic = "net_physics_sample"
+config.confply_log_topic = "net_physics_sample"
+
 config.source_files = [
     "../../main.cpp",
     "net_physics_sample.cpp",
@@ -17,6 +22,7 @@ config.source_files = [
     "../../graphics/gSdlGl/renderers/cameraRenderer.cpp",
     "../../graphics/camera/camera.cpp",
     "../../physics/rigid_body.cpp",
+    "../../physics/collision_manager.cpp",
     "../../physics/colliders/polygon.cpp",
     "../../physics/colliders/collider.cpp",
     "../../physics/colliders/circle.cpp",
@@ -33,7 +39,8 @@ config.source_files = [
     "../../networking/packet/packetqueue.cpp",
     "../../networking/packet/readPacket.cpp",
     "../../networking/packet/writePacket.cpp",
-    "../../networking/utils/dataUtils.cpp"
+    "../../networking/utils/dataUtils.cpp",
+    
 ]
 config.include_paths = [
     "../../../libs/fmt/include/"

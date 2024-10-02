@@ -1,13 +1,15 @@
-#!../../../tools/confply/confply.py
+#!../../../tools/confply/confply.py --in
 import sys
 sys.path.append('../../../tools/confply')
 import confply.cpp_compiler.config as config
 import confply.cpp_compiler.options as options
 import confply.log as log
+config.version_hash='77a83ef65a5e032b989b8a76ac0083e9'
 
 config.confply.tool = "clang++"
 config.confply.log_topic = "rc_sample"
 config.confply.log_config = False
+
 config.source_files = [
     "../../main.cpp",
     "rc_sample.cpp",
@@ -32,5 +34,6 @@ config.warnings = ["all", "extra", "pedantic"]
 # config.debug_info = True
 # config.optimisation = 0
 config.link_libraries = ["stdc++", "pthread", "m", "fwcore"]
+
 config.standard = options.standard.cpp17
 config.output_file = "rc_sample.bin"

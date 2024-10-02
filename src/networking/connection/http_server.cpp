@@ -530,7 +530,7 @@ void net::http_server::ws_thread(const net::socket& from, const net::address& to
 	 log::debug("------");
 	 auto in_header = packet.IterRead<websocket_header>();
 	 unsigned char mask[4];
-	 unsigned char data[in_header.length + 1];
+	 unsigned char data[sizeof(websocket_header) + 1];
 	 data[in_header.length] = '\0';
 	 packet.IterRead(mask[0], 4);
 	 packet.IterRead(data[0], in_header.length);
@@ -542,7 +542,7 @@ void net::http_server::ws_thread(const net::socket& from, const net::address& to
 	    data[i] ^= mask[i & 3];
 	 }
 	 // #todo: test this debug.
-	 log::debug("{}", data);
+	 log::debug("{}", (const char*)&data);
 	 if (ws_handler != nullptr)
 	 {
 	    ws_handler->ws_response((const char *)&data[0], ws_send);

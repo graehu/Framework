@@ -55,15 +55,15 @@ bool inSimple::update(void)
 {
   return die;
 }
-bool inSimple::isKeyPressed(keys _key)
+bool inSimple::isKeyPressed(keys /*_key*/)
 {
   return false;
 }
-bool inSimple::isMouseClicked(mouseButtons _button)
+bool inSimple::isMouseClicked(mouseButtons /*_button*/)
 {
   return false;
 }
-void inSimple::mouseDelta(float& _dx, float& _dy)
+void inSimple::mouseDelta(float& /*_dx*/, float& /*_dy*/)
 {
   return;
 }

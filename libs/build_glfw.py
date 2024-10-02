@@ -1,21 +1,25 @@
-#!../tools/confply/confply.py
+#!../tools/confply/confply.py --in
 # generated using:
 # python confply/confply.py --config cpp_compiler build_glfw.py
 import sys
 sys.path.append('../tools/confply')
 import confply.cpp_compiler.config as config
+import confply.cpp_compiler.options as options
 import confply.log as log
+config.version_hash='77a83ef65a5e032b989b8a76ac0083e9'
+
 ############# modify_below ################
 
 config.confply.log_topic = "glfw"
 log.normal("loading cpp_compiler with confply_args: "+str(config.confply.args))
 
 config.confply.tool = "clang"
-config.output_executable = False
+config.output_type = options.output_type.lib
 config.include_paths = ["glfw/deps", "glfw/include"]
 config.standard = "gnu99"
 config.object_path = "objects/glfw"
-config.confply.log_config = False
+config.output_file = "libglfwstatic"
+config.confply_log_config = False
 
 if config.confply.platform == "linux":
     config.defines = ["_GLFW_X11"]
@@ -40,15 +44,3 @@ if config.confply.platform == "linux":
     # #todo: building glad into glfw, not strictly correct
     config.include_paths.append("glad/include")
     config.source_files.append("glad/src/glad.c")
-    
-def on_complete():
-    import confply.log as log
-    import os
-    if os.path.exists("libglfwstatic.a"):
-        os.system("rm libglfwstatic.a")
-    os.system("ar rcs libglfwstatic.a objects/glfw/*.o")
-    log.normal("")
-    log.normal("output built libs to libglfwstatic.a")
-    
-
-config.confply.post_run = on_complete

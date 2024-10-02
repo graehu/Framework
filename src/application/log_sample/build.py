@@ -1,10 +1,14 @@
-#!../../../tools/confply/confply.py
+#!../../../tools/confply/confply.py --in
 # generated using:
-# python tools/confply/confply.py --config cpp_compiler build.py
+# python ../../../tools/confply/confply.py --config cpp_compiler build.py
 import sys
 sys.path.append('../../../tools/confply')
 import confply.cpp_compiler.config as config
+import confply.cpp_compiler.options as options
+
 import confply.log as log
+config.version_hash='77a83ef65a5e032b989b8a76ac0083e9'
+
 
 import os
 config.confply.log_topic = "log_sample"
@@ -26,6 +30,7 @@ config.source_files = [
     "../../utils/params.cpp"
 ]
 config.warnings = ["all", "extra", "pedantic"]
+# debug_info = True
 config.optimisation = 3
 config.link_libraries = ["stdc++", "m", "fwcore"]
 config.standard = "gnu++2a"

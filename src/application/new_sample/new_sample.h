@@ -1,12 +1,12 @@
-#ifndef RCSAMPLE_H
-#define RCSAMPLE_H
+#ifndef NEW_SAMPLE_H
+#define NEW_SAMPLE_H
 #include "../application.h"
 
-class rc_sample : public application
+class new_sample : public application
 {
  public:
   void run(void) override;
    void init(void) override;
    void shutdown(void) override;
 };
-#endif//RCSAMPLE_H
+#endif//NEW_SAMPLE_H

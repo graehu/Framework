@@ -33,12 +33,12 @@ jobs:
         with:
           key: ${{ secrets.SSH_KEY }}
           known_hosts: ${{ secrets.KNOWN_HOSTS }}
-      # Setup python 3.6
-      - name: Set up Python 3.6
+      # Setup python 3.10
+      - name: Set up Python 3.10
         uses: actions/setup-python@v2
         with:
           # Semantic version range syntax or exact version of a Python version
-          python-version: '3.6'
+          python-version: '3.10'
           architecture: 'x64'
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
@@ -48,9 +48,9 @@ jobs:
           auth_header="$(git config --local --get http.https://github.com/.extraheader)"
           git submodule sync --recursive
           git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
-          # Install xorg-dev libgl1-mesa-dev clang-9
+          # Install xorg-dev libgl1-mesa-dev clang-11
       - name: Install Dependencies
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq xorg-dev libavcodec-dev libgl1-mesa-dev clang-9 g++-10 libavformat-dev libavcodec-dev libswresample-dev libswscale-dev libavutil-dev libx264-dev
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq xorg-dev libavcodec-dev libgl1-mesa-dev clang-11 g++-10 libavformat-dev libavcodec-dev libswresample-dev libswscale-dev libavutil-dev libx264-dev
       # Compilep libs
       - name: Build Libs
         run: python build.py libs

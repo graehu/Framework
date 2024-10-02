@@ -134,6 +134,12 @@ namespace fw
       
       // #todo: find a way to do this automatically, one for every entery in levels enum
       template<typename... Args>
+      void fatal(const char* _message, Args... _args)
+      {
+	 topics::logline<e_fatal>(_message, _args...);
+	 __builtin_trap();
+      }
+      template<typename... Args>
       void error(const char* _message, Args... _args)
       {
 	 topics::logline<e_error>(_message, _args...);

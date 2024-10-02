@@ -7,11 +7,12 @@ class input
 
 enum keys
   {	
-    e_up = 0,
+    e_up = 1,
     e_down,
-	e_left,
-	e_right,
-	e_respawn,
+    e_left,
+    e_right,
+    e_respawn,
+    e_quit,
     e_totalKeys
   };
 enum mouseButtons
