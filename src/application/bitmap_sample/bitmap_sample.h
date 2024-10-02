@@ -5,6 +5,9 @@
 class bitmap_sample : public application
 {
  public:
-  void run(void) override;
+   void init(void) override;
+   void run(void) override;
+   void shutdown(void) override;
+   
 };
 #endif//BITMAP_SAMPLE_H

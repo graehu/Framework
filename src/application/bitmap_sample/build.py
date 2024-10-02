@@ -12,7 +12,7 @@ config.version_hash='77a83ef65a5e032b989b8a76ac0083e9'
 
 ############# modify_below ################
 
-config.confply.log_topic = "cpp_compiler"
+config.confply.log_topic = "bitmap_sample"
 log.normal("loading build.py with confply_args: "+str(config.confply.args))
 config.confply.tool = "clang"
 config.source_files = [
@@ -27,3 +27,4 @@ config.standard = "c++17"
 config.library_paths = ["../../../libs/"]
 config.link_libraries = ["stdc++", "m", "fwcore"]
 config.confply_log_config = False
+config.output_file = "bitmap_sample.bin"

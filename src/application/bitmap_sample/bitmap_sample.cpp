@@ -6,16 +6,14 @@
 using namespace fw;
 application* application::factory()
 {
-   static bool do_once = true;
-   if(do_once)
-   {
-      commandline::parse();
-      log::topics::add("bitmap_sample");
-      params::add("bitmap", {"test.bmp"});
-      do_once = false;
-      return new bitmap_sample();
-   }
-   return nullptr;
+   return new bitmap_sample();
+}
+
+void bitmap_sample::init()
+{
+   commandline::parse();
+   log::topics::add("bitmap_sample");
+   params::add("bitmap", {"test.bmp"});
 }
 
 void bitmap_sample::run(void)
@@ -32,3 +30,4 @@ void bitmap_sample::run(void)
       log::error("bitmap copy failed");
    }
 }
+void bitmap_sample::shutdown(void) {}

@@ -7,7 +7,7 @@ import confply.log as log
 config.version_hash='77a83ef65a5e032b989b8a76ac0083e9'
 
 config.confply.tool = "clang++"
-config.confply_log_topic = "vulkan_sample"
+config.confply.log_topic = "vulkan_sample"
 config.source_files = [
     "vulkan_sample.cpp",
     "../../main.cpp",
