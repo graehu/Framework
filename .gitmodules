@@ -16,3 +16,7 @@
 	path = libs/FFmpeg
 	url = git@github.com:FFmpeg/FFmpeg.git
 	shallow = true
+[submodule "libs/emsdk"]
+	path = libs/emsdk
+	url = git@github.com:emscripten-core/emsdk.git
+	shallow = true
