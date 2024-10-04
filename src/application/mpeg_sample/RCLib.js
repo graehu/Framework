@@ -30,6 +30,7 @@ try
     };
     
     console.log("compiling functions.cpp");
+    console.log("crossOriginIsolated: "+crossOriginIsolated.toString());
     var t0 = performance.now();
     functions_js().then(result => {
 	functions = result;
@@ -72,7 +73,7 @@ try
 	}
 	else
 	{
-	    console.log("WS not open, failed to send: " + message)
+	    console.log("WS not open, failed to send: " + message);
 	}
     }
     function WSMessage(e)
@@ -102,6 +103,7 @@ try
     }
     function WSConnect()
     {
+	console.log("WSConnect");
 	if(WS && (WS.readyState == 1 || WS.readyState == 0))
 	{
 	    WSConnected = WS.readyState == 1;
