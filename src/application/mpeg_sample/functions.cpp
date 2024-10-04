@@ -104,4 +104,5 @@ extern "C"
       }
       return false;
    }
+   int main() {}
 }

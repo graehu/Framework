@@ -698,6 +698,8 @@ int write_response_header(net::http_packet& packet, std::string_view request, in
 	 packet.IterWrite(content_type.data(), content_type.length());
 	 packet.IterWrite("Connection: Keep-Alive\r\n");
 	 packet.IterWrite("Accept-Ranges: bytes\r\n");
+	 packet.IterWrite("Cross-Origin-Resource-Policy: same-origin\r\n");
+	 packet.IterWrite("Cross-Origin-Embedder-Policy: require-corp\r\n");
 	 packet.IterWrite("Content-Length: ");
 	 packet.IterWrite(file_size.data(), file_size.length());
 	 packet.IterWrite("\r\n\r\n");
