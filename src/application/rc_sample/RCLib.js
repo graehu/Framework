@@ -147,7 +147,7 @@ RCLib.ResponseCB = function(message) { console.loog("ws response: "+message); };
 RCLib.ErrorCB = function(message) { console.log("ws error: "+message); };
 RCLib.CloseCB = function(message) { console.log("ws close: "+message); };
 RCLib.OpenCB = function(message) { console.log("ws opened: "+message); };
-RC.Init = function() { HookLogs(); };
+RCLib.Init = function() { HookLogs(); };
 
 export {RCLib};
  

@@ -485,7 +485,7 @@ void net::http_server::ws_thread(const net::socket& from, const net::address& to
 	       ws_header.opcode = text ? 0x1 : 0x2;
 	       packet.IterWrite(ws_header);
 	       auto header = (websocket_header*)packet.GetData();
-	       log::info("text? {}", header->opcode);
+	       // log::info("text? {}", header->opcode);
 	    }
 	    //16 bit max
 	    else if(size < 65536)
@@ -513,6 +513,12 @@ void net::http_server::ws_thread(const net::socket& from, const net::address& to
 	       // log::info("sending big packet: {}", (uint64_t)(size));
 	    }
 	    packet.IterWrite(message, size, false);
+	    // int nonzero_count = 0;
+	    // for(int i = 0; i < size; i++)
+	    // {
+	    //    if (message[i]) { nonzero_count++; }
+	    // }
+	    // log::info("nonzero_count: {}", nonzero_count);
 	    packet.PrintDetails();
 	    // log::info("packet final size: {} : {}", packet.GetSize()-sizeof(websocket_header_ext), packet.GetSize());
 	    if(socket.send(address, packet.GetData(), packet.GetSize()) == -1)

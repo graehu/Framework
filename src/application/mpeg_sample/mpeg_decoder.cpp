@@ -75,10 +75,10 @@ uint8_t* mpeg_decoder::get_rgb_frame() { return &rgb_frame->data[0][0]; }
 unsigned int mpeg_decoder::get_rgb_frame_width() { return rgb_frame->width; }
 unsigned int mpeg_decoder::get_rgb_frame_height() { return rgb_frame->height; }
 
-void mpeg_decoder::parse_packet(void* in_packet, size_t in_size)
+bool mpeg_decoder::parse_packet(void* in_packet, size_t in_size)
 {
    if(in_packet == nullptr || in_size <= 0)
-      return;
+      return false;
 
    uint8_t* data = (uint8_t*)in_packet;
    size_t data_size = in_size;
@@ -90,7 +90,7 @@ void mpeg_decoder::parse_packet(void* in_packet, size_t in_size)
       if (ret < 0)
       {
 	 fprintf(stderr, "Error while parsing\n");
-	 return;
+	 return false;
       }
       data      += ret;
       data_size -= ret;
@@ -150,6 +150,7 @@ void mpeg_decoder::parse_packet(void* in_packet, size_t in_size)
       }
    }
    av_packet_unref(packet);
+   return true;
 }
 
 

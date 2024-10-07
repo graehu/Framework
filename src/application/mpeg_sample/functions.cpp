@@ -7,13 +7,10 @@
 
 using namespace emscripten;
 
-unsigned char *byteBuffer = new unsigned char[256];
-size_t bufferLength = 256;
-
-int *s_image_addr = nullptr;
+char* s_image_addr = nullptr;
 int s_image_len = 0;
-int *s_packet_addr = nullptr;
-int s_packet_len = 0;
+char* s_packet_addr = new char[4096];
+int s_packet_len = 4096;
 
 val getImageBuffer()
 {
@@ -36,6 +33,7 @@ void testing(int32_t* in_addr, int len)
 
 extern "C"
 {
+   EMSCRIPTEN_KEEPALIVE
    void init_heaps(int image_len, int packet_len)
    {
       if(image_len > s_image_len)
@@ -44,7 +42,7 @@ extern "C"
 	 {
 	    delete [] s_image_addr;
 	 }
-	 s_image_addr = new int[image_len];
+	 s_image_addr = new char[image_len];
 	 s_image_len = image_len;
       }
       if(packet_len > s_packet_len)
@@ -53,7 +51,7 @@ extern "C"
 	 {
 	    delete [] s_packet_addr;
 	 }
-	 s_packet_addr = new int[packet_len];
+	 s_packet_addr = new char[packet_len];
 	 s_packet_len = packet_len;
       }
    }
@@ -80,27 +78,33 @@ extern "C"
    {
       if(len > s_packet_len)
       {
-	 decoder.parse_packet(s_packet_addr, len);
-	 int frame_width = decoder.get_rgb_frame_width();
-	 int frame_height = decoder.get_rgb_frame_height();
-	 int frame_len = frame_height*frame_width*3;
-	 if(frame_len <= s_image_len)
+	 if(decoder.parse_packet((void*)s_packet_addr, len))
 	 {
-	    auto frame = decoder.get_rgb_frame();
-	    for (int32_t i = 0; i < s_image_len; i++)
+	    int frame_width = decoder.get_rgb_frame_width();
+	    int frame_height = decoder.get_rgb_frame_height();
+	    int frame_len = frame_height*frame_width*3;
+	    if(frame_len <= s_image_len)
 	    {
-	       s_packet_addr[i] = frame[i];
+	       auto frame = decoder.get_rgb_frame();
+	       for (int32_t i = 0; i < s_image_len; i++)
+	       {
+		  s_packet_addr[i] = frame[i];
+	       }
+	       return true;
 	    }
-	    return true;
+	    else
+	    {
+	       printf("error: decoded frame was %d buffer was %d", frame_len, s_image_len);
+	    }
 	 }
 	 else
 	 {
-	    printf("error: decoded frame was %d buffer was %d", frame_len, s_image_len);
+	    printf("error: failed parsing %p buffer of len %d", s_packet_addr, len);
 	 }
       }
       else
       {
-	 printf("error: packet was %d buffer was %d", len, s_packet_len);
+	 printf("error: packet was bigger than buffer %d < %d", len, s_packet_len);
       }
       return false;
    }

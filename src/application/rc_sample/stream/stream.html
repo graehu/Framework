@@ -12,7 +12,7 @@
       <h1>Stream Demo</h1>
     </div>
     <div class="center-box">
-      <canvas id="stream_canvas" class="stream_canvas">not supported</canvas>
+      <canvas id="stream_canvas" class="stream_canvas" width="768" height="768">not supported</canvas>
     </div>
     <script type="module">
       import {RCLib} from "/RCLib.js";
@@ -47,6 +47,17 @@
 	  if(timer > 0.3)
           {
 	      // RCLib.Send("boop");
+	      for (let i = 0; i < imageData.data.length; i += 4)
+	      {
+		  // Modify pixel data
+		  let noise = Math.random()*255;
+		  imageData.data[i + 0] = noise;  // R value
+		  imageData.data[i + 1] = noise;    // G value
+		  imageData.data[i + 2] = noise;  // B value
+		  imageData.data[i + 3] = 255;  // A value
+	      }
+	      // Draw image data to the canvas
+	      ctx.putImageData(imageData, 0, 0);
 	      timer = 0.0;
 	  }
       };

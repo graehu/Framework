@@ -15,12 +15,15 @@ try
 	functions.fill_it = functions.cwrap('fillArray', null, ['number', 'number']);
 	functions.decode_packet = functions.cwrap('decode_packet', 'number', ['number', 'number']);
 	functions.init_heaps =  functions.cwrap('decode_packet', null, ['number', 'number', 'number', 'number']);
+	functions.init_heaps(0, 4096);
+	packet_len = 4096;
 	console.log("functions bound");
 	if(RCLib.FunctionsReady)
 	{
 	    try
 	    {
 		RCLib.FunctionsReady();
+
 	    }
 	    catch(e)
 	    {
@@ -78,16 +81,24 @@ try
     }
     function WSMessage(e)
     {
+	var out = null;
 	if (WS.binaryType == "blob")
 	{
 	    // #todo: this doesn't appear to ever work. WS.binarytype is always blob
 	    console.log("blob size: "+e.data.size);
+	    out = e.data.text();
+	}
+	else if(WS.binaryType == "arraybuffer")
+	{
+	    out = new Uint8Array(e.data);
+	    // console.log("array size: "+out.length);
 	}
 	else
 	{
 	    console.log("text: "+e.data);
+	    out = e.data;
 	}
-	RCLib.ResponseCB(e.data);
+	RCLib.ResponseCB(out);
     }
     function WSError(e)
     {
@@ -125,6 +136,7 @@ try
 		WSOpenTime = new Date();
 		var WSPath = "ws://" + WSHost + ":" + WSPort + "/ws";
 		WS = new WebSocket(WSPath);
+		WS.binaryType = "arraybuffer";
 		WS.onopen = WSOpen;
 		WS.onmessage = WSMessage;
 		WS.onerror = WSError;
@@ -148,19 +160,29 @@ try
     RCLib.OpenCB = function(message) { console.log("ws opened: "+message); };
     RCLib.GetStream = function(canvas_image_len)
     {
+	console.log("begin promise");
 	// allocating r-8bits g-8bits b-8bits a-8bits image
-	return new Promise(resolve => {
-	    const in_len = canvas_image_len;
-	    setTimeout(() => {
-		console.log("allocating: "+in_len+" bytes");
-		image_id = functions._malloc(in_len);
-		image_len = in_len;
-		functions.fill_it(image_id, in_len);
-		console.log("returning image_buffer");
-		resolve(image_id);
-		//
-	    }, 700000);
-	});
+	return new Promise(resolve =>
+	    {
+		const in_len = canvas_image_len;
+		var GetStreamInternal = function() {
+		    if (RCLib.FunctionsReady)
+		    {
+			console.log("allocating: "+in_len+" bytes");
+			image_id = functions._malloc(in_len);
+			image_len = in_len;
+			functions.fill_it(image_id, in_len);
+			console.log("returning image_buffer");
+			resolve(image_id);
+		    }
+		    else
+		    {
+			console.log("waiting for functions ready");
+			setTimeout(GetStreamInternal, 1000);
+		    }
+		};
+		GetStreamInternal();
+	    });
     };
 
     function _arrayToHeap(typedArray){
@@ -179,23 +201,25 @@ try
 	    console.log("functions not ready");
 	    return false;
 	}
-	// #todo: this is very lossy need to free the old buffers.
-	if(image_buffer.length > image_len)
+	if(image_buffer.length > image_len || packet.length > packet_len)
 	{
-	    console.log("allocating "+image_buffer.length+" for image buffer");
-	    image_len = image_buffer.length;
+	    if(image_buffer.length > image_len)
+	    {
+		console.log("allocating "+image_buffer.length+" for image buffer");
+		image_len = image_buffer.length;
+	
+	    }
+	    if(packet.length > packet_len)
+	    {
+		console.log("allocating "+packet.length+" for packet buffer");
+		packet_len = packet.length;
+	    }
 	    functions.init_heaps(image_len, packet_len);
 	}
-	if(packet.size > packet_len)
-	{
-	    console.log("allocating "+packet.size+" for packet buffer");
-	    packet.length = packet.size;
-	    packet_len = packet.length;
-	    functions.init_heaps(image_len, packet_len);
-	}
+	
 	var packet_heap = functions.getPacketBuffer();
 	packet_heap.set(packet);
-	if(functions.decode_packet(packet.size))
+	if(functions.decode_packet(packet.length))
 	{
 	    console.log("decoded packet! filling "+image_buffer.length);
 	    var image_heap = functions.getImageBuffer();
@@ -213,9 +237,22 @@ try
 		image_buffer[i + 0] = r;  // R value
 		image_buffer[i + 1] = g;  // G value
 		image_buffer[i + 2] = b;  // B value
-		image_buffer[i + 3] = a;  // A value
+		image_buffer[i + 3] = 255;  // A value hacked to be full
 	    }
 	    return true;
+	}
+	else
+	{
+	    console.log("error: packet decode failed!");
+	    // var nonzero = 0;
+	    // for(let i = 0; i < packet.length; i++)
+	    // {
+	    // 	if(packet[i])
+	    // 	{
+	    // 	    nonzero++;
+	    // 	}
+	    // }
+	    // console.log("nonzero count: "+nonzero);
 	}
 	return false;
     }

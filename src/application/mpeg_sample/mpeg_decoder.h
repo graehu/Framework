@@ -15,7 +15,7 @@ class mpeg_decoder
 public:
    mpeg_decoder();
    ~mpeg_decoder();
-   void parse_packet(void* in_packet, size_t in_size);
+   bool  parse_packet(void* in_packet, size_t in_size);
    unsigned int get_rgb_frame_width();
    unsigned int get_rgb_frame_height();
    uint8_t* get_rgb_frame();
