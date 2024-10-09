@@ -14,7 +14,7 @@ try
 	console.log("functions ready");
 	functions.fill_it = functions.cwrap('fillArray', null, ['number', 'number']);
 	functions.decode_packet = functions.cwrap('decode_packet', 'number', ['number', 'number']);
-	functions.init_heaps =  functions.cwrap('decode_packet', null, ['number', 'number', 'number', 'number']);
+	functions.init_heaps = functions.cwrap('decode_packet', null, ['number', 'number', 'number', 'number']);
 	functions.init_heaps(0, 4096);
 	packet_len = 4096;
 	console.log("functions bound");
@@ -31,7 +31,6 @@ try
 	    }
 	}
     };
-    
     console.log("compiling functions.cpp");
     console.log("crossOriginIsolated: "+crossOriginIsolated.toString());
     var t0 = performance.now();
@@ -84,8 +83,7 @@ try
 	var out = null;
 	if (WS.binaryType == "blob")
 	{
-	    // #todo: this doesn't appear to ever work. WS.binarytype is always blob
-	    console.log("blob size: "+e.data.size);
+	    console.log("this shouldn't happen anymore, we have issues if we're here.");
 	    out = e.data.text();
 	}
 	else if(WS.binaryType == "arraybuffer")

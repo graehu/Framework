@@ -11,7 +11,7 @@ config.version_hash='77a83ef65a5e032b989b8a76ac0083e9'
 
 config.confply.log_topic = "wasm"
 config.confply.tool = "em++"
-exported_functions = ['_fillArray', '_malloc', '_memcpy', '_decode_packet', '_init_heaps']
+exported_functions = ['_fillArray', '_decode_packet', '_init_heaps']
 config.command_prepend = "-s EXPORTED_FUNCTIONS=\""+str(exported_functions)+"\" "
 # config.command_prepend += "-D __x86_64__ -D __LP64__ "
 # stops the c++ code from running post wasm compile
@@ -42,7 +42,7 @@ config.library_paths.extend([
 ])
 
 config.link_libraries.extend([
-    "avformat",
+    # "avformat",
     "avcodec",
     "swresample",
     "swscale",

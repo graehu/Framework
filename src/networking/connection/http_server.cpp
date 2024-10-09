@@ -55,7 +55,10 @@ net::http_server::http_server(unsigned int port) :
 namespace net
 {
    // #todo: test a smaller packet.
-   typedef NewPacket<33068> http_packet;
+   // typedef NewPacket<2147483648> http_packet; // 2mb packet. causes seg fault.
+   // typedef NewPacket<1024*1024*1024> http_packet; // 1mb packet. causes seg fault.
+   typedef NewPacket<1024*1024> http_packet; // 1kb packet.
+   // typedef NewPacket<33068> http_packet;
    // typedef NewPacket<16384> http_packet;
    // typedef NewPacket<8192> http_packet;
    // typedef NewPacket<1024> http_packet;
