@@ -4,12 +4,8 @@
 
 #include <GL/gl.h>
 
-//PRAGMAS ARE SMART SMART.
 
 #pragma comment(lib, "opengl32.lib")
-
-
-
 
 int wWinGl::resize(int _width, int _height)
 {

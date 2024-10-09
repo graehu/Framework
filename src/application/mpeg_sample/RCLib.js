@@ -23,7 +23,6 @@ try
 	    try
 	    {
 		RCLib.FunctionsReady();
-
 	    }
 	    catch(e)
 	    {

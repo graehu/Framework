@@ -11,6 +11,7 @@ class wSdl : public window
   int init(int _width, int _height, char* _name);
   int move(int _x, int _y);
   int resize(int _width, int _height);
+   int shutdown(){return 0;}
   int getHeight(void);
   int getWidth(void);
   

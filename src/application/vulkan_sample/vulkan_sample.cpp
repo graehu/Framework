@@ -13,7 +13,6 @@ application* application::factory()
 void vulkan_sample::init()
 {
    m_name = "vulkan_sample";
-   fw::log::topics::add("physics_sample");
    fw::commandline::parse();
    fw::log::topics::add("fw");
    

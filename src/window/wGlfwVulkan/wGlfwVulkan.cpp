@@ -2,10 +2,14 @@
 #define GLFW_INCLUDE_VULKAN
 #include "../../../../Libs/glfw-3.4/include/GLFW/glfw3.h"
 
-void wGlfwVulkan::FramebufferResizeCB(GLFWwindow* window, int /*width*/, int /*height*/)
+namespace fwvulkan
 {
-    wGlfwVulkan* self = reinterpret_cast<wGlfwVulkan*>(glfwGetWindowUserPointer(window));
-    self->m_resized = true;
+   GLFWwindow* g_window = nullptr;
+   bool g_resized = false;
+   void FramebufferResizeCB(GLFWwindow* /*window*/, int /*width*/, int /*height*/)
+   {
+      g_resized = true;
+   }
 }
 
 int wGlfwVulkan::init(int _width, int _height, const char* _name)
@@ -20,11 +24,13 @@ int wGlfwVulkan::init(int _width, int _height, const char* _name)
    }
    
    glfwSetWindowUserPointer(window, this);
-   glfwSetFramebufferSizeCallback(window, FramebufferResizeCB);
+   glfwSetFramebufferSizeCallback(window, fwvulkan::FramebufferResizeCB);
    
    m_width = _width;
    m_height = _height;
    m_name = _name;
+   
+   fwvulkan::g_window = window;
    
    return 0;
 }
@@ -37,6 +43,19 @@ int wGlfwVulkan::move(int /*_x*/, int /*_y*/)
 int wGlfwVulkan::resize(int /*_width*/, int /*_height*/)
 {
   return 0;
+}
+
+int wGlfwVulkan::shutdown()
+{
+   // log::debug("clean up!!");
+
+   if (fwvulkan::g_window != nullptr)
+   {
+      glfwDestroyWindow(fwvulkan::g_window);
+      glfwTerminate();
+      fwvulkan::g_window = nullptr;
+   }
+   return 0;
 }
 
 

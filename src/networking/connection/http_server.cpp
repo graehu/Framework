@@ -487,7 +487,7 @@ void net::http_server::ws_thread(const net::socket& from, const net::address& to
 	       ws_header.length = size;
 	       ws_header.opcode = text ? 0x1 : 0x2;
 	       packet.IterWrite(ws_header);
-	       auto header = (websocket_header*)packet.GetData();
+	       // auto header = (websocket_header*)packet.GetData();
 	       // log::info("text? {}", header->opcode);
 	    }
 	    //16 bit max

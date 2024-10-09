@@ -60,6 +60,10 @@ int wSdlGl::resize(int /*_width*/, int /*_height*/)
   return 0;
 }
 
+int wSdlGl::shutdown()
+{
+   return 0;
+}
 
 window* window::windowFactory()
 {

@@ -6,12 +6,10 @@
 class wWinGl4 : public window
 {
 public:
-	wWinGl4(){};
-	~wWinGl4(){};
-
   int init(int _width, int _height, char* _name);
   int move(int _x, int _y);
   int resize(int _width, int _height);
+   int shutdown() {return 0;}
 
 private:
 protected:
