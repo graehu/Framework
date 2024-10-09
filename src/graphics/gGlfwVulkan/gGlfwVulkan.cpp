@@ -14,13 +14,19 @@ namespace fwvulkan
    VkSurfaceKHR g_surface = VK_NULL_HANDLE;
    VkPhysicalDevice g_physical_device = VK_NULL_HANDLE;
    extern GLFWwindow* g_window;
-   const bool g_enable_validation_layers = false;
+   const bool g_enable_validation_layers = true;
    const std::vector<const char *> g_device_extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+   // Note: These layers require you to run Vulkan/1.3.280.1/setup-env.sh prior to running the executable.
    const std::vector<const char *> g_validation_layers = {
-      // my laptop integrated gpu has no validation layers.
-      "VK_LAYER_KHRONOS_validation",
-      "VK_LAYER_LUNARG_standard_validation"
-   };
+       "VK_LAYER_KHRONOS_validation"
+       // "VK_LAYER_RENDERDOC_Capture",
+       // "VK_LAYER_MESA_device_select",
+       // "VK_LAYER_NV_optimus",
+       // "VK_LAYER_LUNARG_api_dump",
+       // "VK_LAYER_LUNARG_gfxreconstruct",
+       // "VK_LAYER_KHRONOS_profiles",
+       // "VK_LAYER_LUNARG_screenshot",
+   };       
    struct QueueFamilyIndices
    {
       //todo: do we really need std::optional? why?
@@ -350,7 +356,7 @@ int gGlfwVulkan::init()
    log::scope topic("gGlfwVulkan");
    log::debug("Init Vulkan");
    fwvulkan::instance::CreateInstance();
-   if (!fwvulkan::g_enable_validation_layers)
+   if (fwvulkan::g_enable_validation_layers)
    {
       fwvulkan::instance::SetupDebugMessenger();
    }

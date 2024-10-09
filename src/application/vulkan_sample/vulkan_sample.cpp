@@ -30,4 +30,8 @@ void vulkan_sample::run()
    commandline::parse();
    log::scope vulkan_sample("vulkan_sample", true);
 }
-void vulkan_sample::shutdown(){}
+void vulkan_sample::shutdown()
+{
+   m_graphics->shutdown();
+   m_window->shutdown();
+}
