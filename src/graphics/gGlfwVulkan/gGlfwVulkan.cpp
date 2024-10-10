@@ -15,7 +15,7 @@ namespace fwvulkan
    VkPhysicalDevice g_physical_device = VK_NULL_HANDLE;
    extern GLFWwindow* g_window;
    const bool g_enable_validation_layers = true;
-   const std::vector<const char *> g_device_extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+   const std::vector<const char *> g_device_extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, "VK_EXT_memory_budget"};
    // Note: These layers require you to run Vulkan/1.3.280.1/setup-env.sh prior to running the executable.
    const std::vector<const char *> g_validation_layers = {
        "VK_LAYER_KHRONOS_validation"
@@ -317,6 +317,38 @@ namespace fwvulkan
 	 }
 	 return suitable_device;
       }
+      void PrintPhysicalDeviceInfo()
+      {
+	 log::debug("Device info: ");
+	 VkPhysicalDeviceProperties device_properties;
+	 vkGetPhysicalDeviceProperties(g_physical_device, &device_properties);
+	 log::debug("\tname: {}", device_properties.deviceName);
+	 VkPhysicalDeviceLimits& limits = device_properties.limits;
+	 log::debug("\tmax single alloc: {}", limits.maxMemoryAllocationCount); // this is the max single allocation size
+	 
+	 vkGetPhysicalDeviceProperties(g_physical_device, &device_properties);
+	 VkPhysicalDeviceMemoryProperties2 memory_properties = {};
+	 vkGetPhysicalDeviceMemoryProperties2(g_physical_device, &memory_properties);
+	 auto budget = (VkPhysicalDeviceMemoryBudgetPropertiesEXT*)memory_properties.pNext;
+
+	 VkPhysicalDeviceMemoryProperties& memory_physical = memory_properties.memoryProperties;
+	 for(uint32_t i = 0; i < memory_physical.memoryTypeCount; i++)
+	 {
+	    log::debug("\tmemtype index: {}", memory_physical.memoryTypes[i].propertyFlags);
+	    log::debug("\tmemtype flags: {}", memory_physical.memoryTypes[i].heapIndex);
+	 }
+	 for(uint32_t i = 0; i < memory_physical.memoryHeapCount; i++)
+	 {
+	    log::debug("\tmemheap size: {}", memory_physical.memoryHeaps[i].size);
+	    log::debug("\tmemheap flags: {}", memory_physical.memoryHeaps[i].flags);
+	    if (budget) // this require VK_EXT_memory_budget to be enabled
+	    {
+	       log::debug("\tmemheap budget: {}", budget->heapBudget[i]);
+	       log::debug("\tmemheap usage: {}", budget->heapUsage[i]);
+	    }
+	 }
+	 
+      }
       void PickPhysicalDevice()
       {
 	 log::debug("Pick Physical Device");
@@ -327,8 +359,15 @@ namespace fwvulkan
 	    throw std::runtime_error("failed to find GPUs with Vulkan supported!!");
 	 }
 	 std::vector<VkPhysicalDevice> devices(device_count);
-	 vkEnumeratePhysicalDevices(g_instance, &device_count, devices.data());
+	 VkPhysicalDeviceProperties device_properties;
 
+	 vkEnumeratePhysicalDevices(g_instance, &device_count, devices.data());
+	 log::debug("{} devices found:", device_count);
+	 for (const auto &device : devices)
+	 {
+	    vkGetPhysicalDeviceProperties(device, &device_properties);
+	    log::debug("\t{} .", device_properties.deviceName);
+	 }
 	 for (const auto &device : devices)
 	 {
 	    if (IsDeviceSuitable(device, g_surface, g_device_extensions))
@@ -343,9 +382,9 @@ namespace fwvulkan
 	 }
 	 else
 	 {
-	    VkPhysicalDeviceProperties device_properties;
-	    vkGetPhysicalDeviceProperties(g_physical_device, &device_properties);
-	    log::debug("\t{} chosen as physical device.", device_properties.deviceName);
+	    log::debug("chosen as physical device");
+	    PrintPhysicalDeviceInfo();
+	    
 	 }
       }
    }   
