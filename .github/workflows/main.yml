@@ -71,6 +71,6 @@ jobs:
         if: ${{ always() }}
         run: python build.py log_sample
           
-      - name: Build mpeg_sample
-        if: ${{ always() }}
-        run: python build.py mpeg_sample
+      # - name: Build mpeg_sample
+      #   if: ${{ always() }}
+      #   run: python build.py mpeg_sample
