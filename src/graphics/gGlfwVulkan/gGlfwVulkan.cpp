@@ -589,7 +589,7 @@ namespace fwvulkan
 	 }
 	 else
 	 {
-	    std::cout << "graphics_family is present_family" << std::endl;
+	    log::debug("graphics_family is present_family");
 	    create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	    create_info.queueFamilyIndexCount = 0;
 	    create_info.pQueueFamilyIndices = nullptr;
@@ -617,7 +617,7 @@ namespace fwvulkan
    {
       void CreateRenderPass()
       {
-	 std::cout << "CreateRenderPass" << std::endl;
+	 log::debug("CreateRenderPass");
 	 VkAttachmentDescription color_attachement = {};
 	 color_attachement.format = g_swap_chain_image_format;
 	 color_attachement.samples = VK_SAMPLE_COUNT_1_BIT;
