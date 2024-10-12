@@ -5,6 +5,7 @@
 #include <iostream>
 #include <optional>
 #include "../../utils/log/log.h"
+#include "../../utils/params.h"
 
 using namespace fw;
 namespace fwvulkan
@@ -16,8 +17,12 @@ namespace fwvulkan
    VkDevice g_logical_device = VK_NULL_HANDLE;
    VkQueue g_present_queue = VK_NULL_HANDLE;
    VkQueue g_graphics_queue = VK_NULL_HANDLE;
+   VkSwapchainKHR g_swap_chain = VK_NULL_HANDLE;
+   VkFormat g_swap_chain_image_format;
+   VkExtent2D g_swap_chain_extent;
+   std::vector<VkImage> g_swap_chain_images;
    extern GLFWwindow* g_window;
-   const bool g_enable_validation_layers = true;
+   bool g_enable_validation_layers = false;
    const std::vector<const char*> g_instance_extensions = {
       VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME
    };
@@ -35,7 +40,7 @@ namespace fwvulkan
        // "VK_LAYER_LUNARG_gfxreconstruct",
        // "VK_LAYER_KHRONOS_profiles",
        // "VK_LAYER_LUNARG_screenshot",
-   };       
+   };
    struct QueueFamilyIndices
    {
       //todo: do we really need std::optional? why?
@@ -108,7 +113,7 @@ namespace fwvulkan
 	    VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 	 createInfo.pfnUserCallback = DebugCallback;
       }
-
+      
       void SetupDebugMessenger()
       {
 	 log::debug("Setup Debug Messenger");
@@ -226,8 +231,8 @@ namespace fwvulkan
 	 }
       }
    }
-   // physical device selection etc.
-   namespace pdevice
+   // Device handling
+   namespace device
    {
       QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice physical_device, VkSurfaceKHR surface)
       {
@@ -423,18 +428,16 @@ namespace fwvulkan
 	 create_info.pEnabledFeatures = &device_features;
 	 create_info.enabledExtensionCount = static_cast<uint32_t>(g_device_extensions.size());
 	 create_info.ppEnabledExtensionNames = g_device_extensions.data();
-
+	 create_info.enabledLayerCount = 0;
+#if 0
+         // todo: passing validation layers here is deprecated I think.
+	 // but worth seeing if it's just done differently.
 	 if (g_enable_validation_layers)
 	 {
-	    // create_info.enabledLayerCount = static_cast<uint32_t>(g_validation_layers.size());
-	    // create_info.ppEnabledLayerNames = g_validation_layers.data();
-	    create_info.enabledLayerCount = 0;
+	    create_info.enabledLayerCount = static_cast<uint32_t>(g_validation_layers.size());
+	    create_info.ppEnabledLayerNames = g_validation_layers.data();
 	 }
-	 else
-	 {
-	    create_info.enabledLayerCount = 0;
-	 }
-
+#endif 
 	 if (vkCreateDevice(g_physical_device, &create_info, nullptr, &g_logical_device) != VK_SUCCESS)
 	 {
 	    throw std::runtime_error("failed to create logical device!");
@@ -445,13 +448,143 @@ namespace fwvulkan
 	 PrintPhysicalDeviceInfo();
       }
 
-   }   
+   }
+   namespace swapchain
+   {
+      void CleanupSwapChain()
+      {
+	 // vkFreeCommandBuffers(g_logical_device, command_pool, static_cast<uint32_t>(command_buffers.size()),
+	 // 		      command_buffers.data());
+
+	 // for (auto framebuffer : swap_chain_framebuffers)
+	 // {
+	 //    vkDestroyFramebuffer(logical_device, framebuffer, nullptr);
+	 // }
+	 // vkDestroyRenderPass(logical_device, render_pass, nullptr);
+	 // vkDestroyPipeline(logical_device, graphics_pipeline, nullptr);
+	 // vkDestroyPipelineLayout(logical_device, pipeline_layout, nullptr);
+	 // for (auto image_view : g_swap_chain_image_views)
+	 // {
+	 //    vkDestroyImageView(g_logical_device, image_view, nullptr);
+	 // }
+	 vkDestroySwapchainKHR(g_logical_device, g_swap_chain, nullptr);
+      }
+
+      VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> available_formats)
+      {
+	 for (const auto &available_format : available_formats)
+	 {
+	    if (available_format.format == VK_FORMAT_B8G8R8A8_UNORM &&
+		available_format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+	    {
+	       return available_format;
+	    }
+	 }
+	 return available_formats[0];
+      }
+      VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR> &available_present_modes)
+      {
+	 VkPresentModeKHR best_mode = VK_PRESENT_MODE_FIFO_KHR;
+	 for (const auto &available_present_mode : available_present_modes)
+	 {
+	    if (available_present_mode == VK_PRESENT_MODE_MAILBOX_KHR)
+	    {
+	       return available_present_mode;
+	    }
+	    else if (available_present_mode == VK_PRESENT_MODE_IMMEDIATE_KHR)
+	    {
+	       best_mode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+	    }
+	 }
+	 return best_mode;
+      }
+      VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities, GLFWwindow *window)
+      {
+	 if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
+	 {
+	    return capabilities.currentExtent;
+	 }
+	 else
+	 {
+	    int width, height;
+	    glfwGetFramebufferSize(window, &width, &height);
+
+	    VkExtent2D actual_extent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
+	    actual_extent.width = std::max(capabilities.minImageExtent.width,
+					   std::min(capabilities.maxImageExtent.width, actual_extent.width));
+	    actual_extent.height = std::max(capabilities.minImageExtent.height,
+					    std::min(capabilities.maxImageExtent.height, actual_extent.height));
+
+	    return actual_extent;
+	 }
+      }
+      void CreateSwapChain()
+      {
+	 log::debug("Create Swap Chain");
+	 SwapChainSupportDetails swap_chain_support = device::QuerySwapChainSupport(g_physical_device, g_surface);
+	 VkSurfaceFormatKHR surface_format = ChooseSwapSurfaceFormat(swap_chain_support.formats);
+	 VkPresentModeKHR present_mode = ChooseSwapPresentMode(swap_chain_support.present_modes);
+	 VkExtent2D extent = ChooseSwapExtent(swap_chain_support.capabilites, g_window);
+	 uint32_t image_count = swap_chain_support.capabilites.minImageCount + 1;
+
+	 if (swap_chain_support.capabilites.maxImageCount > 0 && image_count > swap_chain_support.capabilites.maxImageCount)
+	 {
+	    image_count = swap_chain_support.capabilites.maxImageCount;
+	 }
+
+	 VkSwapchainCreateInfoKHR create_info = {};
+	 create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	 create_info.surface = g_surface;
+	 create_info.minImageCount = image_count;
+	 create_info.imageFormat = surface_format.format;
+	 create_info.imageColorSpace = surface_format.colorSpace;
+	 create_info.imageExtent = extent;
+	 create_info.imageArrayLayers = 1;
+	 create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+	 QueueFamilyIndices indices = device::FindQueueFamilies(g_physical_device, g_surface);
+	 uint32_t queue_family_indices[] = {indices.graphics_family.value(), indices.present_family.value()};
+
+	 if (indices.graphics_family != indices.present_family)
+	 {
+	    create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+	    create_info.queueFamilyIndexCount = 2;
+	    create_info.pQueueFamilyIndices = queue_family_indices;
+	 }
+	 else
+	 {
+	    std::cout << "graphics_family is present_family" << std::endl;
+	    create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	    create_info.queueFamilyIndexCount = 0;
+	    create_info.pQueueFamilyIndices = nullptr;
+	 }
+	 create_info.preTransform = swap_chain_support.capabilites.currentTransform;
+	 create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+	 create_info.presentMode = present_mode;
+	 create_info.clipped = VK_TRUE;
+	 create_info.oldSwapchain = VK_NULL_HANDLE;
+
+	 if (vkCreateSwapchainKHR(g_logical_device, &create_info, nullptr, &g_swap_chain) != VK_SUCCESS)
+	 {
+	    throw std::runtime_error("failed to create swap chain!");
+	 }
+
+	 vkGetSwapchainImagesKHR(g_logical_device, g_swap_chain, &image_count, nullptr);
+	 g_swap_chain_images.resize(image_count);
+	 vkGetSwapchainImagesKHR(g_logical_device, g_swap_chain, &image_count, g_swap_chain_images.data());
+
+	 g_swap_chain_image_format = surface_format.format;
+	 g_swap_chain_extent = extent;
+      }
+   }
 }
 int gGlfwVulkan::init()
 {
    log::topics::add("gGlfwVulkan");
    log::scope topic("gGlfwVulkan");
    log::debug("Init Vulkan");
+   params::get_value("vulkan.validation", fwvulkan::g_enable_validation_layers);
+   log::debug("enable validaiton layers: {}", fwvulkan::g_enable_validation_layers);
    fwvulkan::instance::CreateInstance();
    if (fwvulkan::g_enable_validation_layers)
    {
@@ -461,9 +594,9 @@ int gGlfwVulkan::init()
    {
       fwvulkan::instance::CreateSurface();
    }
-   fwvulkan::pdevice::PickPhysicalDevice();
-   fwvulkan::pdevice::CreateLogicalDevice();
-   // CreateSwapChain();
+   fwvulkan::device::PickPhysicalDevice();
+   fwvulkan::device::CreateLogicalDevice();
+   fwvulkan::swapchain::CreateSwapChain();
    // CreateImageViews();
    // CreateRenderPass();
    // CreateGraphicsPipeline();
@@ -481,7 +614,7 @@ int gGlfwVulkan::shutdown()
 {
    log::scope topic("gGlfwVulkan");
    log::debug("shutdown");
-   // CleanupSwapChain();
+   fwvulkan::swapchain::CleanupSwapChain();
    // vkDestroyBuffer(logical_device, vertex_buffer, nullptr);
    // vkFreeMemory(logical_device, vertex_buffer_memory, nullptr);
    // for (int i = 0; i < max_frames_in_flight; i++)

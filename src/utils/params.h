@@ -8,6 +8,7 @@
 #include <vector>
 #include <mutex>
 #include "hasher.h"
+#include "string_helpers.h"
 
 
 /*
@@ -88,24 +89,26 @@ namespace fw
    
       // gets a value at path of index.
       // usage: params::get_args(hash::path(hash::path(var, len)), 0);
-      static const char* get_value(const hash::path& _path, int index)
+      static const char* get_value(const hash::path& _path, int index = 0)
       {
 	 m_mutex.lock();
-	 const char* return_val = nullptr;
-	 return_val = m_params.get_value(_path, index);
+	 const char* return_val = m_params.get_value(_path, index);
 	 m_mutex.unlock();
 	 return return_val;
       }
       // todo: make this work? T out = string_helpers.h::from_string<T>(return_val)
-      // template<typename T> static const char* get_value(const hash::path& _path, int index, T& _out)
-      // {
-      // 	 assert(false, "this isn't implemented");
-      // 	 m_mutex.lock();
-      // 	 const char* return_val = nullptr;
-      // 	 return_val = m_params.get_value(_path, index);
-      // 	 m_mutex.unlock();
-      // 	 return return_val;
-      // }
+      template<typename T> static bool get_value(const hash::path& _path, T& _out, int index = 0)
+      {
+	 // assert(false, "this isn't implemented");
+	 m_mutex.lock();
+	 const char* return_val = m_params.get_value(_path, index);
+	 if(return_val)
+	 {
+	    _out = std::from_string<T>(return_val);
+	 }
+	 m_mutex.unlock();
+	 return return_val != nullptr;
+      }
       
       // gets the arguenents at path.
       // usage: params::get_args(hash::path(var, len));
