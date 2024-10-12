@@ -13,9 +13,18 @@ namespace fwvulkan
    VkInstance g_instance;
    VkSurfaceKHR g_surface = VK_NULL_HANDLE;
    VkPhysicalDevice g_physical_device = VK_NULL_HANDLE;
+   VkDevice g_logical_device = VK_NULL_HANDLE;
+   VkQueue g_present_queue = VK_NULL_HANDLE;
+   VkQueue g_graphics_queue = VK_NULL_HANDLE;
    extern GLFWwindow* g_window;
    const bool g_enable_validation_layers = true;
-   const std::vector<const char *> g_device_extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, "VK_EXT_memory_budget"};
+   const std::vector<const char*> g_instance_extensions = {
+      VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME
+   };
+   const std::vector<const char *> g_device_extensions = {
+      VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+      VK_EXT_MEMORY_BUDGET_EXTENSION_NAME
+   };
    // Note: These layers require you to run Vulkan/1.3.280.1/setup-env.sh prior to running the executable.
    const std::vector<const char *> g_validation_layers = {
        "VK_LAYER_KHRONOS_validation"
@@ -183,6 +192,10 @@ namespace fwvulkan
 	 {
 	    required_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 	 }
+	 for(auto ext : g_instance_extensions)
+	 {
+	    required_extensions.push_back(ext);
+	 }
 	 create_info.enabledExtensionCount = static_cast<uint32_t>(required_extensions.size());
 	 create_info.ppEnabledExtensionNames = required_extensions.data();
 	 create_info.enabledLayerCount = 0;
@@ -325,12 +338,11 @@ namespace fwvulkan
 	 log::debug("\tname: {}", device_properties.deviceName);
 	 VkPhysicalDeviceLimits& limits = device_properties.limits;
 	 log::debug("\tmax single alloc: {}", limits.maxMemoryAllocationCount); // this is the max single allocation size
-	 
-	 vkGetPhysicalDeviceProperties(g_physical_device, &device_properties);
+	 VkPhysicalDeviceMemoryBudgetPropertiesEXT budget = {};
 	 VkPhysicalDeviceMemoryProperties2 memory_properties = {};
+	 memory_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT;
+	 memory_properties.pNext = &budget;
 	 vkGetPhysicalDeviceMemoryProperties2(g_physical_device, &memory_properties);
-	 auto budget = (VkPhysicalDeviceMemoryBudgetPropertiesEXT*)memory_properties.pNext;
-
 	 VkPhysicalDeviceMemoryProperties& memory_physical = memory_properties.memoryProperties;
 	 for(uint32_t i = 0; i < memory_physical.memoryTypeCount; i++)
 	 {
@@ -341,10 +353,10 @@ namespace fwvulkan
 	 {
 	    log::debug("\tmemheap size: {}", memory_physical.memoryHeaps[i].size);
 	    log::debug("\tmemheap flags: {}", memory_physical.memoryHeaps[i].flags);
-	    if (budget) // this require VK_EXT_memory_budget to be enabled
+	    // if (budget) // this require VK_EXT_memory_budget to be enabled
 	    {
-	       log::debug("\tmemheap budget: {}", budget->heapBudget[i]);
-	       log::debug("\tmemheap usage: {}", budget->heapUsage[i]);
+	       log::debug("\tmemheap budget: {}", budget.heapBudget[i]);
+	       log::debug("\tmemheap usage: {}", budget.heapUsage[i]);
 	    }
 	 }
 	 
@@ -383,10 +395,56 @@ namespace fwvulkan
 	 else
 	 {
 	    log::debug("chosen as physical device");
-	    PrintPhysicalDeviceInfo();
-	    
 	 }
       }
+      void CreateLogicalDevice()
+      {
+	 log::debug("Create Logical Device");
+	 QueueFamilyIndices indices = FindQueueFamilies(g_physical_device, g_surface);
+
+	 std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
+	 std::set<uint32_t> unique_queue_families = {indices.graphics_family.value(), indices.present_family.value()};
+	 float queue_priority = 1.0f;
+	 for (uint32_t queue_family : unique_queue_families)
+	 {
+	    VkDeviceQueueCreateInfo queue_create_info = {};
+	    queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	    queue_create_info.queueFamilyIndex = queue_family;
+	    queue_create_info.queueCount = 1;
+
+	    queue_create_info.pQueuePriorities = &queue_priority;
+	    queue_create_infos.push_back(queue_create_info);
+	 }
+	 VkPhysicalDeviceFeatures device_features = {};
+	 VkDeviceCreateInfo create_info = {};
+	 create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	 create_info.pQueueCreateInfos = queue_create_infos.data();
+	 create_info.queueCreateInfoCount = static_cast<uint32_t>(queue_create_infos.size());
+	 create_info.pEnabledFeatures = &device_features;
+	 create_info.enabledExtensionCount = static_cast<uint32_t>(g_device_extensions.size());
+	 create_info.ppEnabledExtensionNames = g_device_extensions.data();
+
+	 if (g_enable_validation_layers)
+	 {
+	    // create_info.enabledLayerCount = static_cast<uint32_t>(g_validation_layers.size());
+	    // create_info.ppEnabledLayerNames = g_validation_layers.data();
+	    create_info.enabledLayerCount = 0;
+	 }
+	 else
+	 {
+	    create_info.enabledLayerCount = 0;
+	 }
+
+	 if (vkCreateDevice(g_physical_device, &create_info, nullptr, &g_logical_device) != VK_SUCCESS)
+	 {
+	    throw std::runtime_error("failed to create logical device!");
+	 }
+
+	 vkGetDeviceQueue(g_logical_device, indices.graphics_family.value(), 0, &g_graphics_queue);
+	 vkGetDeviceQueue(g_logical_device, indices.present_family.value(), 0, &g_present_queue);
+	 PrintPhysicalDeviceInfo();
+      }
+
    }   
 }
 int gGlfwVulkan::init()
@@ -404,7 +462,7 @@ int gGlfwVulkan::init()
       fwvulkan::instance::CreateSurface();
    }
    fwvulkan::pdevice::PickPhysicalDevice();
-   // CreateLogicalDevice();
+   fwvulkan::pdevice::CreateLogicalDevice();
    // CreateSwapChain();
    // CreateImageViews();
    // CreateRenderPass();
