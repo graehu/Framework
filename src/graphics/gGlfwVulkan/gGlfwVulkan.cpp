@@ -10,18 +10,23 @@
 using namespace fw;
 namespace fwvulkan
 {
-   VkDebugUtilsMessengerEXT g_debug_messenger;
+   // instance
    VkInstance g_instance;
    VkSurfaceKHR g_surface = VK_NULL_HANDLE;
+   VkDebugUtilsMessengerEXT g_debug_messenger;
+   extern GLFWwindow* g_window;
+   // device
    VkPhysicalDevice g_physical_device = VK_NULL_HANDLE;
    VkDevice g_logical_device = VK_NULL_HANDLE;
    VkQueue g_present_queue = VK_NULL_HANDLE;
    VkQueue g_graphics_queue = VK_NULL_HANDLE;
+   // swapchain 
    VkSwapchainKHR g_swap_chain = VK_NULL_HANDLE;
    VkFormat g_swap_chain_image_format;
    VkExtent2D g_swap_chain_extent;
    std::vector<VkImage> g_swap_chain_images;
-   extern GLFWwindow* g_window;
+   std::vector<VkImageView> g_swap_chain_image_views;
+   // 
    bool g_enable_validation_layers = false;
    const std::vector<const char*> g_instance_extensions = {
       VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME
@@ -463,13 +468,42 @@ namespace fwvulkan
 	 // vkDestroyRenderPass(logical_device, render_pass, nullptr);
 	 // vkDestroyPipeline(logical_device, graphics_pipeline, nullptr);
 	 // vkDestroyPipelineLayout(logical_device, pipeline_layout, nullptr);
-	 // for (auto image_view : g_swap_chain_image_views)
-	 // {
-	 //    vkDestroyImageView(g_logical_device, image_view, nullptr);
-	 // }
+	 for (auto image_view : g_swap_chain_image_views)
+	 {
+	    vkDestroyImageView(g_logical_device, image_view, nullptr);
+	 }
 	 vkDestroySwapchainKHR(g_logical_device, g_swap_chain, nullptr);
       }
+      void CreateSwapchainImageViews()
+      {
+	 log::debug("Create Swapchain Image Views");
+	 g_swap_chain_image_views.resize(g_swap_chain_images.size());
 
+	 for (size_t i = 0; i < g_swap_chain_images.size(); i++)
+	 {
+	    VkImageViewCreateInfo create_info = {};
+	    create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	    create_info.image = g_swap_chain_images[i];
+	    create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	    create_info.format = g_swap_chain_image_format;
+
+	    create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+	    create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+	    create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+	    create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+	    create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	    create_info.subresourceRange.baseMipLevel = 0;
+	    create_info.subresourceRange.levelCount = 1;
+	    create_info.subresourceRange.baseArrayLayer = 0;
+	    create_info.subresourceRange.layerCount = 1;
+
+	    if (vkCreateImageView(g_logical_device, &create_info, nullptr, &g_swap_chain_image_views[i]) != VK_SUCCESS)
+	    {
+	       throw std::runtime_error("failed to create image viaews!");
+	    }
+	 }
+      }
       VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> available_formats)
       {
 	 for (const auto &available_format : available_formats)
@@ -597,7 +631,7 @@ int gGlfwVulkan::init()
    fwvulkan::device::PickPhysicalDevice();
    fwvulkan::device::CreateLogicalDevice();
    fwvulkan::swapchain::CreateSwapChain();
-   // CreateImageViews();
+   fwvulkan::swapchain::CreateSwapchainImageViews();
    // CreateRenderPass();
    // CreateGraphicsPipeline();
    // CreateFrameBuffers();
