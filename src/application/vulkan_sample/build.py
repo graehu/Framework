@@ -13,6 +13,8 @@ config.source_files = [
     "../../main.cpp",
     "../../utils/params.cpp",
     "../../utils/log/log.cpp",
+    "../../types/vec2f.cpp",
+    "../../types/vec3f.cpp",
     "../../window/wGlfwVulkan/wGlfwVulkan.cpp",
     "../../graphics/gGlfwVulkan/gGlfwVulkan.cpp",
     

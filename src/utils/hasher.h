@@ -1,10 +1,12 @@
 #ifndef HASHER_H
 #define HASHER_H
 #include <cstdint>
+
 namespace fw
 {
    namespace hash
    {
+      // todo: add 64 bit variant
       // origin: https://gist.github.com/Lee-R/3839813
       // FNV-1a 32bit hashing algorithm.
       constexpr std::uint32_t i32(char const* s, std::size_t count)
@@ -34,9 +36,17 @@ namespace fw
 	 {
 	 }
 	 constexpr string() = default;
+	 constexpr operator uint32_t() const { return m_hash; }
+	 constexpr bool operator< (const string& rhs) const {return uint32_t(*this) < uint32_t(rhs); }
+	 constexpr bool operator> (const string& rhs) const { return rhs < *this; }
+	 constexpr bool operator<=(const string& rhs) const { return !(*this > rhs); }
+	 constexpr bool operator>=(const string& rhs) const { return !(*this < rhs); }
+	 
+	 constexpr bool is_valid() const { return m_len != 0; }
+	 
 	 const char* m_literal = nullptr;
-	 const std::size_t m_len{0};
-	 const std::uint32_t m_hash{0};
+	 std::size_t m_len{0};
+	 std::uint32_t m_hash{0};
       };
       struct path
       {
@@ -117,5 +127,40 @@ namespace fw
 	 const char* m_path;
       };
    }
-}
+} // namespace fw
+
+// if i ever need = operators for whatever reason
+// string& operator=(string& rhs)
+// {
+//    m_literal = rhs.m_literal;
+//    m_len = rhs.m_len;
+//    m_hash = rhs.m_hash;
+//    return *this;
+// }
+// string& operator=(const string& rhs)
+// {
+//    m_literal = rhs.m_literal;
+//    m_len = rhs.m_len;
+//    m_hash = rhs.m_hash;
+//    return *this;
+// }
+// string& operator=(string&& rhs)
+// {
+//    m_literal = std::move(rhs.m_literal);
+//    m_len = std::move(rhs.m_len);
+//    m_hash = std::move(rhs.m_hash);
+//    return *this;
+// }
+// string& operator=(const string&& rhs)
+// {
+//    m_literal = std::move(rhs.m_literal);
+//    m_len = std::move(rhs.m_len);
+//    m_hash = std::move(rhs.m_hash);
+//    return *this;
+// }
+// constexpr string(string& rhs) {*this = rhs;}
+// constexpr string(string&& rhs) {*this = rhs;}
+// constexpr string(const string& rhs) {*this = rhs;}
+// constexpr string(const string&& rhs) {*this = rhs;}
+
 #endif//HASHER_H

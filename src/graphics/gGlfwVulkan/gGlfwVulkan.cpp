@@ -4,10 +4,39 @@
 #include <cstdint>
 #include <iostream>
 #include <optional>
+#include <array>
+#include <vector>
 #include "../../utils/log/log.h"
 #include "../../utils/params.h"
 
+
 using namespace fw;
+struct vkVertex : public fw::Vertex
+{
+   static VkVertexInputBindingDescription GetBindingDescription()
+   {
+      VkVertexInputBindingDescription binding_description = {};
+      binding_description.binding = 0;
+      binding_description.stride = sizeof(Vertex);
+      binding_description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+      return binding_description;
+   }
+   static std::array<VkVertexInputAttributeDescription, 2> GetAttributeDescriptions()
+   {
+      std::array<VkVertexInputAttributeDescription, 2> attribute_description = {};
+      attribute_description[0].binding = 0;
+      attribute_description[0].location = 0;
+      attribute_description[0].format = VK_FORMAT_R32G32_SFLOAT;
+      attribute_description[0].offset = offsetof(Vertex, position);
+
+      attribute_description[1].binding = 0;
+      attribute_description[1].location = 1;
+      attribute_description[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+      attribute_description[1].offset = offsetof(Vertex, color);
+
+      return attribute_description;
+   }
+};
 namespace fwvulkan
 {
    // instance
@@ -28,7 +57,12 @@ namespace fwvulkan
    std::vector<VkImageView> g_swap_chain_image_views;
    // renderpass
    VkRenderPass g_render_pass;
-   // 
+   // shaders
+   typedef std::map<fw::hash::string, VkShaderModule> shader_map;
+   std::array<shader_map, fw::shader::e_count> g_shaders;
+   // mesh
+   std::vector<Mesh*> g_meshes;
+   //
    bool g_enable_validation_layers = false;
    const std::vector<const char*> g_instance_extensions = {
       VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME
@@ -64,6 +98,7 @@ namespace fwvulkan
       std::vector<VkSurfaceFormatKHR> formats;
       std::vector<VkPresentModeKHR> present_modes;
    };
+
    namespace instance
    {
       VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo,
@@ -659,13 +694,29 @@ namespace fwvulkan
 	 }
       }
    }
+   namespace shaders
+   {
+      VkShaderModule CreateShaderModule(const std::vector<char> &code, VkDevice logical_device)
+      {
+	 log::debug("CreateShaderModule");
+	 VkShaderModuleCreateInfo create_info = {};
+	 create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	 create_info.codeSize = code.size();
+	 create_info.pCode = reinterpret_cast<const uint32_t *>(code.data());
+
+	 VkShaderModule shader_module;
+	 if (vkCreateShaderModule(logical_device, &create_info, nullptr, &shader_module) != VK_SUCCESS)
+	 {
+	    throw std::runtime_error("failed to create shader module!");
+	 }
+	 return shader_module;
+      }
+   }
    // namespace pipeline
    // {
    //    void Renderer::CreateGraphicsPipeline()
    //    {
    // 	 log::debug("CreateGraphicsPipeline");
-   // 	 auto vert_shader_code = read_file("vert.spv");
-   // 	 auto frag_shader_code = read_file("frag.spv");
 
    // 	 VkShaderModule vert_shader_module = CreateShaderModule(vert_shader_code, g_logical_device);
    // 	 VkShaderModule frag_shader_module = CreateShaderModule(frag_shader_code, g_logical_device);
@@ -849,7 +900,11 @@ int gGlfwVulkan::init()
 }
 
 void gGlfwVulkan::visit(class physics::collider::polygon* /*_poly*/){}
-void gGlfwVulkan::visit(class camera* /*_camera*/){}
+void gGlfwVulkan::visit(class camera * /*_camera*/) {}
+void gGlfwVulkan::visit(fw::Mesh* /*_mesh*/)
+{
+   
+}
 int gGlfwVulkan::shutdown()
 {
    log::scope topic("gGlfwVulkan");
@@ -864,7 +919,14 @@ int gGlfwVulkan::shutdown()
    //     vkDestroyFence(logical_device, in_flight_fences[i], nullptr);
    // }
    // vkDestroyCommandPool(logical_device, command_pool, nullptr);
-   // vkDestroyDevice(logical_device, nullptr);
+   for(int t = fw::shader::e_fragment; t != fw::shader::e_count; t++)
+   {
+      for(auto s : fwvulkan::g_shaders[(fw::shader::type)t])
+      {
+	 vkDestroyShaderModule(fwvulkan::g_logical_device, s.second, nullptr);
+      }
+   }
+   vkDestroyDevice(fwvulkan::g_logical_device, nullptr);
    if (fwvulkan::g_enable_validation_layers)
    {
       fwvulkan::instance::DestroyDebugUtilsMessengerEXT(fwvulkan::g_instance, fwvulkan::g_debug_messenger, nullptr);
@@ -873,6 +935,7 @@ int gGlfwVulkan::shutdown()
    {
       vkDestroySurfaceKHR(fwvulkan::g_instance, fwvulkan::g_surface, nullptr);
    }
+
    // the window should clean these up.
    // vkDestroyInstance(instance, nullptr);
    // if (window != nullptr)
@@ -884,8 +947,45 @@ int gGlfwVulkan::shutdown()
 }
 int gGlfwVulkan::update() { return 0; }
 int gGlfwVulkan::render() { return 0; }
-bool gGlfwVulkan::register_shader(fw::hash::path, const char*)
+
+#include <fstream>
+static std::vector<char> read_file(const std::string &filename)
 {
+    std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+    if (!file.is_open())
+    {
+        throw std::runtime_error("failed ot open " + filename);
+    }
+
+    size_t file_size = (size_t)file.tellg();
+    std::vector<char> buffer(file_size);
+    file.seekg(0);
+    file.read(buffer.data(), file_size);
+    file.close();
+    
+    return buffer;
+}
+
+// Graphics
+// VK_PIPELINE_BIND_POINT_GRAPHICS
+//   VK_SHADER_STAGE_VERTEX_BIT
+//   VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT
+//   VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT
+//   VK_SHADER_STAGE_GEOMETRY_BIT
+//   VK_SHADER_STAGE_FRAGMENT_BIT
+//   VK_SHADER_STAGE_TASK_BIT_EXT
+//   VK_SHADER_STAGE_MESH_BIT_EXT
+
+// compute
+// VK_PIPELINE_BIND_POINT_COMPUTE
+//   VK_SHADER_STAGE_COMPUTE_BIT
+
+bool gGlfwVulkan::register_shader(fw::hash::string name, const char* path, fw::shader::type type)
+{
+   auto shader_code = read_file(path);
+   auto shader = fwvulkan::shaders::CreateShaderModule(shader_code, fwvulkan::g_logical_device);
+   fwvulkan::g_shaders[type][name] = shader;
    return true;
 }
 

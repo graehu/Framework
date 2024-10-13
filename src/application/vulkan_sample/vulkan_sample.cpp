@@ -3,6 +3,8 @@
 #include "../../utils/params.h"
 #include "../../window/window.h"
 #include "../../graphics/graphics.h"
+#include <array>
+#include <cstdint>
 
 using namespace fw;
 
@@ -25,10 +27,25 @@ void vulkan_sample::init()
    m_graphics = graphics::graphicsFactory();
    m_graphics->init();
 }
+
+const std::vector<Vertex> triangle = {
+    {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+    {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+    {{-0.5f, 0.5f}, {1.0f, 0.0f, 1.0f}}
+    };
+
 void vulkan_sample::run()
 {
    commandline::parse();
    log::scope vulkan_sample("vulkan_sample", true);
+   m_graphics->register_shader("triangle", "shaders/triangle.vert.spv", shader::e_vertex);
+   m_graphics->register_shader("triangle", "shaders/triangle.frag.spv", shader::e_fragment);
+   std::array<uint32_t,3> ibo = {0, 1, 2};
+   Mesh mesh = {triangle.data(), ibo.data(), {}};
+   mesh.shaders[fw::shader::e_vertex] = fw::hash::string("triangle");
+   mesh.shaders[fw::shader::e_fragment] = fw::hash::string("triangle");
+   m_graphics->getRenderer()->visit(&mesh);
+   
 }
 void vulkan_sample::shutdown()
 {

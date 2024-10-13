@@ -17,13 +17,14 @@ public:
    int init() override;
    int shutdown() override;
 
-   bool register_shader(fw::hash::path name, const char* path) override;
+   bool register_shader(fw::hash::string name, const char* path, fw::shader::type type) override;
 
    iRenderVisitor* getRenderer(void) override;
 
    //visitor section
    void visit(class physics::collider::polygon* _poly) override;
    void visit(class camera* _camera) override;
+   void visit(fw::Mesh* _mesh) override;
 
 protected:
 
