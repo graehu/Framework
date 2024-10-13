@@ -9,30 +9,32 @@ struct VkInstance_T;
 
 class gGlfwVulkan : public graphics, public iRenderVisitor
 {
- public:
-  //graphics section
-  int update();
-  int render();
+public:
+   //graphics section
+   int update() override;
+   int render() override;
 
-  int init();
-  int shutdown();
+   int init() override;
+   int shutdown() override;
 
-  iRenderVisitor* getRenderer(void);
+   bool register_shader(fw::hash::path name, const char* path) override;
 
-  //visitor section
-  void visit(class physics::collider::polygon* _poly);
-  void visit(class camera* _camera);
+   iRenderVisitor* getRenderer(void) override;
 
- protected:
+   //visitor section
+   void visit(class physics::collider::polygon* _poly) override;
+   void visit(class camera* _camera) override;
 
-  //needed for cameras
-  /* mat4x4f m_projMat; // projectionMatrix; // Store the projection matrix */
-  /* mat4x4f m_viewMat; // viewMatrix; // Store the view matrix */
-  /* mat4x4f m_modelMat; // modelMatrix; // Store the model matrix */
+protected:
 
- private:
-  // void CreateInstance(void);
-  // bool CheckValidationLayerSupport(void);
-  // VkInstance_T* m_instance;
+   //needed for cameras
+   /* mat4x4f m_projMat; // projectionMatrix; // Store the projection matrix */
+   /* mat4x4f m_viewMat; // viewMatrix; // Store the view matrix */
+   /* mat4x4f m_modelMat; // modelMatrix; // Store the model matrix */
+
+private:
+   // void CreateInstance(void);
+   // bool CheckValidationLayerSupport(void);
+   // VkInstance_T* m_instance;
 
 };

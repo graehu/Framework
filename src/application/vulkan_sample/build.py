@@ -17,15 +17,16 @@ config.source_files = [
     "../../graphics/gGlfwVulkan/gGlfwVulkan.cpp",
     
 ]
+vulkan = "../../../../Libs/Vulkan/1.3.280.1/x86_64"
 config.include_paths = [
     "../../../libs/fmt/include/",
-    "../../../../Libs/Vulkan/1.3.280.1/x86_64/include/",
+    f"{vulkan}/include/",
 ]
 
 config.library_paths = [
     "../../../libs/",
     "../../../../Libs/glfw-3.4/src/",
-    "../../../../Libs/Vulkan/1.3.280.1/x86_64/lib",
+    f"{vulkan}/lib",
 ]
 config.warnings = ["all", "extra", "pedantic"]
 config.debug_info = True
@@ -34,3 +35,17 @@ config.link_libraries = ["fwcore", "stdc++", "glfw3", "vulkan"]
 config.standard = "c++17"
 config.output_file = "vulkan_sample.bin"
 
+def build_shaders():
+    import os
+    os.environ["PATH"] = os.environ["PATH"]+f":{vulkan}/bin/"
+    for shader in os.listdir("shaders"):
+        if not shader.endswith(".glsl"): continue
+        spv = "shaders/"+shader.replace(".glsl", ".spv")
+        shader = "shaders/"+shader
+        if not os.path.exists(spv) or os.path.getmtime(spv) < os.path.getmtime(shader):
+            log.normal("building "+shader)
+            os.system(f"glslangValidator -V {shader} -o {spv}")
+        else:
+            log.normal("skipping "+shader)
+
+config.confply.post_run = build_shaders
