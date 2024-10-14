@@ -696,6 +696,47 @@ namespace fwvulkan
    }
    namespace shaders
    {
+
+//       typedef enum VkShaderStageFlagBits {
+//     VK_SHADER_STAGE_VERTEX_BIT = 0x00000001,
+//     VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT = 0x00000002,
+//     VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT = 0x00000004,
+//     VK_SHADER_STAGE_GEOMETRY_BIT = 0x00000008,
+//     VK_SHADER_STAGE_FRAGMENT_BIT = 0x00000010,
+//     VK_SHADER_STAGE_COMPUTE_BIT = 0x00000020,
+//     VK_SHADER_STAGE_ALL_GRAPHICS = 0x0000001F,
+//     VK_SHADER_STAGE_ALL = 0x7FFFFFFF,
+//     VK_SHADER_STAGE_RAYGEN_BIT_KHR = 0x00000100,
+//     VK_SHADER_STAGE_ANY_HIT_BIT_KHR = 0x00000200,
+//     VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR = 0x00000400,
+//     VK_SHADER_STAGE_MISS_BIT_KHR = 0x00000800,
+//     VK_SHADER_STAGE_INTERSECTION_BIT_KHR = 0x00001000,
+//     VK_SHADER_STAGE_CALLABLE_BIT_KHR = 0x00002000,
+//     VK_SHADER_STAGE_TASK_BIT_EXT = 0x00000040,
+//     VK_SHADER_STAGE_MESH_BIT_EXT = 0x00000080,
+//     VK_SHADER_STAGE_SUBPASS_SHADING_BIT_HUAWEI = 0x00004000,
+//     VK_SHADER_STAGE_CLUSTER_CULLING_BIT_HUAWEI = 0x00080000,
+//     VK_SHADER_STAGE_RAYGEN_BIT_NV = VK_SHADER_STAGE_RAYGEN_BIT_KHR,
+//     VK_SHADER_STAGE_ANY_HIT_BIT_NV = VK_SHADER_STAGE_ANY_HIT_BIT_KHR,
+//     VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR,
+//     VK_SHADER_STAGE_MISS_BIT_NV = VK_SHADER_STAGE_MISS_BIT_KHR,
+//     VK_SHADER_STAGE_INTERSECTION_BIT_NV = VK_SHADER_STAGE_INTERSECTION_BIT_KHR,
+//     VK_SHADER_STAGE_CALLABLE_BIT_NV = VK_SHADER_STAGE_CALLABLE_BIT_KHR,
+//     VK_SHADER_STAGE_TASK_BIT_NV = VK_SHADER_STAGE_TASK_BIT_EXT,
+//     VK_SHADER_STAGE_MESH_BIT_NV = VK_SHADER_STAGE_MESH_BIT_EXT,
+//     VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM = 0x7FFFFFFF
+// } VkShaderStageFlagBits;
+      static std::unordered_map<shader::type, VkShaderStageFlagBits> const shaderbit_lut = {
+	 {shader::e_vertex, VK_SHADER_STAGE_VERTEX_BIT},
+	 {shader::e_hull, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT},
+	 {shader::e_domain, VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT},
+	 {shader::e_geomtry, VK_SHADER_STAGE_GEOMETRY_BIT},
+	 {shader::e_fragment, VK_SHADER_STAGE_FRAGMENT_BIT},
+	 {shader::e_task, VK_SHADER_STAGE_TASK_BIT_EXT},
+	 {shader::e_mesh, VK_SHADER_STAGE_MESH_BIT_EXT},
+	 {shader::e_compute, VK_SHADER_STAGE_COMPUTE_BIT},
+      };
+
       VkShaderModule CreateShaderModule(const std::vector<char> &code, VkDevice logical_device)
       {
 	 log::debug("CreateShaderModule");
@@ -712,9 +753,27 @@ namespace fwvulkan
 	 return shader_module;
       }
    }
-   // namespace pipeline
-   // {
-   //    void Renderer::CreateGraphicsPipeline()
+   namespace pipeline
+   {
+      void CreatePipelineLayout(Material mat)
+      {
+	 std::array<VkPipelineShaderStageCreateInfo, fw::shader::e_count> shader_create_infos;
+	 for(int i = 0; i < fw::shader::e_count; i++)
+	 {
+	    if(mat[i].is_valid())
+	    {
+	       if(auto module = g_shaders[i].find(mat[i]); module != g_shaders[i].end())
+	       {
+		  VkPipelineShaderStageCreateInfo* stage_create_info = &shader_create_infos[i];
+		  stage_create_info->sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		  stage_create_info->stage = shaders::shaderbit_lut.find((shader::type)i)->second;
+		  stage_create_info->module = module->second;
+		  stage_create_info->pName = "main";
+	       }
+	    }
+	 }
+      }
+   //    void CreateGraphicsPipeline()
    //    {
    // 	 log::debug("CreateGraphicsPipeline");
 
@@ -867,7 +926,7 @@ namespace fwvulkan
    // 	 vkDestroyShaderModule(logical_device, vert_shader_module, nullptr);
    // 	 vkDestroyShaderModule(logical_device, frag_shader_module, nullptr);
    //    }
-   // }
+   }
 }
 int gGlfwVulkan::init()
 {
@@ -898,7 +957,7 @@ int gGlfwVulkan::init()
    // CreateSemaphores();
    return 0;
 }
-
+hash::string shaders[shader::e_count];
 void gGlfwVulkan::visit(class physics::collider::polygon* /*_poly*/){}
 void gGlfwVulkan::visit(class camera * /*_camera*/) {}
 void gGlfwVulkan::visit(fw::Mesh* /*_mesh*/)
@@ -988,8 +1047,6 @@ bool gGlfwVulkan::register_shader(fw::hash::string name, const char* path, fw::s
    fwvulkan::g_shaders[type][name] = shader;
    return true;
 }
-
-
 
 iRenderVisitor* gGlfwVulkan::getRenderer()
 {

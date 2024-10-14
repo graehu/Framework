@@ -5,15 +5,18 @@
 
 #include "../types/vec2f.h"
 #include "../types/vec3f.h"
+#include <array>
 
 // data loading and unloading is done dynamically.
 // just try rendering something and it'll load all the needed assests.
 namespace fw
-{    
+{
+   
    namespace shader
    {
       enum type {  e_vertex, e_hull, e_domain, e_geomtry, e_fragment, e_task, e_mesh, e_compute, e_count };
    }
+   typedef std::array<hash::string, shader::e_count> Material;
    struct Vertex
    {
       Vertex(vec2f p, vec3f c) : position(p), color(c) {}
@@ -24,7 +27,7 @@ namespace fw
    {
       const Vertex* vbo;
       const uint32_t* ibo;
-      hash::string shaders[shader::e_count];
+      Material mat;
    };
 }
 class graphics

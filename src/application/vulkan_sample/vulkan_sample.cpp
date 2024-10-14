@@ -42,8 +42,8 @@ void vulkan_sample::run()
    m_graphics->register_shader("triangle", "shaders/triangle.frag.spv", shader::e_fragment);
    std::array<uint32_t,3> ibo = {0, 1, 2};
    Mesh mesh = {triangle.data(), ibo.data(), {}};
-   mesh.shaders[fw::shader::e_vertex] = fw::hash::string("triangle");
-   mesh.shaders[fw::shader::e_fragment] = fw::hash::string("triangle");
+   mesh.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
+   mesh.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
    m_graphics->getRenderer()->visit(&mesh);
    
 }
