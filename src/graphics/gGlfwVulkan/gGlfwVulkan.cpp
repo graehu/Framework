@@ -55,6 +55,7 @@ namespace fwvulkan
    VkExtent2D g_swap_chain_extent;
    std::vector<VkImage> g_swap_chain_images;
    std::vector<VkImageView> g_swap_chain_image_views;
+   std::vector<VkFramebuffer> g_swap_chain_framebuffers;
    // renderpass
    VkRenderPass g_render_pass;
    // shaders
@@ -63,6 +64,9 @@ namespace fwvulkan
    // pipeline
    std::vector<VkPipeline> g_pipelines;
    std::vector<VkPipelineLayout> g_pipeline_layouts;
+   // commands
+   VkCommandPool g_command_pool;
+   std::vector<VkCommandBuffer> g_command_buffers;
    // mesh
    std::vector<Mesh*> g_meshes;
    //
@@ -496,18 +500,55 @@ namespace fwvulkan
    }
    namespace swapchain
    {
+      void CreateCommandPool()
+      {
+	 log::debug("Create Command Pool");
+	 QueueFamilyIndices queue_family_indices = device::FindQueueFamilies(g_physical_device, g_surface);
+	 VkCommandPoolCreateInfo pool_create_info = {};
+	 pool_create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	 pool_create_info.queueFamilyIndex = queue_family_indices.graphics_family.value();
+	 pool_create_info.flags = 0;
+
+	 if (vkCreateCommandPool(g_logical_device, &pool_create_info, nullptr, &g_command_pool) != VK_SUCCESS)
+	 {
+	    throw std::runtime_error("failed to create command pool!");
+	 }
+      }
+      void CreateSwapchainFrameBuffers()
+      {
+	 log::debug("CreateSwapchainFrameBuffers");
+	 g_swap_chain_framebuffers.resize(g_swap_chain_image_views.size());
+	 for (size_t i = 0; i < g_swap_chain_image_views.size(); i++)
+	 {
+	    VkImageView attachments[] = {g_swap_chain_image_views[i]};
+	    VkFramebufferCreateInfo framebuffer_create_info = {};
+	    framebuffer_create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+	    framebuffer_create_info.renderPass = g_render_pass;
+	    framebuffer_create_info.attachmentCount = 1;
+	    framebuffer_create_info.pAttachments = attachments;
+	    framebuffer_create_info.width = g_swap_chain_extent.width;
+	    framebuffer_create_info.height = g_swap_chain_extent.height;
+	    framebuffer_create_info.layers = 1;
+
+	    if (vkCreateFramebuffer(g_logical_device, &framebuffer_create_info, nullptr, &g_swap_chain_framebuffers[i]) !=
+		VK_SUCCESS)
+	    {
+	       throw std::runtime_error("failed to create framebuffer!");
+	    }
+	 }
+      }
       void CleanupSwapChain()
       {
-	 // vkFreeCommandBuffers(g_logical_device, command_pool, static_cast<uint32_t>(command_buffers.size()),
-	 // 		      command_buffers.data());
-
-	 // for (auto framebuffer : swap_chain_framebuffers)
-	 // {
-	 //    vkDestroyFramebuffer(logical_device, framebuffer, nullptr);
-	 // }
+	 log::debug("CleanupSwapChain");
+	 vkFreeCommandBuffers(g_logical_device, g_command_pool, static_cast<uint32_t>(g_command_buffers.size()),
+			      g_command_buffers.data());
+	 
+	 for (auto framebuffer : g_swap_chain_framebuffers)
+	 {
+	    vkDestroyFramebuffer(g_logical_device, framebuffer, nullptr);
+	 }
 	 vkDestroyRenderPass(g_logical_device, g_render_pass, nullptr);
-	 // vkDestroyPipeline(logical_device, graphics_pipeline, nullptr);
-	 // vkDestroyPipelineLayout(logical_device, pipeline_layout, nullptr);
+	 
 	 for(auto pipeline : g_pipelines)
 	 {
 	    vkDestroyPipeline(g_logical_device, pipeline, nullptr);
@@ -943,6 +984,10 @@ namespace fwvulkan
 	 g_pipeline_layouts.push_back(pipeline_layout);
       }
    }
+   namespace buffers
+   {
+
+   }
 }
 int gGlfwVulkan::init()
 {
@@ -965,9 +1010,9 @@ int gGlfwVulkan::init()
    fwvulkan::swapchain::CreateSwapChain();
    fwvulkan::swapchain::CreateSwapchainImageViews();
    fwvulkan::renderpass::CreateRenderPass();
-   // fwvulkan::pipeline::CreateGraphicsPipeline();
-   // CreateFrameBuffers();
-   // CreateCommandPool();
+   // fwvulkan::pipeline::CreateGraphicsPipeline(); // user to do.
+   fwvulkan::swapchain::CreateSwapchainFrameBuffers();
+   fwvulkan::swapchain::CreateCommandPool();
    // CreateVertexBuffer();
    // CreateCommandBuffers();
    // CreateSemaphores();
@@ -993,7 +1038,7 @@ int gGlfwVulkan::shutdown()
    //     vkDestroySemaphore(logical_device, render_finished_semaphores[i], nullptr);
    //     vkDestroyFence(logical_device, in_flight_fences[i], nullptr);
    // }
-   // vkDestroyCommandPool(logical_device, command_pool, nullptr);
+   vkDestroyCommandPool(fwvulkan::g_logical_device, fwvulkan::g_command_pool, nullptr);
    for(int t = fw::shader::e_fragment; t != fw::shader::e_count; t++)
    {
       for(auto s : fwvulkan::g_shaders[(fw::shader::type)t])
