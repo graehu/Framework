@@ -56,6 +56,12 @@ namespace fwvulkan
    std::vector<VkImage> g_swap_chain_images;
    std::vector<VkImageView> g_swap_chain_image_views;
    std::vector<VkFramebuffer> g_swap_chain_framebuffers;
+   // semaphores
+   std::vector<VkSemaphore> g_image_available_semaphores;
+   std::vector<VkSemaphore> g_render_finished_semaphores;
+   std::vector<VkFence> g_in_flight_fences;
+   const int g_max_frames_in_flight = 2;
+   unsigned int g_current_frame = 0;
    // renderpass
    VkRenderPass g_render_pass;
    // shaders
@@ -67,6 +73,9 @@ namespace fwvulkan
    // commands
    VkCommandPool g_command_pool;
    std::vector<VkCommandBuffer> g_command_buffers;
+   // vertex buffers
+   std::vector<VkBuffer> g_vertex_buffers;
+   std::vector<VkDeviceMemory> g_vertex_buffer_memory;
    // mesh
    std::vector<Mesh*> g_meshes;
    //
@@ -922,7 +931,7 @@ namespace fwvulkan
 	 return pipeline_layout_create_info;
 
       }
-      void CreatePipeline(Material mat)
+      int CreatePipeline(Material mat)
       {
 	 log::debug("CreateGraphicsPipeline");
 	 VkPipelineLayout pipeline_layout;
@@ -982,11 +991,159 @@ namespace fwvulkan
 	 }
 	 g_pipelines.push_back(graphics_pipeline);
 	 g_pipeline_layouts.push_back(pipeline_layout);
+	 return g_pipelines.size() - 1;
       }
    }
    namespace buffers
    {
+      uint32_t FindMemoryType(uint32_t type_filter, VkMemoryPropertyFlags properties)
+      {
+	 VkPhysicalDeviceMemoryProperties memory_properties;
+	 vkGetPhysicalDeviceMemoryProperties(g_physical_device, &memory_properties);
 
+	 for (uint32_t i = 0; i < memory_properties.memoryTypeCount; i++)
+	 {
+	    if (type_filter & (1 << i) && (memory_properties.memoryTypes[i].propertyFlags & properties) == properties)
+	    {
+	       return i;
+	    }
+	 }
+	 throw std::runtime_error("failed to find suitable memory type!");
+      }
+
+
+      int CreateVertexBuffer(const fw::Vertex* vertices, int num_vertices)
+      {
+	 log::debug("Create Vertex Buffer");
+	 VkBufferCreateInfo buffer_create_info = {};
+	 buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	 buffer_create_info.size = sizeof(fw::Vertex) * num_vertices;
+	 buffer_create_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	 buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	 VkBuffer vertex_buffer;
+	 if (vkCreateBuffer(g_logical_device, &buffer_create_info, nullptr, &vertex_buffer) != VK_SUCCESS)
+	 {
+	    throw std::runtime_error("failed to create vertex buffer!");
+	 }
+	 VkMemoryRequirements memory_requirements;
+	 vkGetBufferMemoryRequirements(g_logical_device, vertex_buffer, &memory_requirements);
+
+	 VkMemoryAllocateInfo allocate_info = {};
+	 allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	 allocate_info.allocationSize = memory_requirements.size;
+	 allocate_info.memoryTypeIndex = FindMemoryType(
+	    memory_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	 VkDeviceMemory vertex_buffer_memory;
+	 if (vkAllocateMemory(g_logical_device, &allocate_info, nullptr, &vertex_buffer_memory) != VK_SUCCESS)
+	 {
+	    throw std::runtime_error("failed to allocate vertex buffer memory!");
+	 }
+	 vkBindBufferMemory(g_logical_device, vertex_buffer, vertex_buffer_memory, 0);
+	 void *data;
+	 vkMapMemory(g_logical_device, vertex_buffer_memory, 0, buffer_create_info.size, 0, &data);
+	 memcpy(data, vertices, (size_t)buffer_create_info.size);
+	 vkUnmapMemory(g_logical_device, vertex_buffer_memory);
+	 g_vertex_buffers.push_back(vertex_buffer);
+	 g_vertex_buffer_memory.push_back(vertex_buffer_memory);
+	 
+	 return g_vertex_buffers.size()-1;
+      }
+      
+      int CreateCommandBuffer()
+      {
+	 log::debug("Create Command buffer");
+
+	 VkCommandBufferAllocateInfo alloc_info = {};
+	 alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	 alloc_info.commandPool = g_command_pool;
+	 alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	 alloc_info.commandBufferCount = 1;// (uint32_t)command_buffers.size();
+	 VkCommandBuffer buffer;
+	 if (vkAllocateCommandBuffers(g_logical_device, &alloc_info, &buffer) != VK_SUCCESS)
+	 {
+	    throw std::runtime_error("failed to allocate command buffers!");
+	 }
+	 g_command_buffers.push_back(buffer);
+	 return g_command_buffers.size()-1;
+      }
+      void RecordDraw(int cb_handle, int vb_handle, int pi_handle, size_t num_vertices)
+      {
+	 auto cb = g_command_buffers[cb_handle];
+	 auto vb = g_vertex_buffers[vb_handle];
+	 
+	 VkCommandBufferBeginInfo begin_info = {};
+	 begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	 begin_info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+	 begin_info.pInheritanceInfo = nullptr;
+
+	 if (vkBeginCommandBuffer(cb, &begin_info) != VK_SUCCESS)
+	 {
+	    throw std::runtime_error("failed to begin recording command buffer!");
+	 }
+
+	 VkRenderPassBeginInfo render_pass_begin_info = {};
+	 render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	 render_pass_begin_info.renderPass = g_render_pass;
+	 render_pass_begin_info.framebuffer = g_swap_chain_framebuffers[g_current_frame];
+	 render_pass_begin_info.renderArea.offset = {0, 0};
+	 render_pass_begin_info.renderArea.extent = g_swap_chain_extent;
+
+	 VkClearValue clear_color = {{{0.0f, 0.0f, 0.0f, 1.0f}}}; // really? that looks stupid but fixes a warning.
+	 render_pass_begin_info.clearValueCount = 1;
+	 render_pass_begin_info.pClearValues = &clear_color;
+
+	 vkCmdBeginRenderPass(cb, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+	 vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipelines[pi_handle]);
+
+	 VkBuffer vertex_buffers[] = {vb};
+	 VkDeviceSize offsets[] = {0};
+	 vkCmdBindVertexBuffers(cb, 0, 1, vertex_buffers, offsets);
+
+	 vkCmdDraw(cb, num_vertices, 1, 0, 0);
+	 vkCmdEndRenderPass(cb);
+	 if (vkEndCommandBuffer(cb) != VK_SUCCESS)
+	 {
+	    throw std::runtime_error("failed to record command buffer!");
+	 }
+      }
+   }
+   namespace barriers
+   {
+      void CreateSemaphores()
+      {
+	 log::debug("CreateSemaphores");
+
+	g_image_available_semaphores.resize(g_max_frames_in_flight);
+	 g_render_finished_semaphores.resize(g_max_frames_in_flight);
+	 g_in_flight_fences.resize(g_max_frames_in_flight);
+
+	 VkSemaphoreCreateInfo semaphore_create_info = {};
+	 semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+	 VkFenceCreateInfo fence_create_info = {};
+	 fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	 fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+	 for (int i = 0; i < g_max_frames_in_flight; i++)
+	 {
+	    if (vkCreateSemaphore(g_logical_device, &semaphore_create_info, nullptr, &g_image_available_semaphores[i]) !=
+		VK_SUCCESS)
+	    {
+	       throw std::runtime_error("failed to create semaphore!");
+	    }
+
+	    if (vkCreateSemaphore(g_logical_device, &semaphore_create_info, nullptr, &g_render_finished_semaphores[i]) !=
+		VK_SUCCESS)
+	    {
+	       throw std::runtime_error("failed to create semaphore!");
+	    }
+
+	    if (vkCreateFence(g_logical_device, &fence_create_info, nullptr, &g_in_flight_fences[i]) != VK_SUCCESS)
+	    {
+	       throw std::runtime_error("failed to create semaphore!");
+	    }
+	 }
+      }
    }
 }
 int gGlfwVulkan::init()
@@ -1009,35 +1166,45 @@ int gGlfwVulkan::init()
    fwvulkan::device::CreateLogicalDevice();
    fwvulkan::swapchain::CreateSwapChain();
    fwvulkan::swapchain::CreateSwapchainImageViews();
-   fwvulkan::renderpass::CreateRenderPass();
+   fwvulkan::renderpass::CreateRenderPass(); // user to do, except for swapchain / default renderpass
    // fwvulkan::pipeline::CreateGraphicsPipeline(); // user to do.
    fwvulkan::swapchain::CreateSwapchainFrameBuffers();
    fwvulkan::swapchain::CreateCommandPool();
-   // CreateVertexBuffer();
-   // CreateCommandBuffers();
-   // CreateSemaphores();
+   // fwvulkan::buffers::CreateVertexBuffer(); // user to do
+   // fwvulkan::buffers::CreateCommandBuffers(); // user to do, except for swapchain / default renderpass
+   fwvulkan::barriers::CreateSemaphores();   // user to do, except for swapchain / default renderpass
    return 0;
 }
 hash::string shaders[shader::e_count];
 void gGlfwVulkan::visit(class physics::collider::polygon* /*_poly*/){}
 void gGlfwVulkan::visit(class camera * /*_camera*/) {}
-void gGlfwVulkan::visit(fw::Mesh* /*_mesh*/)
+void gGlfwVulkan::visit(fw::Mesh* _mesh)
 {
-   
+   int vb_handle = fwvulkan::buffers::CreateVertexBuffer(_mesh->vbo, _mesh->vbo_len);
+   int cb_handle = fwvulkan::buffers::CreateCommandBuffer();
+   int pi_handle = fwvulkan::pipeline::CreatePipeline(_mesh->mat);
+   fwvulkan::buffers::RecordDraw(cb_handle, vb_handle, pi_handle, _mesh->vbo_len);
 }
 int gGlfwVulkan::shutdown()
 {
    log::scope topic("gGlfwVulkan");
    log::debug("shutdown");
    fwvulkan::swapchain::CleanupSwapChain();
-   // vkDestroyBuffer(logical_device, vertex_buffer, nullptr);
-   // vkFreeMemory(logical_device, vertex_buffer_memory, nullptr);
-   // for (int i = 0; i < max_frames_in_flight; i++)
-   // {
-   //     vkDestroySemaphore(logical_device, image_available_semaphores[i], nullptr);
-   //     vkDestroySemaphore(logical_device, render_finished_semaphores[i], nullptr);
-   //     vkDestroyFence(logical_device, in_flight_fences[i], nullptr);
-   // }
+   for(auto vb : fwvulkan::g_vertex_buffers)
+   {
+      vkDestroyBuffer(fwvulkan::g_logical_device, vb, nullptr);
+   }
+   for(auto vbm : fwvulkan::g_vertex_buffer_memory)
+   {
+      vkFreeMemory(fwvulkan::g_logical_device, vbm, nullptr);      
+   }
+
+   for (int i = 0; i < fwvulkan::g_max_frames_in_flight; i++)
+   {
+       vkDestroySemaphore(fwvulkan::g_logical_device, fwvulkan::g_image_available_semaphores[i], nullptr);
+       vkDestroySemaphore(fwvulkan::g_logical_device, fwvulkan::g_render_finished_semaphores[i], nullptr);
+       vkDestroyFence(fwvulkan::g_logical_device, fwvulkan::g_in_flight_fences[i], nullptr);
+   }
    vkDestroyCommandPool(fwvulkan::g_logical_device, fwvulkan::g_command_pool, nullptr);
    for(int t = fw::shader::e_fragment; t != fw::shader::e_count; t++)
    {

@@ -26,6 +26,7 @@ namespace fw
    struct Mesh
    {
       const Vertex* vbo;
+      size_t vbo_len;
       const uint32_t* ibo;
       Material mat;
    };
