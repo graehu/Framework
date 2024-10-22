@@ -44,8 +44,10 @@ void vulkan_sample::run()
    Mesh mesh = {triangle.data(), triangle.size(), ibo.data(), {}};
    mesh.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
    mesh.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
+   log::debug("trying to visit");
    m_graphics->getRenderer()->visit(&mesh);
-   
+   log::debug("trying to render");
+   m_graphics->render();
 }
 void vulkan_sample::shutdown()
 {

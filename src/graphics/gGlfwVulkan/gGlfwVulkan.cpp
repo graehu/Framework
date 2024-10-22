@@ -17,7 +17,7 @@ struct vkVertex : public fw::Vertex
    {
       VkVertexInputBindingDescription binding_description = {};
       binding_description.binding = 0;
-      binding_description.stride = sizeof(Vertex);
+      binding_description.stride = sizeof(fw::Vertex);
       binding_description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
       return binding_description;
    }
@@ -44,6 +44,7 @@ namespace fwvulkan
    VkSurfaceKHR g_surface = VK_NULL_HANDLE;
    VkDebugUtilsMessengerEXT g_debug_messenger;
    extern GLFWwindow* g_window;
+   extern bool g_resized;
    // device
    VkPhysicalDevice g_physical_device = VK_NULL_HANDLE;
    VkDevice g_logical_device = VK_NULL_HANDLE;
@@ -706,7 +707,7 @@ namespace fwvulkan
 	 vkGetSwapchainImagesKHR(g_logical_device, g_swap_chain, &image_count, g_swap_chain_images.data());
 
 	 g_swap_chain_image_format = surface_format.format;
-	 g_swap_chain_extent = extent;
+         g_swap_chain_extent = extent;
       }
    }
    namespace renderpass
@@ -753,6 +754,26 @@ namespace fwvulkan
 	 {
 	    throw std::runtime_error("failed to create render pass!");
 	 }
+      }
+   }
+   namespace swapchain
+   {
+      //todo this is awkward, fix it.
+      void RecreateSwapChain()
+      {
+	 log::debug("Recreate SwapChain");
+	 int width = 0, height = 0;
+	 while (width == 0 || height == 0)
+	 {
+	    glfwGetFramebufferSize(g_window, &width, &height);
+	    glfwWaitEvents();
+	 }
+	 vkDeviceWaitIdle(g_logical_device);
+	 CreateSwapChain();
+	 CreateSwapchainImageViews();
+	 renderpass::CreateRenderPass();
+	 // CreateGraphicsPipeline();
+	 CreateSwapchainFrameBuffers();
       }
    }
    namespace shaders
@@ -820,17 +841,19 @@ namespace fwvulkan
    }
    namespace pipeline
    {
+
+      
       VkPipelineVertexInputStateCreateInfo GetDefaultVertexInputState()
       {
-	 auto binding_description = vkVertex::GetBindingDescription();
-	 auto attribute_description = vkVertex::GetAttributeDescriptions();
-
+	 static VkVertexInputBindingDescription vert_binding_description = vkVertex::GetBindingDescription();
+	 static std::array<VkVertexInputAttributeDescription, 2> vert_attribute_description = vkVertex::GetAttributeDescriptions();
+	 
 	 VkPipelineVertexInputStateCreateInfo vertex_input_create_info = {};
 	 vertex_input_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	 vertex_input_create_info.vertexBindingDescriptionCount = 1;
-	 vertex_input_create_info.pVertexBindingDescriptions = &binding_description;
-	 vertex_input_create_info.vertexAttributeDescriptionCount = static_cast<uint32_t>(attribute_description.size());
-	 vertex_input_create_info.pVertexAttributeDescriptions = attribute_description.data();
+	 vertex_input_create_info.pVertexBindingDescriptions = &vert_binding_description;
+	 vertex_input_create_info.vertexAttributeDescriptionCount = static_cast<uint32_t>(vert_attribute_description.size());
+	 vertex_input_create_info.pVertexAttributeDescriptions = vert_attribute_description.data();
 	 return vertex_input_create_info;
       }
       VkPipelineRasterizationStateCreateInfo GetDefaultRasterState()
@@ -940,9 +963,8 @@ namespace fwvulkan
 	 {
 	    throw std::runtime_error("failed to create pipeline layout!");
 	 }
-
 	 unsigned int shader_count = 0;
-	 VkPipelineShaderStageCreateInfo shader_create_infos[fw::shader::e_count] = {};
+	 VkPipelineShaderStageCreateInfo shader_create_infos[2] = {};
 	 for(int i = 0; i < fw::shader::e_count; i++)
 	 {
 	    if(mat[i].is_valid())
@@ -953,11 +975,11 @@ namespace fwvulkan
 		  stage_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		  stage_create_info.stage = shaders::shaderbit_lut.find((shader::type)i)->second;
 		  stage_create_info.module = module->second;
+		  log::debug("{} whatever that is ", (void*)&module->second);
 		  stage_create_info.pName = "main";
 	       }
 	    }
 	 }
-	 
 	 auto vertex_input_ci = GetDefaultVertexInputState();
 	 auto input_assembly_ci = GetDefaultIAState();
 	 auto viewport_state_ci = GetDefaultViewportState();
@@ -982,15 +1004,17 @@ namespace fwvulkan
 	 pipeline_ci.subpass = 0;
 	 pipeline_ci.basePipelineHandle = VK_NULL_HANDLE;
 	 pipeline_ci.basePipelineIndex = -1;
-
+	 
 	 VkPipeline graphics_pipeline;
 	 if (vkCreateGraphicsPipelines(g_logical_device, VK_NULL_HANDLE, 1, &pipeline_ci, nullptr,
 				       &graphics_pipeline) != VK_SUCCESS)
 	 {
 	    throw std::runtime_error("failed to create graphics pipeline!");
 	 }
+
 	 g_pipelines.push_back(graphics_pipeline);
 	 g_pipeline_layouts.push_back(pipeline_layout);
+	 log::debug("pipeline created id: {}", g_pipelines.size()-1);
 	 return g_pipelines.size() - 1;
       }
    }
@@ -1045,7 +1069,7 @@ namespace fwvulkan
 	 vkUnmapMemory(g_logical_device, vertex_buffer_memory);
 	 g_vertex_buffers.push_back(vertex_buffer);
 	 g_vertex_buffer_memory.push_back(vertex_buffer_memory);
-	 
+	 log::debug("Created Vertex Buffer: {}", g_vertex_buffers.size()-1);
 	 return g_vertex_buffers.size()-1;
       }
       
@@ -1064,13 +1088,16 @@ namespace fwvulkan
 	    throw std::runtime_error("failed to allocate command buffers!");
 	 }
 	 g_command_buffers.push_back(buffer);
+	 log::debug("Created command buffer: {}", g_command_buffers.size()-1);
 	 return g_command_buffers.size()-1;
       }
       void RecordDraw(int cb_handle, int vb_handle, int pi_handle, size_t num_vertices)
       {
+	 log::debug("Recording Draw cb: {} vb: {} pi: {} vert: {}", cb_handle, vb_handle, pi_handle, num_vertices);
 	 auto cb = g_command_buffers[cb_handle];
 	 auto vb = g_vertex_buffers[vb_handle];
-	 
+	 int doot = 0 ;
+	 log::debug("doot: {}", doot++);
 	 VkCommandBufferBeginInfo begin_info = {};
 	 begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	 begin_info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
@@ -1080,7 +1107,7 @@ namespace fwvulkan
 	 {
 	    throw std::runtime_error("failed to begin recording command buffer!");
 	 }
-
+	 log::debug("doot: {}", doot++);
 	 VkRenderPassBeginInfo render_pass_begin_info = {};
 	 render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	 render_pass_begin_info.renderPass = g_render_pass;
@@ -1091,20 +1118,28 @@ namespace fwvulkan
 	 VkClearValue clear_color = {{{0.0f, 0.0f, 0.0f, 1.0f}}}; // really? that looks stupid but fixes a warning.
 	 render_pass_begin_info.clearValueCount = 1;
 	 render_pass_begin_info.pClearValues = &clear_color;
-
+	 log::debug("doot: {}", doot++);
 	 vkCmdBeginRenderPass(cb, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+	 log::debug("doot: {}", doot++);
 	 vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipelines[pi_handle]);
 
 	 VkBuffer vertex_buffers[] = {vb};
 	 VkDeviceSize offsets[] = {0};
+	 std::cout << "vb: " << vb << std::endl;
+	 std::cout << "vert_buff: " << vertex_buffers << std::endl;
+	 std::cout << "comm_buff: " << cb << std::endl;
+	 log::debug("doot: {}", doot++);
 	 vkCmdBindVertexBuffers(cb, 0, 1, vertex_buffers, offsets);
-
+	 log::debug("doot: {} there", doot++);
 	 vkCmdDraw(cb, num_vertices, 1, 0, 0);
+	 log::debug("doot: {} here", doot++);
 	 vkCmdEndRenderPass(cb);
+	 log::debug("doot: {}", doot++);
 	 if (vkEndCommandBuffer(cb) != VK_SUCCESS)
 	 {
 	    throw std::runtime_error("failed to record command buffer!");
 	 }
+	 log::debug("doot: {}", doot++);
       }
    }
    namespace barriers
@@ -1148,31 +1183,32 @@ namespace fwvulkan
 }
 int gGlfwVulkan::init()
 {
+   using namespace fwvulkan;
    log::topics::add("gGlfwVulkan");
    log::scope topic("gGlfwVulkan");
    log::debug("Init Vulkan");
-   params::get_value("vulkan.validation", fwvulkan::g_enable_validation_layers);
-   log::debug("enable validaiton layers: {}", fwvulkan::g_enable_validation_layers);
-   fwvulkan::instance::CreateInstance();
-   if (fwvulkan::g_enable_validation_layers)
+   params::get_value("vulkan.validation", g_enable_validation_layers);
+   log::debug("enable validaiton layers: {}", g_enable_validation_layers);
+   instance::CreateInstance();
+   if (g_enable_validation_layers)
    {
-      fwvulkan::instance::SetupDebugMessenger();
+      instance::SetupDebugMessenger();
    }
-   if (fwvulkan::g_window != nullptr)
+   if (g_window != nullptr)
    {
-      fwvulkan::instance::CreateSurface();
+      instance::CreateSurface();
    }
-   fwvulkan::device::PickPhysicalDevice();
-   fwvulkan::device::CreateLogicalDevice();
-   fwvulkan::swapchain::CreateSwapChain();
-   fwvulkan::swapchain::CreateSwapchainImageViews();
-   fwvulkan::renderpass::CreateRenderPass(); // user to do, except for swapchain / default renderpass
-   // fwvulkan::pipeline::CreateGraphicsPipeline(); // user to do.
-   fwvulkan::swapchain::CreateSwapchainFrameBuffers();
-   fwvulkan::swapchain::CreateCommandPool();
-   // fwvulkan::buffers::CreateVertexBuffer(); // user to do
-   // fwvulkan::buffers::CreateCommandBuffers(); // user to do, except for swapchain / default renderpass
-   fwvulkan::barriers::CreateSemaphores();   // user to do, except for swapchain / default renderpass
+   device::PickPhysicalDevice();
+   device::CreateLogicalDevice();
+   swapchain::CreateSwapChain();
+   swapchain::CreateSwapchainImageViews();
+   renderpass::CreateRenderPass(); // user to do, except for swapchain / default renderpass
+   // pipeline::CreateGraphicsPipeline(); // user to do.
+   swapchain::CreateSwapchainFrameBuffers();
+   swapchain::CreateCommandPool();
+   // buffers::CreateVertexBuffer(); // user to do
+   // buffers::CreateCommandBuffers(); // user to do, except for swapchain / default renderpass
+   barriers::CreateSemaphores();   // user to do, except for swapchain / default renderpass
    return 0;
 }
 hash::string shaders[shader::e_count];
@@ -1180,16 +1216,19 @@ void gGlfwVulkan::visit(class physics::collider::polygon* /*_poly*/){}
 void gGlfwVulkan::visit(class camera * /*_camera*/) {}
 void gGlfwVulkan::visit(fw::Mesh* _mesh)
 {
-   int vb_handle = fwvulkan::buffers::CreateVertexBuffer(_mesh->vbo, _mesh->vbo_len);
-   int cb_handle = fwvulkan::buffers::CreateCommandBuffer();
-   int pi_handle = fwvulkan::pipeline::CreatePipeline(_mesh->mat);
-   fwvulkan::buffers::RecordDraw(cb_handle, vb_handle, pi_handle, _mesh->vbo_len);
+   using namespace fwvulkan;
+   int vb_handle = buffers::CreateVertexBuffer(_mesh->vbo, _mesh->vbo_len);
+   int cb_handle = buffers::CreateCommandBuffer();
+   int pi_handle = pipeline::CreatePipeline(_mesh->mat);
+   
+   buffers::RecordDraw(cb_handle, vb_handle, pi_handle, _mesh->vbo_len);
 }
 int gGlfwVulkan::shutdown()
 {
+   using namespace fwvulkan;
    log::scope topic("gGlfwVulkan");
    log::debug("shutdown");
-   fwvulkan::swapchain::CleanupSwapChain();
+   swapchain::CleanupSwapChain();
    for(auto vb : fwvulkan::g_vertex_buffers)
    {
       vkDestroyBuffer(fwvulkan::g_logical_device, vb, nullptr);
@@ -1233,7 +1272,70 @@ int gGlfwVulkan::shutdown()
    return 0;
 }
 int gGlfwVulkan::update() { return 0; }
-int gGlfwVulkan::render() { return 0; }
+int gGlfwVulkan::render()
+{
+   using namespace fwvulkan;
+   vkWaitForFences(g_logical_device, 1, &g_in_flight_fences[g_current_frame], VK_TRUE, std::numeric_limits<uint64_t>::max());
+
+    uint32_t image_index;
+    VkResult result = vkAcquireNextImageKHR(g_logical_device, g_swap_chain, std::numeric_limits<uint64_t>::max(),
+                                            g_image_available_semaphores[g_current_frame], VK_NULL_HANDLE, &image_index);
+
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || g_resized)
+    {
+	g_resized = false;
+	swapchain::RecreateSwapChain();
+        return 0;
+    }
+    else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+    {
+        throw std::runtime_error("failed to acquire swap chain image!");
+    }
+
+    VkSubmitInfo submit_info = {};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+    VkSemaphore wait_semaphores[] = {g_image_available_semaphores[g_current_frame]};
+    VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    submit_info.waitSemaphoreCount = 1;
+    submit_info.pWaitSemaphores = wait_semaphores;
+    submit_info.pWaitDstStageMask = wait_stages;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &g_command_buffers[image_index];
+
+    VkSemaphore signal_semaphores[] = {g_render_finished_semaphores[g_current_frame]};
+    submit_info.signalSemaphoreCount = 1;
+    submit_info.pSignalSemaphores = signal_semaphores;
+
+    vkResetFences(g_logical_device, 1, &g_in_flight_fences[g_current_frame]);
+
+    if (vkQueueSubmit(g_graphics_queue, 1, &submit_info, g_in_flight_fences[g_current_frame]) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to submit draw command buffer!");
+    }
+    VkPresentInfoKHR present_info = {};
+    present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    present_info.waitSemaphoreCount = 1;
+    present_info.pWaitSemaphores = signal_semaphores;
+    VkSwapchainKHR swap_chains[] = {g_swap_chain};
+    present_info.swapchainCount = 1;
+    present_info.pSwapchains = swap_chains;
+    present_info.pImageIndices = &image_index;
+    present_info.pResults = nullptr;
+
+    result = vkQueuePresentKHR(g_present_queue, &present_info);
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+    {
+       swapchain::RecreateSwapChain();
+    }
+    else if (result != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to present swap chain image!");
+    }
+    g_current_frame = (g_current_frame + 1) % g_max_frames_in_flight;
+    return 0;
+}
+
 
 #include <fstream>
 static std::vector<char> read_file(const std::string &filename)
@@ -1270,9 +1372,10 @@ static std::vector<char> read_file(const std::string &filename)
 
 bool gGlfwVulkan::register_shader(fw::hash::string name, const char* path, fw::shader::type type)
 {
+   using namespace fwvulkan;
    auto shader_code = read_file(path);
-   auto shader = fwvulkan::shaders::CreateShaderModule(shader_code, fwvulkan::g_logical_device);
-   fwvulkan::g_shaders[type][name] = shader;
+   auto shader = shaders::CreateShaderModule(shader_code, g_logical_device);
+   g_shaders[type][name] = shader;
    return true;
 }
 
