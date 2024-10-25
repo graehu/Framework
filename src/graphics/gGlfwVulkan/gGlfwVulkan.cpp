@@ -63,6 +63,8 @@ namespace fwvulkan
    std::vector<VkFence> g_in_flight_fences;
    const int g_max_frames_in_flight = 2;
    unsigned int g_current_frame = 0;
+   unsigned int g_flight_frame = 0;
+   unsigned int g_current_buffers = 0;
    // renderpass
    VkRenderPass g_render_pass;
    // shaders
@@ -1104,7 +1106,7 @@ namespace fwvulkan
 	 VkRenderPassBeginInfo render_pass_begin_info = {};
 	 render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	 render_pass_begin_info.renderPass = g_render_pass;
-	 render_pass_begin_info.framebuffer = g_swap_chain_framebuffers[g_current_frame];
+	 render_pass_begin_info.framebuffer = g_swap_chain_framebuffers[g_current_buffers];
 	 render_pass_begin_info.renderArea.offset = {0, 0};
 	 render_pass_begin_info.renderArea.extent = g_swap_chain_extent;
 
@@ -1286,12 +1288,12 @@ int gGlfwVulkan::update() { return 0; }
 int gGlfwVulkan::render()
 {
    using namespace fwvulkan;
-   log::debug("render current frame: {}", g_current_frame);
-   vkWaitForFences(g_logical_device, 1, &g_in_flight_fences[g_current_frame], VK_TRUE, std::numeric_limits<uint64_t>::max());
+   log::debug("render frames: {} {} {}", g_current_frame, g_flight_frame, g_current_buffers);
+   vkWaitForFences(g_logical_device, 1, &g_in_flight_fences[g_flight_frame], VK_TRUE, std::numeric_limits<uint64_t>::max());
 
    uint32_t image_index;
    VkResult result = vkAcquireNextImageKHR(g_logical_device, g_swap_chain, std::numeric_limits<uint64_t>::max(),
-					   g_image_available_semaphores[g_current_frame], VK_NULL_HANDLE, &image_index);
+					   g_image_available_semaphores[g_flight_frame], VK_NULL_HANDLE, &image_index);
    if (result == VK_ERROR_OUT_OF_DATE_KHR || g_resized)
    {
       g_resized = false;
@@ -1305,20 +1307,21 @@ int gGlfwVulkan::render()
    VkSubmitInfo submit_info = {};
    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-   VkSemaphore wait_semaphores[] = {g_image_available_semaphores[g_current_frame]};
+   VkSemaphore wait_semaphores[] = {g_image_available_semaphores[g_flight_frame]};
    VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
    submit_info.waitSemaphoreCount = 1;
    submit_info.pWaitSemaphores = wait_semaphores;
    submit_info.pWaitDstStageMask = wait_stages;
    submit_info.commandBufferCount = 1;
+   // log::debug("image index: {}", image_index);
    submit_info.pCommandBuffers = &g_command_buffers[image_index];
 
-   VkSemaphore signal_semaphores[] = {g_render_finished_semaphores[g_current_frame]};
+   VkSemaphore signal_semaphores[] = {g_render_finished_semaphores[g_flight_frame]};
    submit_info.signalSemaphoreCount = 1;
    submit_info.pSignalSemaphores = signal_semaphores;
 
-   vkResetFences(g_logical_device, 1, &g_in_flight_fences[g_current_frame]);
-   if (vkQueueSubmit(g_graphics_queue, 1, &submit_info, g_in_flight_fences[g_current_frame]) != VK_SUCCESS)
+   vkResetFences(g_logical_device, 1, &g_in_flight_fences[g_flight_frame]);
+   if (vkQueueSubmit(g_graphics_queue, 1, &submit_info, g_in_flight_fences[g_flight_frame]) != VK_SUCCESS)
    {
       throw std::runtime_error("failed to submit draw command buffer!");
    }
@@ -1342,7 +1345,10 @@ int gGlfwVulkan::render()
    {
       throw std::runtime_error("failed to present swap chain image!");
    }
-   g_current_frame = (g_current_frame + 1) % g_max_frames_in_flight;
+   g_current_frame++;
+   g_flight_frame = g_current_buffers % g_max_frames_in_flight;
+   g_current_buffers = g_current_frame % g_swap_chain_framebuffers.size();
+   //(g_current_frame + 1) % g_max_frames_in_flight;
    return 0;
 }
 
