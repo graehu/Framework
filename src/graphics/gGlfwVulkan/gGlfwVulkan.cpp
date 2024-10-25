@@ -841,8 +841,6 @@ namespace fwvulkan
    }
    namespace pipeline
    {
-
-      
       VkPipelineVertexInputStateCreateInfo GetDefaultVertexInputState()
       {
 	 static VkVertexInputBindingDescription vert_binding_description = vkVertex::GetBindingDescription();
@@ -873,7 +871,7 @@ namespace fwvulkan
       }
       VkPipelineViewportStateCreateInfo GetDefaultViewportState()
       {
-	 VkViewport viewport = {};
+	 static VkViewport viewport = {};
 	 viewport.x = 0.0f;
 	 viewport.y = 0.0f;
 	 viewport.width = (float)g_swap_chain_extent.width;
@@ -881,7 +879,7 @@ namespace fwvulkan
 	 viewport.minDepth = 0.0f;
 	 viewport.maxDepth = 1.0f;
 
-	 VkRect2D scissor = {};
+	 static VkRect2D scissor = {};
 	 scissor.offset = {0, 0};
 	 scissor.extent = g_swap_chain_extent;
 
@@ -915,7 +913,7 @@ namespace fwvulkan
       }
       VkPipelineColorBlendStateCreateInfo GetDefaultBlendState()
       {
-	 VkPipelineColorBlendAttachmentState color_blend_attachment_state = {};
+	 static VkPipelineColorBlendAttachmentState color_blend_attachment_state = {};
 	 color_blend_attachment_state.colorWriteMask =
 	    VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 	 color_blend_attachment_state.blendEnable = VK_FALSE;
@@ -928,7 +926,7 @@ namespace fwvulkan
 	 color_blend_attachment_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	 color_blend_attachment_state.alphaBlendOp = VK_BLEND_OP_ADD;
 	 
-	 VkPipelineColorBlendStateCreateInfo color_blending_create_info = {};
+	  VkPipelineColorBlendStateCreateInfo color_blending_create_info = {};
 	 color_blending_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	 color_blending_create_info.logicOpEnable = VK_FALSE;
 	 // logic op is disabled so this line is optional.
@@ -975,7 +973,6 @@ namespace fwvulkan
 		  stage_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		  stage_create_info.stage = shaders::shaderbit_lut.find((shader::type)i)->second;
 		  stage_create_info.module = module->second;
-		  log::debug("{} whatever that is ", (void*)&module->second);
 		  stage_create_info.pName = "main";
 	       }
 	    }
@@ -1035,7 +1032,6 @@ namespace fwvulkan
 	 throw std::runtime_error("failed to find suitable memory type!");
       }
 
-
       int CreateVertexBuffer(const fw::Vertex* vertices, int num_vertices)
       {
 	 log::debug("Create Vertex Buffer");
@@ -1093,21 +1089,18 @@ namespace fwvulkan
       }
       void RecordDraw(int cb_handle, int vb_handle, int pi_handle, size_t num_vertices)
       {
-	 log::debug("Recording Draw cb: {} vb: {} pi: {} vert: {}", cb_handle, vb_handle, pi_handle, num_vertices);
+	 // log::debug("Recording Draw cb: {} vb: {} pi: {} vert: {}", cb_handle, vb_handle, pi_handle, num_vertices);
 	 auto cb = g_command_buffers[cb_handle];
 	 auto vb = g_vertex_buffers[vb_handle];
-	 int doot = 0 ;
-	 log::debug("doot: {}", doot++);
 	 VkCommandBufferBeginInfo begin_info = {};
 	 begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	 begin_info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 	 begin_info.pInheritanceInfo = nullptr;
-
+	 // log::debug("begin command buffer");
 	 if (vkBeginCommandBuffer(cb, &begin_info) != VK_SUCCESS)
 	 {
 	    throw std::runtime_error("failed to begin recording command buffer!");
 	 }
-	 log::debug("doot: {}", doot++);
 	 VkRenderPassBeginInfo render_pass_begin_info = {};
 	 render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	 render_pass_begin_info.renderPass = g_render_pass;
@@ -1115,31 +1108,35 @@ namespace fwvulkan
 	 render_pass_begin_info.renderArea.offset = {0, 0};
 	 render_pass_begin_info.renderArea.extent = g_swap_chain_extent;
 
-	 VkClearValue clear_color = {{{0.0f, 0.0f, 0.0f, 1.0f}}}; // really? that looks stupid but fixes a warning.
+	 // log::debug("bound fb: {}", g_current_frame);
+
+	 VkClearValue clear_color = {{{0.0f, 0.0f, 0.0f, 1.0f}}}; // fixes a warning
 	 render_pass_begin_info.clearValueCount = 1;
 	 render_pass_begin_info.pClearValues = &clear_color;
-	 log::debug("doot: {}", doot++);
+	 
+	 // log::debug("begin renderpass");
 	 vkCmdBeginRenderPass(cb, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
-	 log::debug("doot: {}", doot++);
+	 
+	 // log::debug("bind pipeline");
 	 vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipelines[pi_handle]);
 
 	 VkBuffer vertex_buffers[] = {vb};
 	 VkDeviceSize offsets[] = {0};
-	 std::cout << "vb: " << vb << std::endl;
-	 std::cout << "vert_buff: " << vertex_buffers << std::endl;
-	 std::cout << "comm_buff: " << cb << std::endl;
-	 log::debug("doot: {}", doot++);
+	 
+	 // log::debug("bind vertext buffer");
 	 vkCmdBindVertexBuffers(cb, 0, 1, vertex_buffers, offsets);
-	 log::debug("doot: {} there", doot++);
+	 
+	 // log::debug("record draw");
 	 vkCmdDraw(cb, num_vertices, 1, 0, 0);
-	 log::debug("doot: {} here", doot++);
+	 
+	 // log::debug("end renderpass");
 	 vkCmdEndRenderPass(cb);
-	 log::debug("doot: {}", doot++);
+	 
+	 // log::debug("end commandbuffer");
 	 if (vkEndCommandBuffer(cb) != VK_SUCCESS)
 	 {
 	    throw std::runtime_error("failed to record command buffer!");
 	 }
-	 log::debug("doot: {}", doot++);
       }
    }
    namespace barriers
@@ -1148,7 +1145,7 @@ namespace fwvulkan
       {
 	 log::debug("CreateSemaphores");
 
-	g_image_available_semaphores.resize(g_max_frames_in_flight);
+	 g_image_available_semaphores.resize(g_max_frames_in_flight);
 	 g_render_finished_semaphores.resize(g_max_frames_in_flight);
 	 g_in_flight_fences.resize(g_max_frames_in_flight);
 
@@ -1214,14 +1211,28 @@ int gGlfwVulkan::init()
 hash::string shaders[shader::e_count];
 void gGlfwVulkan::visit(class physics::collider::polygon* /*_poly*/){}
 void gGlfwVulkan::visit(class camera * /*_camera*/) {}
+struct handles
+{
+   int vb_handle = -1;
+   int pi_handle = -1;
+};
+std::map<fw::Mesh *, handles> g_handles;
 void gGlfwVulkan::visit(fw::Mesh* _mesh)
 {
    using namespace fwvulkan;
-   int vb_handle = buffers::CreateVertexBuffer(_mesh->vbo, _mesh->vbo_len);
+   handles hands;
    int cb_handle = buffers::CreateCommandBuffer();
-   int pi_handle = pipeline::CreatePipeline(_mesh->mat);
-   
-   buffers::RecordDraw(cb_handle, vb_handle, pi_handle, _mesh->vbo_len);
+   auto handles_iter = g_handles.find(_mesh);
+   if(handles_iter == g_handles.end())
+   {
+      hands = {
+	 buffers::CreateVertexBuffer(_mesh->vbo, _mesh->vbo_len),
+	 pipeline::CreatePipeline(_mesh->mat),
+      };
+      g_handles[_mesh] = hands;
+   }
+   else { hands = handles_iter->second; }
+   buffers::RecordDraw(cb_handle, hands.vb_handle, hands.pi_handle, _mesh->vbo_len);
 }
 int gGlfwVulkan::shutdown()
 {
@@ -1275,65 +1286,64 @@ int gGlfwVulkan::update() { return 0; }
 int gGlfwVulkan::render()
 {
    using namespace fwvulkan;
+   log::debug("render current frame: {}", g_current_frame);
    vkWaitForFences(g_logical_device, 1, &g_in_flight_fences[g_current_frame], VK_TRUE, std::numeric_limits<uint64_t>::max());
 
-    uint32_t image_index;
-    VkResult result = vkAcquireNextImageKHR(g_logical_device, g_swap_chain, std::numeric_limits<uint64_t>::max(),
-                                            g_image_available_semaphores[g_current_frame], VK_NULL_HANDLE, &image_index);
+   uint32_t image_index;
+   VkResult result = vkAcquireNextImageKHR(g_logical_device, g_swap_chain, std::numeric_limits<uint64_t>::max(),
+					   g_image_available_semaphores[g_current_frame], VK_NULL_HANDLE, &image_index);
+   if (result == VK_ERROR_OUT_OF_DATE_KHR || g_resized)
+   {
+      g_resized = false;
+      swapchain::RecreateSwapChain();
+      return 0;
+   }
+   else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+   {
+      throw std::runtime_error("failed to acquire swap chain image!");
+   }
+   VkSubmitInfo submit_info = {};
+   submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || g_resized)
-    {
-	g_resized = false;
-	swapchain::RecreateSwapChain();
-        return 0;
-    }
-    else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
-    {
-        throw std::runtime_error("failed to acquire swap chain image!");
-    }
+   VkSemaphore wait_semaphores[] = {g_image_available_semaphores[g_current_frame]};
+   VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+   submit_info.waitSemaphoreCount = 1;
+   submit_info.pWaitSemaphores = wait_semaphores;
+   submit_info.pWaitDstStageMask = wait_stages;
+   submit_info.commandBufferCount = 1;
+   submit_info.pCommandBuffers = &g_command_buffers[image_index];
 
-    VkSubmitInfo submit_info = {};
-    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+   VkSemaphore signal_semaphores[] = {g_render_finished_semaphores[g_current_frame]};
+   submit_info.signalSemaphoreCount = 1;
+   submit_info.pSignalSemaphores = signal_semaphores;
 
-    VkSemaphore wait_semaphores[] = {g_image_available_semaphores[g_current_frame]};
-    VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-    submit_info.waitSemaphoreCount = 1;
-    submit_info.pWaitSemaphores = wait_semaphores;
-    submit_info.pWaitDstStageMask = wait_stages;
-    submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers = &g_command_buffers[image_index];
+   vkResetFences(g_logical_device, 1, &g_in_flight_fences[g_current_frame]);
+   if (vkQueueSubmit(g_graphics_queue, 1, &submit_info, g_in_flight_fences[g_current_frame]) != VK_SUCCESS)
+   {
+      throw std::runtime_error("failed to submit draw command buffer!");
+   }
+   
+   VkPresentInfoKHR present_info = {};
+   present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+   present_info.waitSemaphoreCount = 1;
+   present_info.pWaitSemaphores = signal_semaphores;
+   VkSwapchainKHR swap_chains[] = {g_swap_chain};
+   present_info.swapchainCount = 1;
+   present_info.pSwapchains = swap_chains;
+   present_info.pImageIndices = &image_index;
+   present_info.pResults = nullptr;
 
-    VkSemaphore signal_semaphores[] = {g_render_finished_semaphores[g_current_frame]};
-    submit_info.signalSemaphoreCount = 1;
-    submit_info.pSignalSemaphores = signal_semaphores;
-
-    vkResetFences(g_logical_device, 1, &g_in_flight_fences[g_current_frame]);
-
-    if (vkQueueSubmit(g_graphics_queue, 1, &submit_info, g_in_flight_fences[g_current_frame]) != VK_SUCCESS)
-    {
-        throw std::runtime_error("failed to submit draw command buffer!");
-    }
-    VkPresentInfoKHR present_info = {};
-    present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    present_info.waitSemaphoreCount = 1;
-    present_info.pWaitSemaphores = signal_semaphores;
-    VkSwapchainKHR swap_chains[] = {g_swap_chain};
-    present_info.swapchainCount = 1;
-    present_info.pSwapchains = swap_chains;
-    present_info.pImageIndices = &image_index;
-    present_info.pResults = nullptr;
-
-    result = vkQueuePresentKHR(g_present_queue, &present_info);
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
-    {
-       swapchain::RecreateSwapChain();
-    }
-    else if (result != VK_SUCCESS)
-    {
-        throw std::runtime_error("failed to present swap chain image!");
-    }
-    g_current_frame = (g_current_frame + 1) % g_max_frames_in_flight;
-    return 0;
+   result = vkQueuePresentKHR(g_present_queue, &present_info);
+   if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+   {
+      swapchain::RecreateSwapChain();
+   }
+   else if (result != VK_SUCCESS)
+   {
+      throw std::runtime_error("failed to present swap chain image!");
+   }
+   g_current_frame = (g_current_frame + 1) % g_max_frames_in_flight;
+   return 0;
 }
 
 
