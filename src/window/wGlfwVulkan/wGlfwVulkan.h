@@ -4,11 +4,11 @@
 
 class wGlfwVulkan : public window
 {
- public:
+public:
 
-  int init(int _width, int _height, const char* _name);
-  int move(int _x, int _y);
-  int resize(int _width, int _height);
-   int shutdown();
-
+   int init(int _width, int _height, const char* _name) override;
+   int move(int _x, int _y) override;
+   int update() override;
+   int resize(int _width, int _height) override;
+   int shutdown() override;
 };

@@ -45,14 +45,14 @@ void vulkan_sample::run()
    Mesh mesh = {triangle.data(), triangle.size(), ibo.data(), {}};
    mesh.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
    mesh.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
-   for(int i = 0; i < 16; i++)
+   while (m_window->update())
    {
-      log::debug("frame: {}", i);
       m_graphics->getRenderer()->visit(&mesh);
       m_graphics->render();
-      std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(30));
    }
 }
+
 void vulkan_sample::shutdown()
 {
    m_graphics->shutdown();

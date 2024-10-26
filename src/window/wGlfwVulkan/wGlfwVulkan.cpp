@@ -34,7 +34,15 @@ int wGlfwVulkan::init(int _width, int _height, const char* _name)
    
    return 0;
 }
-
+int wGlfwVulkan::update()
+{
+   if(fwvulkan::g_window != nullptr)
+   {
+      glfwPollEvents();
+      return glfwWindowShouldClose(fwvulkan::g_window) == 0;
+   }
+   return 0;
+}
 int wGlfwVulkan::move(int /*_x*/, int /*_y*/)
 {
   return 0;
@@ -48,7 +56,6 @@ int wGlfwVulkan::resize(int /*_width*/, int /*_height*/)
 int wGlfwVulkan::shutdown()
 {
    // log::debug("clean up!!");
-
    if (fwvulkan::g_window != nullptr)
    {
       glfwDestroyWindow(fwvulkan::g_window);
@@ -57,7 +64,6 @@ int wGlfwVulkan::shutdown()
    }
    return 0;
 }
-
 
 window* window::windowFactory()
 {

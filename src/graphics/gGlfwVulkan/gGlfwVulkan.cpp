@@ -1,6 +1,7 @@
 #include "gGlfwVulkan.h"
 #include "../../../../Libs/Vulkan/1.3.280.1/x86_64/include/vulkan/vulkan.hpp"
 #include "../../../../Libs/glfw-3.4/include/GLFW/glfw3.h"
+#include <cassert>
 #include <cstdint>
 #include <iostream>
 #include <optional>
@@ -66,7 +67,7 @@ namespace fwvulkan
    unsigned int g_flight_frame = 0;
    unsigned int g_current_buffers = 0;
    // renderpass
-   VkRenderPass g_render_pass;
+   VkRenderPass g_render_pass = VK_NULL_HANDLE;
    // shaders
    typedef std::map<fw::hash::string, VkShaderModule> shader_map;
    std::array<shader_map, fw::shader::e_count> g_shaders;
@@ -74,13 +75,19 @@ namespace fwvulkan
    std::vector<VkPipeline> g_pipelines;
    std::vector<VkPipelineLayout> g_pipeline_layouts;
    // commands
-   VkCommandPool g_command_pool;
+   VkCommandPool g_command_pool = VK_NULL_HANDLE;
    std::vector<VkCommandBuffer> g_command_buffers;
    // vertex buffers
    std::vector<VkBuffer> g_vertex_buffers;
    std::vector<VkDeviceMemory> g_vertex_buffer_memory;
    // mesh
    std::vector<Mesh*> g_meshes;
+   struct drawhandles
+   {
+      int vb_handle = -1;
+      int pi_handle = -1;
+   };
+   std::map<fw::Mesh *, drawhandles> g_drawhandles;
    //
    bool g_enable_validation_layers = false;
    const std::vector<const char*> g_instance_extensions = {
@@ -515,6 +522,7 @@ namespace fwvulkan
       void CreateCommandPool()
       {
 	 log::debug("Create Command Pool");
+	 assert(g_command_pool == VK_NULL_HANDLE);
 	 QueueFamilyIndices queue_family_indices = device::FindQueueFamilies(g_physical_device, g_surface);
 	 VkCommandPoolCreateInfo pool_create_info = {};
 	 pool_create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -529,6 +537,7 @@ namespace fwvulkan
       void CreateSwapchainFrameBuffers()
       {
 	 log::debug("CreateSwapchainFrameBuffers");
+	 assert(g_swap_chain_framebuffers.size() == 0);
 	 g_swap_chain_framebuffers.resize(g_swap_chain_image_views.size());
 	 for (size_t i = 0; i < g_swap_chain_image_views.size(); i++)
 	 {
@@ -552,32 +561,45 @@ namespace fwvulkan
       void CleanupSwapChain()
       {
 	 log::debug("CleanupSwapChain");
+	 assert(g_swap_chain != VK_NULL_HANDLE);
 	 vkFreeCommandBuffers(g_logical_device, g_command_pool, static_cast<uint32_t>(g_command_buffers.size()),
 			      g_command_buffers.data());
+	 g_command_buffers.clear();
 	 
 	 for (auto framebuffer : g_swap_chain_framebuffers)
 	 {
 	    vkDestroyFramebuffer(g_logical_device, framebuffer, nullptr);
 	 }
-	 vkDestroyRenderPass(g_logical_device, g_render_pass, nullptr);
-	 
+	 g_swap_chain_framebuffers.clear();
+
 	 for(auto pipeline : g_pipelines)
 	 {
 	    vkDestroyPipeline(g_logical_device, pipeline, nullptr);
 	 }
+	 g_pipelines.clear();
+	 
 	 for(auto layout : g_pipeline_layouts)
 	 {
 	    vkDestroyPipelineLayout(g_logical_device, layout, nullptr);
 	 }
+	 g_pipeline_layouts.clear();
+	 
 	 for (auto image_view : g_swap_chain_image_views)
 	 {
 	    vkDestroyImageView(g_logical_device, image_view, nullptr);
 	 }
+	 g_swap_chain_image_views.clear();
+	 
+	 vkDestroyRenderPass(g_logical_device, g_render_pass, nullptr);
 	 vkDestroySwapchainKHR(g_logical_device, g_swap_chain, nullptr);
+	 g_render_pass = VK_NULL_HANDLE;
+	 g_swap_chain = VK_NULL_HANDLE;
+	 g_drawhandles.clear();
       }
       void CreateSwapchainImageViews()
       {
 	 log::debug("Create Swapchain Image Views");
+	 assert(g_swap_chain_image_views.size() == 0);
 	 g_swap_chain_image_views.resize(g_swap_chain_images.size());
 
 	 for (size_t i = 0; i < g_swap_chain_images.size(); i++)
@@ -656,6 +678,7 @@ namespace fwvulkan
       void CreateSwapChain()
       {
 	 log::debug("Create Swap Chain");
+	 assert(g_swap_chain == VK_NULL_HANDLE);
 	 SwapChainSupportDetails swap_chain_support = device::QuerySwapChainSupport(g_physical_device, g_surface);
 	 VkSurfaceFormatKHR surface_format = ChooseSwapSurfaceFormat(swap_chain_support.formats);
 	 VkPresentModeKHR present_mode = ChooseSwapPresentMode(swap_chain_support.present_modes);
@@ -717,6 +740,7 @@ namespace fwvulkan
       void CreateRenderPass()
       {
 	 log::debug("CreateRenderPass");
+	 assert(g_render_pass == VK_NULL_HANDLE);
 	 VkAttachmentDescription color_attachement = {};
 	 color_attachement.format = g_swap_chain_image_format;
 	 color_attachement.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -760,9 +784,11 @@ namespace fwvulkan
    }
    namespace swapchain
    {
-      //todo this is awkward, fix it.
+
       void RecreateSwapChain()
       {
+	 // todo: the namespace split for this single function is awkward, workout better dependencies / declaration order?
+	 // todo: CreateGraphicsPipeline(); needs to become invalidate pipeline states or something similar.
 	 log::debug("Recreate SwapChain");
 	 int width = 0, height = 0;
 	 while (width == 0 || height == 0)
@@ -771,6 +797,7 @@ namespace fwvulkan
 	    glfwWaitEvents();
 	 }
 	 vkDeviceWaitIdle(g_logical_device);
+	 CleanupSwapChain();
 	 CreateSwapChain();
 	 CreateSwapchainImageViews();
 	 renderpass::CreateRenderPass();
@@ -780,7 +807,6 @@ namespace fwvulkan
    }
    namespace shaders
    {
-
 //       typedef enum VkShaderStageFlagBits {
 //     VK_SHADER_STAGE_VERTEX_BIT = 0x00000001,
 //     VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT = 0x00000002,
@@ -823,6 +849,9 @@ namespace fwvulkan
 
       VkShaderModule CreateShaderModule(const std::vector<char> &code, VkDevice logical_device)
       {
+	 // todo: this should have a cache and we should hash the &code.
+	 // ----: return the shader module if found or assert if we ever 
+	 // ----: try to recreate a shader module.
 	 log::debug("CreateShaderModule");
 	 VkShaderModuleCreateInfo create_info = {};
 	 create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -837,14 +866,12 @@ namespace fwvulkan
 	 return shader_module;
       }
    }
-   namespace buffer
-   {
-      
-   }
    namespace pipeline
    {
       VkPipelineVertexInputStateCreateInfo GetDefaultVertexInputState()
       {
+	 // note: these are static because they're passed by ref below.
+	 // ----: similar should be done if a non default vertex input state func is made.
 	 static VkVertexInputBindingDescription vert_binding_description = vkVertex::GetBindingDescription();
 	 static std::array<VkVertexInputAttributeDescription, 2> vert_attribute_description = vkVertex::GetAttributeDescriptions();
 	 
@@ -873,6 +900,8 @@ namespace fwvulkan
       }
       VkPipelineViewportStateCreateInfo GetDefaultViewportState()
       {
+	 // note: the statics are because they're passed by ref below.
+	 // ----: similar should be done if a non default viewport state func is made.
 	 static VkViewport viewport = {};
 	 viewport.x = 0.0f;
 	 viewport.y = 0.0f;
@@ -956,6 +985,8 @@ namespace fwvulkan
       }
       int CreatePipeline(Material mat)
       {
+	 // todo: rename create default pipeline, or supply args to control below defaults.
+	 // todo: add a cache inside here which can return handles instead of creating new pipelines.
 	 log::debug("CreateGraphicsPipeline");
 	 VkPipelineLayout pipeline_layout;
 	 auto pipeline_layout_ci = GetDefaultPipelineLayout();
@@ -964,7 +995,7 @@ namespace fwvulkan
 	    throw std::runtime_error("failed to create pipeline layout!");
 	 }
 	 unsigned int shader_count = 0;
-	 VkPipelineShaderStageCreateInfo shader_create_infos[2] = {};
+	 VkPipelineShaderStageCreateInfo shader_create_infos[fw::shader::e_count] = {};
 	 for(int i = 0; i < fw::shader::e_count; i++)
 	 {
 	    if(mat[i].is_valid())
@@ -1146,7 +1177,10 @@ namespace fwvulkan
       void CreateSemaphores()
       {
 	 log::debug("CreateSemaphores");
-
+	 assert(g_image_available_semaphores.size() == 0);
+	 assert(g_render_finished_semaphores.size() == 0);
+	 assert(g_in_flight_fences.size() == 0);
+	 
 	 g_image_available_semaphores.resize(g_max_frames_in_flight);
 	 g_render_finished_semaphores.resize(g_max_frames_in_flight);
 	 g_in_flight_fences.resize(g_max_frames_in_flight);
@@ -1213,28 +1247,22 @@ int gGlfwVulkan::init()
 hash::string shaders[shader::e_count];
 void gGlfwVulkan::visit(class physics::collider::polygon* /*_poly*/){}
 void gGlfwVulkan::visit(class camera * /*_camera*/) {}
-struct handles
-{
-   int vb_handle = -1;
-   int pi_handle = -1;
-};
-std::map<fw::Mesh *, handles> g_handles;
 void gGlfwVulkan::visit(fw::Mesh* _mesh)
 {
    using namespace fwvulkan;
-   handles hands;
+   drawhandles drawhandle;
    int cb_handle = buffers::CreateCommandBuffer();
-   auto handles_iter = g_handles.find(_mesh);
-   if(handles_iter == g_handles.end())
+   auto handles_iter = g_drawhandles.find(_mesh);
+   if(handles_iter == g_drawhandles.end())
    {
-      hands = {
+      drawhandle = {
 	 buffers::CreateVertexBuffer(_mesh->vbo, _mesh->vbo_len),
 	 pipeline::CreatePipeline(_mesh->mat),
       };
-      g_handles[_mesh] = hands;
+      g_drawhandles[_mesh] = drawhandle;
    }
-   else { hands = handles_iter->second; }
-   buffers::RecordDraw(cb_handle, hands.vb_handle, hands.pi_handle, _mesh->vbo_len);
+   else { drawhandle = handles_iter->second; }
+   buffers::RecordDraw(cb_handle, drawhandle.vb_handle, drawhandle.pi_handle, _mesh->vbo_len);
 }
 int gGlfwVulkan::shutdown()
 {
@@ -1288,7 +1316,7 @@ int gGlfwVulkan::update() { return 0; }
 int gGlfwVulkan::render()
 {
    using namespace fwvulkan;
-   log::debug("render frames: {} {} {}", g_current_frame, g_flight_frame, g_current_buffers);
+   // log::debug("render frames: {} {} {}", g_current_frame, g_flight_frame, g_current_buffers);
    vkWaitForFences(g_logical_device, 1, &g_in_flight_fences[g_flight_frame], VK_TRUE, std::numeric_limits<uint64_t>::max());
 
    uint32_t image_index;
@@ -1348,7 +1376,6 @@ int gGlfwVulkan::render()
    g_current_frame++;
    g_flight_frame = g_current_buffers % g_max_frames_in_flight;
    g_current_buffers = g_current_frame % g_swap_chain_framebuffers.size();
-   //(g_current_frame + 1) % g_max_frames_in_flight;
    return 0;
 }
 
