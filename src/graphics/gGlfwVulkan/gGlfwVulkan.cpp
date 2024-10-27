@@ -791,6 +791,7 @@ namespace fwvulkan
 	 // todo: CreateGraphicsPipeline(); needs to become invalidate pipeline states or something similar.
 	 log::debug("Recreate SwapChain");
 	 int width = 0, height = 0;
+	 glfwGetFramebufferSize(g_window, &width, &height);
 	 while (width == 0 || height == 0)
 	 {
 	    glfwGetFramebufferSize(g_window, &width, &height);
