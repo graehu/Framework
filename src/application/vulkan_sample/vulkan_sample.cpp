@@ -29,10 +29,16 @@ void vulkan_sample::init()
    m_graphics->init();
 }
 
-const std::vector<Vertex> triangle = {
+const std::vector<Vertex> triangle_1 = {
     {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
     {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
     {{-0.5f, 0.5f}, {1.0f, 0.0f, 1.0f}}
+    };
+
+const std::vector<Vertex> triangle_2 = {
+    {{0.0f+1.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+    {{0.5f+1.0f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+    {{-0.5f+1.0f, 0.5f}, {1.0f, 0.0f, 1.0f}}
     };
 
 void vulkan_sample::run()
@@ -41,13 +47,20 @@ void vulkan_sample::run()
    log::scope vulkan_sample("vulkan_sample", true);
    m_graphics->register_shader("triangle", "shaders/triangle.vert.spv", shader::e_vertex);
    m_graphics->register_shader("triangle", "shaders/triangle.frag.spv", shader::e_fragment);
+   
    std::array<uint32_t,3> ibo = {0, 1, 2};
-   Mesh mesh = {triangle.data(), triangle.size(), ibo.data(), {}};
-   mesh.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
-   mesh.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
+   Mesh mesh1 = {triangle_1.data(), triangle_1.size(), ibo.data(), {}};
+   mesh1.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
+   mesh1.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
+   
+   Mesh mesh2 = {triangle_2.data(), triangle_2.size(), ibo.data(), {}};
+   mesh2.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
+   mesh2.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
+   
    while (m_window->update())
    {
-      m_graphics->getRenderer()->visit(&mesh);
+      m_graphics->getRenderer()->visit(&mesh2);
+      m_graphics->getRenderer()->visit(&mesh1);
       m_graphics->render();
       std::this_thread::sleep_for(std::chrono::milliseconds(30));
    }

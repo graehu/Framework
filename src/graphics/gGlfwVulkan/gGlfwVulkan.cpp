@@ -86,6 +86,7 @@ namespace fwvulkan
    {
       int vb_handle = -1;
       int pi_handle = -1;
+      int cb_handle = -1;
    };
    std::map<fw::Mesh *, drawhandles> g_drawhandles;
    //
@@ -948,19 +949,19 @@ namespace fwvulkan
 	 static VkPipelineColorBlendAttachmentState color_blend_attachment_state = {};
 	 color_blend_attachment_state.colorWriteMask =
 	    VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	 color_blend_attachment_state.blendEnable = VK_FALSE;
+	 color_blend_attachment_state.blendEnable = VK_TRUE;
 	 // blend is disabled so these options do nothing
 	 // they're just an example of some simple blending parameters.
 	 color_blend_attachment_state.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-	 color_blend_attachment_state.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+	 color_blend_attachment_state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
 	 color_blend_attachment_state.colorBlendOp = VK_BLEND_OP_ADD;
 	 color_blend_attachment_state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-	 color_blend_attachment_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	 color_blend_attachment_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
 	 color_blend_attachment_state.alphaBlendOp = VK_BLEND_OP_ADD;
 	 
 	  VkPipelineColorBlendStateCreateInfo color_blending_create_info = {};
 	 color_blending_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	 color_blending_create_info.logicOpEnable = VK_FALSE;
+	 color_blending_create_info.logicOpEnable = VK_TRUE;
 	 // logic op is disabled so this line is optional.
 	 color_blending_create_info.logicOp = VK_LOGIC_OP_COPY;
 	 //
@@ -1068,6 +1069,7 @@ namespace fwvulkan
 
       int CreateVertexBuffer(const fw::Vertex* vertices, int num_vertices)
       {
+	 // todo: make a cache? maybe?
 	 log::debug("Create Vertex Buffer");
 	 VkBufferCreateInfo buffer_create_info = {};
 	 buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -1106,7 +1108,6 @@ namespace fwvulkan
       int CreateCommandBuffer()
       {
 	 log::debug("Create Command buffer");
-
 	 VkCommandBufferAllocateInfo alloc_info = {};
 	 alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	 alloc_info.commandPool = g_command_pool;
@@ -1123,7 +1124,7 @@ namespace fwvulkan
       }
       void RecordDraw(int cb_handle, int vb_handle, int pi_handle, size_t num_vertices)
       {
-	 // log::debug("Recording Draw cb: {} vb: {} pi: {} vert: {}", cb_handle, vb_handle, pi_handle, num_vertices);
+	 log::debug("Recording Draw cb: {} vb: {} pi: {} nverts: {}", cb_handle, vb_handle, pi_handle, num_vertices);
 	 auto cb = g_command_buffers[cb_handle];
 	 auto vb = g_vertex_buffers[vb_handle];
 	 VkCommandBufferBeginInfo begin_info = {};
@@ -1252,18 +1253,19 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
 {
    using namespace fwvulkan;
    drawhandles drawhandle;
-   int cb_handle = buffers::CreateCommandBuffer();
+
    auto handles_iter = g_drawhandles.find(_mesh);
    if(handles_iter == g_drawhandles.end())
    {
       drawhandle = {
 	 buffers::CreateVertexBuffer(_mesh->vbo, _mesh->vbo_len),
 	 pipeline::CreatePipeline(_mesh->mat),
+	 buffers::CreateCommandBuffer()
       };
       g_drawhandles[_mesh] = drawhandle;
    }
    else { drawhandle = handles_iter->second; }
-   buffers::RecordDraw(cb_handle, drawhandle.vb_handle, drawhandle.pi_handle, _mesh->vbo_len);
+   buffers::RecordDraw(drawhandle.cb_handle, drawhandle.vb_handle, drawhandle.pi_handle, _mesh->vbo_len);
 }
 int gGlfwVulkan::shutdown()
 {
@@ -1341,9 +1343,10 @@ int gGlfwVulkan::render()
    submit_info.waitSemaphoreCount = 1;
    submit_info.pWaitSemaphores = wait_semaphores;
    submit_info.pWaitDstStageMask = wait_stages;
-   submit_info.commandBufferCount = 1;
+   submit_info.commandBufferCount = g_command_buffers.size();
    // log::debug("image index: {}", image_index);
-   submit_info.pCommandBuffers = &g_command_buffers[image_index];
+   submit_info.pCommandBuffers = g_command_buffers.data();
+   log::debug("num command buffers: {}", g_command_buffers.size());
 
    VkSemaphore signal_semaphores[] = {g_render_finished_semaphores[g_flight_frame]};
    submit_info.signalSemaphoreCount = 1;
@@ -1377,6 +1380,7 @@ int gGlfwVulkan::render()
    g_current_frame++;
    g_flight_frame = g_current_buffers % g_max_frames_in_flight;
    g_current_buffers = g_current_frame % g_swap_chain_framebuffers.size();
+   vkResetCommandPool(g_logical_device, g_command_pool, 0);
    return 0;
 }
 
