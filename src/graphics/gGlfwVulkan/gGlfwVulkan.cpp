@@ -85,8 +85,9 @@ namespace fwvulkan
    struct drawhandles
    {
       int vb_handle = -1;
+      int num_verts = 0;
       int pi_handle = -1;
-      int cb_handle = -1;
+      // int cb_handle = -1; // these should go with renderpasses
    };
    std::map<fw::Mesh *, drawhandles> g_drawhandles;
    //
@@ -949,19 +950,19 @@ namespace fwvulkan
 	 static VkPipelineColorBlendAttachmentState color_blend_attachment_state = {};
 	 color_blend_attachment_state.colorWriteMask =
 	    VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	 color_blend_attachment_state.blendEnable = VK_TRUE;
+	 color_blend_attachment_state.blendEnable = VK_FALSE;
 	 // blend is disabled so these options do nothing
 	 // they're just an example of some simple blending parameters.
 	 color_blend_attachment_state.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-	 color_blend_attachment_state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	 color_blend_attachment_state.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
 	 color_blend_attachment_state.colorBlendOp = VK_BLEND_OP_ADD;
 	 color_blend_attachment_state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-	 color_blend_attachment_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	 color_blend_attachment_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	 color_blend_attachment_state.alphaBlendOp = VK_BLEND_OP_ADD;
 	 
 	  VkPipelineColorBlendStateCreateInfo color_blending_create_info = {};
 	 color_blending_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	 color_blending_create_info.logicOpEnable = VK_TRUE;
+	 color_blending_create_info.logicOpEnable = VK_FALSE;
 	 // logic op is disabled so this line is optional.
 	 color_blending_create_info.logicOp = VK_LOGIC_OP_COPY;
 	 //
@@ -1122,11 +1123,9 @@ namespace fwvulkan
 	 log::debug("Created command buffer: {}", g_command_buffers.size()-1);
 	 return g_command_buffers.size()-1;
       }
-      void RecordDraw(int cb_handle, int vb_handle, int pi_handle, size_t num_vertices)
+      void RecordPass(std::vector<drawhandles> dhs, int cb_handle)
       {
-	 log::debug("Recording Draw cb: {} vb: {} pi: {} nverts: {}", cb_handle, vb_handle, pi_handle, num_vertices);
 	 auto cb = g_command_buffers[cb_handle];
-	 auto vb = g_vertex_buffers[vb_handle];
 	 VkCommandBufferBeginInfo begin_info = {};
 	 begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	 begin_info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
@@ -1151,19 +1150,21 @@ namespace fwvulkan
 	 
 	 // log::debug("begin renderpass");
 	 vkCmdBeginRenderPass(cb, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
-	 
-	 // log::debug("bind pipeline");
-	 vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipelines[pi_handle]);
+	 for(auto dh : dhs)
+	 {
+	    log::debug("Recording Draw cb: {} vb: {} pi: {} nverts: {}", cb_handle, dh.vb_handle, dh.pi_handle, dh.num_verts);
+	    // log::debug("bind pipeline");
+	    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipelines[dh.pi_handle]);
 
-	 VkBuffer vertex_buffers[] = {vb};
-	 VkDeviceSize offsets[] = {0};
+	    VkBuffer vertex_buffers[] = {g_vertex_buffers[dh.vb_handle]};
+	    VkDeviceSize offsets[] = {0};
 	 
-	 // log::debug("bind vertext buffer");
-	 vkCmdBindVertexBuffers(cb, 0, 1, vertex_buffers, offsets);
+	    // log::debug("bind vertext buffer");
+	    vkCmdBindVertexBuffers(cb, 0, 1, vertex_buffers, offsets);
 	 
-	 // log::debug("record draw");
-	 vkCmdDraw(cb, num_vertices, 1, 0, 0);
-	 
+	    // log::debug("record draw");
+	    vkCmdDraw(cb, dh.num_verts, 1, 0, 0);
+	 }
 	 // log::debug("end renderpass");
 	 vkCmdEndRenderPass(cb);
 	 
@@ -1249,6 +1250,7 @@ int gGlfwVulkan::init()
 hash::string shaders[shader::e_count];
 void gGlfwVulkan::visit(class physics::collider::polygon* /*_poly*/){}
 void gGlfwVulkan::visit(class camera * /*_camera*/) {}
+std::vector<fwvulkan::drawhandles> g_draws;
 void gGlfwVulkan::visit(fw::Mesh* _mesh)
 {
    using namespace fwvulkan;
@@ -1259,13 +1261,13 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
    {
       drawhandle = {
 	 buffers::CreateVertexBuffer(_mesh->vbo, _mesh->vbo_len),
-	 pipeline::CreatePipeline(_mesh->mat),
-	 buffers::CreateCommandBuffer()
+	 (int)_mesh->vbo_len,
+	 pipeline::CreatePipeline(_mesh->mat)
       };
       g_drawhandles[_mesh] = drawhandle;
    }
    else { drawhandle = handles_iter->second; }
-   buffers::RecordDraw(drawhandle.cb_handle, drawhandle.vb_handle, drawhandle.pi_handle, _mesh->vbo_len);
+   g_draws.push_back(drawhandle);
 }
 int gGlfwVulkan::shutdown()
 {
@@ -1319,6 +1321,13 @@ int gGlfwVulkan::update() { return 0; }
 int gGlfwVulkan::render()
 {
    using namespace fwvulkan;
+   int cb_handle = -1;
+   if(g_command_buffers.size() == 0)
+   {
+      cb_handle = buffers::CreateCommandBuffer();
+   }
+   else { cb_handle = 0; }
+   fwvulkan::buffers::RecordPass(g_draws, cb_handle);
    // log::debug("render frames: {} {} {}", g_current_frame, g_flight_frame, g_current_buffers);
    vkWaitForFences(g_logical_device, 1, &g_in_flight_fences[g_flight_frame], VK_TRUE, std::numeric_limits<uint64_t>::max());
 
@@ -1381,6 +1390,7 @@ int gGlfwVulkan::render()
    g_flight_frame = g_current_buffers % g_max_frames_in_flight;
    g_current_buffers = g_current_frame % g_swap_chain_framebuffers.size();
    vkResetCommandPool(g_logical_device, g_command_pool, 0);
+   g_draws.clear();
    return 0;
 }
 
