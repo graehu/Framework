@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <string>
 #include <cstring>
+#include <array>
 #include <type_traits>
 
 using namespace fw;
@@ -33,6 +34,9 @@ struct struct_c
 {
    void method_b() { log::info("this wont be called"); }
 };
+
+std::array<struct_a, 5> struct_as = {};
+std::vector<struct_a> struct_vas = {};
 
 
 struct MethodABase {}; // concrete type to call funcs on
@@ -62,9 +66,29 @@ void CallMethodAPtr(MethodABase* base, MethodAPtr ptr)
    if (base != nullptr && ptr != nullptr) { (base->*ptr)(1); }
 }
 
+template <typename t, unsigned long num>
+void CallMethodArray(std::array<t, num> in)
+{
+   for(auto mem : in)
+   {
+      MethodAHelper<decltype(mem)>::Call(mem);
+   }
+}
+template <typename t>
+void CallMethodArray(std::vector<t> in)
+{
+   for(auto mem : in)
+   {
+      MethodAHelper<decltype(mem)>::Call(mem);
+   }
+}
+
 void new_sample::run()
 {
    log::scope new_sample("new_sample", true);
+   struct_vas.reserve(2);
+   CallMethodArray(struct_as);
+   CallMethodArray(struct_vas);
    {
       struct_a test_a;
       struct_b test_b;
