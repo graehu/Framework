@@ -3,10 +3,6 @@
 #include "../../utils/params.h"
 #include "../../utils/string_helpers.h"
 #include "../../networking/packet/packet.h"
-#include <cstdint>
-#include <string>
-#include <cstring>
-#include <array>
 #include <type_traits>
 
 using namespace fw;
@@ -22,6 +18,7 @@ struct struct_a
    void method_a(int test) { log::info("this function will be called {} <-> {}", data, test); }
    void method_b(int test) { log::info("this wont be called {}", test); }
    int data;
+   int again;
 };
 
 struct struct_b
@@ -35,12 +32,12 @@ struct struct_c
    void method_b() { log::info("this wont be called"); }
 };
 
-std::array<struct_a, 5> struct_as = {};
 std::vector<struct_a> struct_vas = {};
 
 
 struct MethodABase {}; // concrete type to call funcs on
 typedef void (MethodABase::* MethodAPtr)(int);
+
 template <typename _Type>
 struct MethodAHelper
 {
@@ -61,35 +58,50 @@ struct MethodAHelper
    static MethodAPtr GetPtr(std::true_type){ return (MethodAPtr)&_Type::method_a; }
    static MethodAPtr GetPtr(std::false_type){ return nullptr; }
 };
-void CallMethodAPtr(MethodABase* base, MethodAPtr ptr)
+
+struct MethodHandler
 {
-   if (base != nullptr && ptr != nullptr) { (base->*ptr)(1); }
+   void Call()
+   {
+      MethodABase* itr = base;
+      for(unsigned long i = 0; i < num; i++)
+      {
+	 if (base != nullptr && ptr != nullptr) { ((itr)->*(ptr))(i); }
+	 itr += stride;
+      }
+   }
+   MethodABase* base;
+   MethodAPtr ptr;
+   unsigned long num = 1;
+   size_t stride = sizeof(MethodABase);
+};
+
+// this only works for contiguous memory.
+// it also assumes the type implements size and operator[]
+// might be better to just iterate and store array of base ptrs up to some max.
+template <template <class, typename...> class c, class t>
+MethodHandler GetMethodAHandler(c<t>& in)
+{
+   log::info("Generate array method handler");
+   MethodHandler out = { (MethodABase*)&in[0], MethodAHelper<t>::GetPtr(), in.size(), sizeof(t) };
+   return out;
 }
 
-template <typename t, unsigned long num>
-void CallMethodArray(std::array<t, num> in)
-{
-   for(auto mem : in)
-   {
-      MethodAHelper<decltype(mem)>::Call(mem);
-   }
-}
+// this works for anything.
 template <typename t>
-void CallMethodArray(std::vector<t> in)
+MethodHandler GetMethodAHandler(t& in)
 {
-   for(auto mem : in)
-   {
-      MethodAHelper<decltype(mem)>::Call(mem);
-   }
+   log::info("Generate base method handler");
+   MethodHandler out = { (MethodABase*)&in, MethodAHelper<t>::GetPtr() };
+   return out;
 }
 
 void new_sample::run()
 {
    log::scope new_sample("new_sample", true);
-   struct_vas.reserve(2);
-   CallMethodArray(struct_as);
-   CallMethodArray(struct_vas);
    {
+      struct_vas.push_back({0,20,9});
+      struct_vas.push_back({0,30,0});
       struct_a test_a;
       struct_b test_b;
       struct_c test_c;
@@ -97,21 +109,19 @@ void new_sample::run()
       // MethodAHelper<decltype(test_b)>::Call(test_b); // this is a compile error, wrong declaration
       MethodAHelper<decltype(test_c)>::Call(test_c); // handles missing declaration
       test_a.data = 10;
-      auto ptr = MethodAHelper<decltype(test_a)>::GetPtr();
-      CallMethodAPtr((MethodABase*)&test_a, ptr); // calls the correct function
-      ptr = MethodAHelper<decltype(test_b)>::GetPtr();
-      CallMethodAPtr((MethodABase*)&test_b, ptr); // calls incorrect fuction, kind of.
-      ptr = MethodAHelper<decltype(test_c)>::GetPtr();
-      CallMethodAPtr((MethodABase*)&test_c, ptr); // handles nullptr
-      {
-	 typedef net::NewPacket<32> test_packet;
-	 test_packet test; test.Clear();
-	 log::info("test packet size should be zero == {}", test.GetSize());
-      }
-      {
-	 typedef net::NewPacket<32, short> test_packet;
-	 test_packet test; test.Clear();
-	 log::info("test packet size should be 2 == {}", test.GetSize());
-      }
+      GetMethodAHandler(test_a).Call(); // calls the correct function
+      GetMethodAHandler(test_b).Call(); // calls incorrect fuction, kind of.
+      GetMethodAHandler(test_c).Call(); // handles nullptr
+      GetMethodAHandler(struct_vas).Call(); // handles vectors without knowing the type.
+   }
+   {
+      typedef net::NewPacket<32> test_packet;
+      test_packet test; test.Clear();
+      log::info("test packet size should be zero == {}", test.GetSize());
+   }
+   {
+      typedef net::NewPacket<32, short> test_packet;
+      test_packet test; test.Clear();
+      log::info("test packet size should be 2 == {}", test.GetSize());
    }
 }
