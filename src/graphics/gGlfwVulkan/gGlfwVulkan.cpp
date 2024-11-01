@@ -67,7 +67,15 @@ namespace fwvulkan
    unsigned int g_flight_frame = 0;
    unsigned int g_current_buffers = 0;
    // renderpass
-   VkRenderPass g_render_pass = VK_NULL_HANDLE;
+   // the default one used for the swapchain
+   struct PassHandler
+   {
+      // PassHandler(VkCommandBuffer c, VkRenderPass p) : cmd_buffer(c), pass(p){}
+      VkRenderPass pass = VK_NULL_HANDLE;
+      VkCommandBuffer cmd_buffer = VK_NULL_HANDLE;
+   };
+   std::map<fw::hash::string, PassHandler> g_pass_map;
+   
    // shaders
    typedef std::map<fw::hash::string, VkShaderModule> shader_map;
    std::array<shader_map, fw::shader::e_count> g_shaders;
@@ -546,7 +554,7 @@ namespace fwvulkan
 	    VkImageView attachments[] = {g_swap_chain_image_views[i]};
 	    VkFramebufferCreateInfo framebuffer_create_info = {};
 	    framebuffer_create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	    framebuffer_create_info.renderPass = g_render_pass;
+	    framebuffer_create_info.renderPass = g_pass_map["default"].pass;
 	    framebuffer_create_info.attachmentCount = 1;
 	    framebuffer_create_info.pAttachments = attachments;
 	    framebuffer_create_info.width = g_swap_chain_extent.width;
@@ -591,10 +599,12 @@ namespace fwvulkan
 	    vkDestroyImageView(g_logical_device, image_view, nullptr);
 	 }
 	 g_swap_chain_image_views.clear();
-	 
-	 vkDestroyRenderPass(g_logical_device, g_render_pass, nullptr);
+	 for (auto pass : g_pass_map)
+	 {
+	    vkDestroyRenderPass(g_logical_device, pass.second.pass, nullptr);
+	 }
+	 g_pass_map.clear();
 	 vkDestroySwapchainKHR(g_logical_device, g_swap_chain, nullptr);
-	 g_render_pass = VK_NULL_HANDLE;
 	 g_swap_chain = VK_NULL_HANDLE;
 	 g_drawhandles.clear();
       }
@@ -739,54 +749,72 @@ namespace fwvulkan
    }
    namespace renderpass
    {
-      void CreateRenderPass()
+      void CreateDefaultRenderPass(hash::string passname)
       {
-	 log::debug("CreateRenderPass");
-	 assert(g_render_pass == VK_NULL_HANDLE);
-	 VkAttachmentDescription color_attachement = {};
-	 color_attachement.format = g_swap_chain_image_format;
-	 color_attachement.samples = VK_SAMPLE_COUNT_1_BIT;
-	 color_attachement.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	 color_attachement.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	 color_attachement.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	 color_attachement.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	 color_attachement.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	 color_attachement.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-	 VkAttachmentReference color_attachemnt_reference = {};
-	 color_attachemnt_reference.attachment = 0;
-	 color_attachemnt_reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-	 VkSubpassDescription subpass_description = {};
-	 subpass_description.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	 subpass_description.colorAttachmentCount = 1;
-	 subpass_description.pColorAttachments = &color_attachemnt_reference;
-
-	 VkSubpassDependency subpass_dependency = {};
-	 subpass_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-	 subpass_dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	 subpass_dependency.dstSubpass = 0;
-	 subpass_dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	 subpass_dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-	 VkRenderPassCreateInfo render_pass_create_info = {};
-	 render_pass_create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	 render_pass_create_info.attachmentCount = 1;
-	 render_pass_create_info.pAttachments = &color_attachement;
-	 render_pass_create_info.subpassCount = 1;
-	 render_pass_create_info.pSubpasses = &subpass_description;
-	 render_pass_create_info.dependencyCount = 1;
-	 render_pass_create_info.pDependencies = &subpass_dependency;
-
-	 if (vkCreateRenderPass(g_logical_device, &render_pass_create_info, nullptr, &g_render_pass) != VK_SUCCESS)
+	 log::debug("CreateDefaultRenderPass");
+	 if(g_pass_map.find(passname) == g_pass_map.end())
 	 {
-	    throw std::runtime_error("failed to create render pass!");
+	    VkAttachmentDescription color_attachement = {};
+	    color_attachement.format = g_swap_chain_image_format;
+	    color_attachement.samples = VK_SAMPLE_COUNT_1_BIT;
+	    color_attachement.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	    color_attachement.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	    color_attachement.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	    color_attachement.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	    color_attachement.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	    color_attachement.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+	    VkAttachmentReference color_attachemnt_reference = {};
+	    color_attachemnt_reference.attachment = 0;
+	    color_attachemnt_reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	    VkSubpassDescription subpass_description = {};
+	    subpass_description.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	    subpass_description.colorAttachmentCount = 1;
+	    subpass_description.pColorAttachments = &color_attachemnt_reference;
+
+	    VkSubpassDependency subpass_dependency = {};
+	    subpass_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	    subpass_dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	    subpass_dependency.dstSubpass = 0;
+	    subpass_dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	    subpass_dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+	    VkRenderPassCreateInfo render_pass_create_info = {};
+	    render_pass_create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	    render_pass_create_info.attachmentCount = 1;
+	    render_pass_create_info.pAttachments = &color_attachement;
+	    render_pass_create_info.subpassCount = 1;
+	    render_pass_create_info.pSubpasses = &subpass_description;
+	    render_pass_create_info.dependencyCount = 1;
+	    render_pass_create_info.pDependencies = &subpass_dependency;
+	    
+	    VkRenderPass pass;
+	    if (vkCreateRenderPass(g_logical_device, &render_pass_create_info, nullptr, &pass) != VK_SUCCESS)
+	    {
+	       throw std::runtime_error("failed to create render pass!");
+	    }
+	    
+	    VkCommandBufferAllocateInfo alloc_info = {};
+	    alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	    alloc_info.commandPool = g_command_pool;
+	    alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	    alloc_info.commandBufferCount = 1;
+	    
+	    VkCommandBuffer buffer;
+	    if (vkAllocateCommandBuffers(g_logical_device, &alloc_info, &buffer) != VK_SUCCESS)
+	    {
+	       throw std::runtime_error("failed to allocate command buffers!");
+	    }
+	    g_pass_map[passname] = {pass, buffer};
+	    g_command_buffers.push_back(buffer);
+	    log::debug("Renderpass '{}' created.", passname.m_literal);
+
 	 }
       }
    }
    namespace swapchain
    {
-
       void RecreateSwapChain()
       {
 	 // todo: the namespace split for this single function is awkward, workout better dependencies / declaration order?
@@ -803,8 +831,7 @@ namespace fwvulkan
 	 CleanupSwapChain();
 	 CreateSwapChain();
 	 CreateSwapchainImageViews();
-	 renderpass::CreateRenderPass();
-	 // CreateGraphicsPipeline();
+	 renderpass::CreateDefaultRenderPass("default");
 	 CreateSwapchainFrameBuffers();
       }
    }
@@ -984,7 +1011,6 @@ namespace fwvulkan
 	 pipeline_layout_create_info.pushConstantRangeCount = 0;
 	 pipeline_layout_create_info.pPushConstantRanges = nullptr;
 	 return pipeline_layout_create_info;
-
       }
       int CreatePipeline(Material mat)
       {
@@ -1033,7 +1059,9 @@ namespace fwvulkan
 	 pipeline_ci.pColorBlendState = &blend_state_ci;
 	 pipeline_ci.pDynamicState = nullptr;
 	 pipeline_ci.layout = pipeline_layout;
-	 pipeline_ci.renderPass = g_render_pass;
+	 // note: this pipeline isn't limited to this render pass.
+	 // ----: but we do require a render pass, so setup a default.
+	 pipeline_ci.renderPass = g_pass_map["default"].pass;
 	 pipeline_ci.subpass = 0;
 	 pipeline_ci.basePipelineHandle = VK_NULL_HANDLE;
 	 pipeline_ci.basePipelineIndex = -1;
@@ -1123,21 +1151,21 @@ namespace fwvulkan
 	 log::debug("Created command buffer: {}", g_command_buffers.size()-1);
 	 return g_command_buffers.size()-1;
       }
-      void RecordPass(std::vector<drawhandles> dhs, int cb_handle)
+      void RecordPass(hash::string pass, std::vector<drawhandles> dhs)
       {
-	 auto cb = g_command_buffers[cb_handle];
 	 VkCommandBufferBeginInfo begin_info = {};
 	 begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	 begin_info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 	 begin_info.pInheritanceInfo = nullptr;
-	 // log::debug("begin command buffer");
+	 
+	 auto cb = g_pass_map[pass].cmd_buffer;
 	 if (vkBeginCommandBuffer(cb, &begin_info) != VK_SUCCESS)
 	 {
 	    throw std::runtime_error("failed to begin recording command buffer!");
 	 }
 	 VkRenderPassBeginInfo render_pass_begin_info = {};
 	 render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	 render_pass_begin_info.renderPass = g_render_pass;
+	 render_pass_begin_info.renderPass = g_pass_map["default"].pass;
 	 render_pass_begin_info.framebuffer = g_swap_chain_framebuffers[g_current_buffers];
 	 render_pass_begin_info.renderArea.offset = {0, 0};
 	 render_pass_begin_info.renderArea.extent = g_swap_chain_extent;
@@ -1152,9 +1180,10 @@ namespace fwvulkan
 	 vkCmdBeginRenderPass(cb, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 	 for(auto dh : dhs)
 	 {
-	    log::debug("Recording Draw cb: {} vb: {} pi: {} nverts: {}", cb_handle, dh.vb_handle, dh.pi_handle, dh.num_verts);
+	    // log::debug("Recording Draw vb: {} pi: {} nverts: {}", dh.vb_handle, dh.pi_handle, dh.num_verts);
 	    // log::debug("bind pipeline");
 	    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipelines[dh.pi_handle]);
+
 
 	    VkBuffer vertex_buffers[] = {g_vertex_buffers[dh.vb_handle]};
 	    VkDeviceSize offsets[] = {0};
@@ -1238,10 +1267,10 @@ int gGlfwVulkan::init()
    device::CreateLogicalDevice();
    swapchain::CreateSwapChain();
    swapchain::CreateSwapchainImageViews();
-   renderpass::CreateRenderPass(); // user to do, except for swapchain / default renderpass
+   swapchain::CreateCommandPool();
+   renderpass::CreateDefaultRenderPass("default"); // user to do, except for swapchain / default renderpass
    // pipeline::CreateGraphicsPipeline(); // user to do.
    swapchain::CreateSwapchainFrameBuffers();
-   swapchain::CreateCommandPool();
    // buffers::CreateVertexBuffer(); // user to do
    // buffers::CreateCommandBuffers(); // user to do, except for swapchain / default renderpass
    barriers::CreateSemaphores();   // user to do, except for swapchain / default renderpass
@@ -1321,13 +1350,7 @@ int gGlfwVulkan::update() { return 0; }
 int gGlfwVulkan::render()
 {
    using namespace fwvulkan;
-   int cb_handle = -1;
-   if(g_command_buffers.size() == 0)
-   {
-      cb_handle = buffers::CreateCommandBuffer();
-   }
-   else { cb_handle = 0; }
-   fwvulkan::buffers::RecordPass(g_draws, cb_handle);
+   fwvulkan::buffers::RecordPass("default", g_draws);
    // log::debug("render frames: {} {} {}", g_current_frame, g_flight_frame, g_current_buffers);
    vkWaitForFences(g_logical_device, 1, &g_in_flight_fences[g_flight_frame], VK_TRUE, std::numeric_limits<uint64_t>::max());
 
@@ -1355,7 +1378,7 @@ int gGlfwVulkan::render()
    submit_info.commandBufferCount = g_command_buffers.size();
    // log::debug("image index: {}", image_index);
    submit_info.pCommandBuffers = g_command_buffers.data();
-   log::debug("num command buffers: {}", g_command_buffers.size());
+   // log::debug("num command buffers: {}", g_command_buffers.size());
 
    VkSemaphore signal_semaphores[] = {g_render_finished_semaphores[g_flight_frame]};
    submit_info.signalSemaphoreCount = 1;
@@ -1434,6 +1457,12 @@ bool gGlfwVulkan::register_shader(fw::hash::string name, const char* path, fw::s
    auto shader_code = read_file(path);
    auto shader = shaders::CreateShaderModule(shader_code, g_logical_device);
    g_shaders[type][name] = shader;
+   return true;
+}
+
+bool gGlfwVulkan::register_pass(fw::hash::string)
+{
+   using namespace fwvulkan;
    return true;
 }
 

@@ -30,16 +30,16 @@ void vulkan_sample::init()
 }
 
 const std::vector<Vertex> triangle_1 = {
-    {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-    {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-    {{-0.5f, 0.5f}, {1.0f, 0.0f, 1.0f}}
-    };
+   {{ 0.0f,-0.5f}, {1.0f, 0.0f, 0.0f}},
+   {{ 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+   {{-0.5f, 0.5f}, {1.0f, 0.0f, 1.0f}}
+};
 
 const std::vector<Vertex> triangle_2 = {
-    {{0.0f+1.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-    {{0.5f+1.0f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-    {{-0.5f+1.0f, 0.5f}, {1.0f, 0.0f, 1.0f}}
-    };
+   {{( 0.0f+1.0f)*.5f, (-0.5f)*.5f}, {1.0f, 0.0f, 0.0f}},
+   {{( 0.5f+1.0f)*.5f, ( 0.5f)*.5f}, {0.0f, 1.0f, 0.0f}},
+   {{(-0.5f+1.0f)*.5f, ( 0.5f)*.5f}, {1.0f, 0.0f, 1.0f}}
+};
 
 void vulkan_sample::run()
 {
@@ -59,8 +59,8 @@ void vulkan_sample::run()
    
    while (m_window->update())
    {
-      m_graphics->getRenderer()->visit(&mesh2);
       m_graphics->getRenderer()->visit(&mesh1);
+      m_graphics->getRenderer()->visit(&mesh2);
       m_graphics->render();
       std::this_thread::sleep_for(std::chrono::milliseconds(30));
    }

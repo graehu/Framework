@@ -18,6 +18,7 @@ public:
    int shutdown() override;
 
    bool register_shader(fw::hash::string name, const char* path, fw::shader::type type) override;
+   bool register_pass(fw::hash::string name) override;
 
    iRenderVisitor* getRenderer(void) override;
 
