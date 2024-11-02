@@ -68,20 +68,24 @@ namespace fwvulkan
    unsigned int g_current_buffers = 0;
    // renderpass
    // the default one used for the swapchain
-   struct PassHandler
+   struct PassHandle
    {
-      // PassHandler(VkCommandBuffer c, VkRenderPass p) : cmd_buffer(c), pass(p){}
       VkRenderPass pass = VK_NULL_HANDLE;
       VkCommandBuffer cmd_buffer = VK_NULL_HANDLE;
    };
-   std::map<fw::hash::string, PassHandler> g_pass_map;
+   std::map<fw::hash::string, PassHandle> g_pass_map;
    
    // shaders
    typedef std::map<fw::hash::string, VkShaderModule> shader_map;
    std::array<shader_map, fw::shader::e_count> g_shaders;
    // pipeline
-   std::vector<VkPipeline> g_pipelines;
-   std::vector<VkPipelineLayout> g_pipeline_layouts;
+   struct PipelineHandle
+   {
+      VkPipeline pipeline = VK_NULL_HANDLE;
+      VkPipelineLayout layout = VK_NULL_HANDLE;
+   };
+   std::map<uint32_t, PipelineHandle> g_pipe_map;
+   
    // commands
    VkCommandPool g_command_pool = VK_NULL_HANDLE;
    std::vector<VkCommandBuffer> g_command_buffers;
@@ -94,14 +98,14 @@ namespace fwvulkan
    std::map<uint32_t, VBHandle> g_vb_map;
    // mesh
    std::vector<Mesh*> g_meshes;
-   struct drawhandles
+   struct DrawHandle
    {
       int vb_handle = -1;
       int num_verts = 0;
       int pi_handle = -1;
       // int cb_handle = -1; // these should go with renderpasses
    };
-   std::map<fw::Mesh *, drawhandles> g_drawhandles;
+   std::map<fw::Mesh *, DrawHandle> g_drawhandles;
    //
    bool g_enable_validation_layers = false;
    const std::vector<const char*> g_instance_extensions = {
@@ -587,18 +591,6 @@ namespace fwvulkan
 	    vkDestroyFramebuffer(g_logical_device, framebuffer, nullptr);
 	 }
 	 g_swap_chain_framebuffers.clear();
-
-	 for(auto pipeline : g_pipelines)
-	 {
-	    vkDestroyPipeline(g_logical_device, pipeline, nullptr);
-	 }
-	 g_pipelines.clear();
-	 
-	 for(auto layout : g_pipeline_layouts)
-	 {
-	    vkDestroyPipelineLayout(g_logical_device, layout, nullptr);
-	 }
-	 g_pipeline_layouts.clear();
 	 
 	 for (auto image_view : g_swap_chain_image_views)
 	 {
@@ -934,21 +926,33 @@ namespace fwvulkan
 	 rasteriser_create_info.depthBiasSlopeFactor = 0.0f;
 	 return rasteriser_create_info;
       }
-      VkPipelineViewportStateCreateInfo GetDefaultViewportState()
+      VkViewport GetDefaultViewport()
       {
-	 // note: the statics are because they're passed by ref below.
-	 // ----: similar should be done if a non default viewport state func is made.
-	 static VkViewport viewport = {};
+	 VkViewport viewport = {};
 	 viewport.x = 0.0f;
 	 viewport.y = 0.0f;
 	 viewport.width = (float)g_swap_chain_extent.width;
 	 viewport.height = (float)g_swap_chain_extent.height;
 	 viewport.minDepth = 0.0f;
 	 viewport.maxDepth = 1.0f;
-
-	 static VkRect2D scissor = {};
+	 return viewport;
+      }
+      VkRect2D GetDefaultScissor()
+      {
+	 VkRect2D scissor = {};
 	 scissor.offset = {0, 0};
 	 scissor.extent = g_swap_chain_extent;
+	 return scissor;
+      }
+      VkPipelineViewportStateCreateInfo GetDefaultViewportState()
+      {
+	 // note: the statics are because they're passed by ref below.
+	 // ----: similar should be done if a non default viewport state func is made.
+	 static VkViewport viewport = {};
+	 viewport = GetDefaultViewport();
+	 
+	 static VkRect2D scissor = {};
+	 scissor = GetDefaultScissor();
 
 	 VkPipelineViewportStateCreateInfo viewport_state_create_info = {};
 	 viewport_state_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -1022,66 +1026,73 @@ namespace fwvulkan
       {
 	 // todo: add a cache inside here which can return handles instead of creating new pipelines.
 	 log::debug("CreateGraphicsPipeline");
-	 VkPipelineLayout pipeline_layout;
-	 auto pipeline_layout_ci = GetDefaultPipelineLayout();
-	 if (vkCreatePipelineLayout(g_logical_device, &pipeline_layout_ci, nullptr, &pipeline_layout) != VK_SUCCESS)
+	 auto hash = hash::i32((const char*)&mat, sizeof(Material));
+	 if(g_pipe_map.find(hash) == g_pipe_map.end())
 	 {
-	    throw std::runtime_error("failed to create pipeline layout!");
-	 }
-	 unsigned int shader_count = 0;
-	 VkPipelineShaderStageCreateInfo shader_create_infos[fw::shader::e_count] = {};
-	 for(int i = 0; i < fw::shader::e_count; i++)
-	 {
-	    if(mat[i].is_valid())
+	    VkPipelineLayout pipeline_layout;
+	    auto pipeline_layout_ci = GetDefaultPipelineLayout();
+	    if (vkCreatePipelineLayout(g_logical_device, &pipeline_layout_ci, nullptr, &pipeline_layout) != VK_SUCCESS)
 	    {
-	       if(auto module = g_shaders[i].find(mat[i]); module != g_shaders[i].end())
+	       throw std::runtime_error("failed to create pipeline layout!");
+	    }
+	    unsigned int shader_count = 0;
+	    VkPipelineShaderStageCreateInfo shader_create_infos[fw::shader::e_count] = {};
+	    for(int i = 0; i < fw::shader::e_count; i++)
+	    {
+	       if(mat[i].is_valid())
 	       {
-		  VkPipelineShaderStageCreateInfo& stage_create_info = shader_create_infos[shader_count++];
-		  stage_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		  stage_create_info.stage = shaders::shaderbit_lut.find((shader::type)i)->second;
-		  stage_create_info.module = module->second;
-		  stage_create_info.pName = "main";
+		  if(auto module = g_shaders[i].find(mat[i]); module != g_shaders[i].end())
+		  {
+		     VkPipelineShaderStageCreateInfo& stage_create_info = shader_create_infos[shader_count++];
+		     stage_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		     stage_create_info.stage = shaders::shaderbit_lut.find((shader::type)i)->second;
+		     stage_create_info.module = module->second;
+		     stage_create_info.pName = "main";
+		  }
 	       }
 	    }
+	    auto vertex_input_ci = GetDefaultVertexInputState();
+	    auto input_assembly_ci = GetDefaultIAState();
+	    auto viewport_state_ci = GetDefaultViewportState();
+	    auto raster_state_ci = GetDefaultRasterState();
+	    auto multisample_state_ci = GetDefaultMultisampleState();
+	    auto blend_state_ci = GetDefaultBlendState();
+	 
+	    VkGraphicsPipelineCreateInfo pipeline_ci = {};
+	    pipeline_ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	    pipeline_ci.stageCount = shader_count;
+	    pipeline_ci.pStages = shader_create_infos;
+	    pipeline_ci.pVertexInputState = &vertex_input_ci;
+	    pipeline_ci.pInputAssemblyState = &input_assembly_ci;
+	    pipeline_ci.pViewportState = &viewport_state_ci;
+	    pipeline_ci.pRasterizationState = &raster_state_ci;
+	    pipeline_ci.pMultisampleState = &multisample_state_ci;
+	    pipeline_ci.pDepthStencilState = nullptr;
+	    pipeline_ci.pColorBlendState = &blend_state_ci;
+	    pipeline_ci.pDynamicState = nullptr;
+	    pipeline_ci.layout = pipeline_layout;
+	    // note: this pipeline isn't limited to this render pass.
+	    // ----: but we do require a render pass, so setup a default.
+	    pipeline_ci.renderPass = g_pass_map["default"].pass;
+	    pipeline_ci.subpass = 0;
+	    pipeline_ci.basePipelineHandle = VK_NULL_HANDLE;
+	    pipeline_ci.basePipelineIndex = -1;
+	 
+	    VkPipeline graphics_pipeline;
+	    if (vkCreateGraphicsPipelines(g_logical_device, VK_NULL_HANDLE, 1, &pipeline_ci, nullptr,
+					  &graphics_pipeline) != VK_SUCCESS)
+	    {
+	       throw std::runtime_error("failed to create graphics pipeline!");
+	    }
+	    g_pipe_map[hash] = {graphics_pipeline, pipeline_layout};
+	    log::debug("pipeline created id: {}", hash);
 	 }
-	 auto vertex_input_ci = GetDefaultVertexInputState();
-	 auto input_assembly_ci = GetDefaultIAState();
-	 auto viewport_state_ci = GetDefaultViewportState();
-	 auto raster_state_ci = GetDefaultRasterState();
-	 auto multisample_state_ci = GetDefaultMultisampleState();
-	 auto blend_state_ci = GetDefaultBlendState();
-	 
-	 VkGraphicsPipelineCreateInfo pipeline_ci = {};
-	 pipeline_ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	 pipeline_ci.stageCount = shader_count;
-	 pipeline_ci.pStages = shader_create_infos;
-	 pipeline_ci.pVertexInputState = &vertex_input_ci;
-	 pipeline_ci.pInputAssemblyState = &input_assembly_ci;
-	 pipeline_ci.pViewportState = &viewport_state_ci;
-	 pipeline_ci.pRasterizationState = &raster_state_ci;
-	 pipeline_ci.pMultisampleState = &multisample_state_ci;
-	 pipeline_ci.pDepthStencilState = nullptr;
-	 pipeline_ci.pColorBlendState = &blend_state_ci;
-	 pipeline_ci.pDynamicState = nullptr;
-	 pipeline_ci.layout = pipeline_layout;
-	 // note: this pipeline isn't limited to this render pass.
-	 // ----: but we do require a render pass, so setup a default.
-	 pipeline_ci.renderPass = g_pass_map["default"].pass;
-	 pipeline_ci.subpass = 0;
-	 pipeline_ci.basePipelineHandle = VK_NULL_HANDLE;
-	 pipeline_ci.basePipelineIndex = -1;
-	 
-	 VkPipeline graphics_pipeline;
-	 if (vkCreateGraphicsPipelines(g_logical_device, VK_NULL_HANDLE, 1, &pipeline_ci, nullptr,
-				       &graphics_pipeline) != VK_SUCCESS)
+	 else
 	 {
-	    throw std::runtime_error("failed to create graphics pipeline!");
+	    log::debug("pipeline reuse id: {}", hash);
 	 }
 
-	 g_pipelines.push_back(graphics_pipeline);
-	 g_pipeline_layouts.push_back(pipeline_layout);
-	 log::debug("pipeline created id: {}", g_pipelines.size()-1);
-	 return g_pipelines.size() - 1;
+	 return hash;
       }
    }
    namespace buffers
@@ -1162,7 +1173,7 @@ namespace fwvulkan
 	 log::debug("Created command buffer: {}", g_command_buffers.size()-1);
 	 return g_command_buffers.size()-1;
       }
-      void RecordPass(hash::string pass, std::vector<drawhandles> dhs)
+      void RecordPass(hash::string pass, std::vector<DrawHandle> dhs)
       {
 	 VkCommandBufferBeginInfo begin_info = {};
 	 begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1189,13 +1200,23 @@ namespace fwvulkan
 	 
 	 // log::debug("begin renderpass");
 	 vkCmdBeginRenderPass(cb, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+	 uint32_t pipeline_hash = 0;
 	 for(auto dh : dhs)
 	 {
 	    // log::debug("Recording Draw vb: {} pi: {} nverts: {}", dh.vb_handle, dh.pi_handle, dh.num_verts);
 	    // log::debug("bind pipeline");
-	    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipelines[dh.pi_handle]);
-
-
+	    if(uint32_t hash = dh.pi_handle; hash != pipeline_hash)
+	    {
+	       vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[dh.pi_handle].pipeline);
+	       // note: setting viewport and scissor when we bind pipeline incase it's changed
+	       // todo: it would be nicer to have this sort of thing covered as a init frame pass or something.
+	       VkViewport vp[] = {pipeline::GetDefaultViewport()};
+	       vkCmdSetViewport(cb, 0, 1, vp);
+	       VkRect2D scissor[] = {pipeline::GetDefaultScissor()};
+	       vkCmdSetScissor(cb, 0, 1, scissor);
+	       pipeline_hash = hash;
+	    }
+	    
 	    VkBuffer vertex_buffers[] = {g_vb_map[dh.vb_handle].vb};
 	    VkDeviceSize offsets[] = {0};
 	 
@@ -1290,11 +1311,11 @@ int gGlfwVulkan::init()
 hash::string shaders[shader::e_count];
 void gGlfwVulkan::visit(class physics::collider::polygon* /*_poly*/){}
 void gGlfwVulkan::visit(class camera * /*_camera*/) {}
-std::vector<fwvulkan::drawhandles> g_draws;
+std::vector<fwvulkan::DrawHandle> g_draws;
 void gGlfwVulkan::visit(fw::Mesh* _mesh)
 {
    using namespace fwvulkan;
-   drawhandles drawhandle;
+   DrawHandle drawhandle;
 
    auto handles_iter = g_drawhandles.find(_mesh);
    if(handles_iter == g_drawhandles.end())
@@ -1320,6 +1341,13 @@ int gGlfwVulkan::shutdown()
       vkDestroyBuffer(fwvulkan::g_logical_device, vb.second.vb, nullptr);
       vkFreeMemory(fwvulkan::g_logical_device, vb.second.vb_mem, nullptr);
    }
+   for(auto pipeline : g_pipe_map)
+   {
+      vkDestroyPipeline(g_logical_device, pipeline.second.pipeline, nullptr);
+      vkDestroyPipelineLayout(g_logical_device, pipeline.second.layout, nullptr);
+   }
+   g_pipe_map.clear();
+   
    for (int i = 0; i < fwvulkan::g_max_frames_in_flight; i++)
    {
        vkDestroySemaphore(fwvulkan::g_logical_device, fwvulkan::g_image_available_semaphores[i], nullptr);
