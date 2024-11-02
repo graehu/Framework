@@ -86,8 +86,12 @@ namespace fwvulkan
    VkCommandPool g_command_pool = VK_NULL_HANDLE;
    std::vector<VkCommandBuffer> g_command_buffers;
    // vertex buffers
-   std::vector<VkBuffer> g_vertex_buffers;
-   std::vector<VkDeviceMemory> g_vertex_buffer_memory;
+   struct VBHandle
+   {
+      VkBuffer vb;
+      VkDeviceMemory vb_mem;
+   };
+   std::map<uint32_t, VBHandle> g_vb_map;
    // mesh
    std::vector<Mesh*> g_meshes;
    struct drawhandles
@@ -570,6 +574,8 @@ namespace fwvulkan
       }
       void CleanupSwapChain()
       {
+	 // todo: workout if we actually need to cleanup the pipelines and layouts below, don't think so.
+	 // ----: don't really want to rebuild pipelines on device reset if not needed.
 	 log::debug("CleanupSwapChain");
 	 assert(g_swap_chain != VK_NULL_HANDLE);
 	 vkFreeCommandBuffers(g_logical_device, g_command_pool, static_cast<uint32_t>(g_command_buffers.size()),
@@ -1012,9 +1018,8 @@ namespace fwvulkan
 	 pipeline_layout_create_info.pPushConstantRanges = nullptr;
 	 return pipeline_layout_create_info;
       }
-      int CreatePipeline(Material mat)
+      int CreateDefaultPipeline(Material mat)
       {
-	 // todo: rename create default pipeline, or supply args to control below defaults.
 	 // todo: add a cache inside here which can return handles instead of creating new pipelines.
 	 log::debug("CreateGraphicsPipeline");
 	 VkPipelineLayout pipeline_layout;
@@ -1098,40 +1103,46 @@ namespace fwvulkan
 
       int CreateVertexBuffer(const fw::Vertex* vertices, int num_vertices)
       {
-	 // todo: make a cache? maybe?
 	 log::debug("Create Vertex Buffer");
-	 VkBufferCreateInfo buffer_create_info = {};
-	 buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	 buffer_create_info.size = sizeof(fw::Vertex) * num_vertices;
-	 buffer_create_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-	 buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	 VkBuffer vertex_buffer;
-	 if (vkCreateBuffer(g_logical_device, &buffer_create_info, nullptr, &vertex_buffer) != VK_SUCCESS)
+	 uint32_t hash = hash::i32((const char*)vertices, num_vertices*sizeof(fw::Vertex));
+	 if (g_vb_map.find(hash) == g_vb_map.end())
 	 {
-	    throw std::runtime_error("failed to create vertex buffer!");
-	 }
-	 VkMemoryRequirements memory_requirements;
-	 vkGetBufferMemoryRequirements(g_logical_device, vertex_buffer, &memory_requirements);
+	    VkBufferCreateInfo buffer_create_info = {};
+	    buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	    buffer_create_info.size = sizeof(fw::Vertex) * num_vertices;
+	    buffer_create_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	    buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	    VkBuffer vertex_buffer;
+	    if (vkCreateBuffer(g_logical_device, &buffer_create_info, nullptr, &vertex_buffer) != VK_SUCCESS)
+	    {
+	       throw std::runtime_error("failed to create vertex buffer!");
+	    }
+	    VkMemoryRequirements memory_requirements;
+	    vkGetBufferMemoryRequirements(g_logical_device, vertex_buffer, &memory_requirements);
 
-	 VkMemoryAllocateInfo allocate_info = {};
-	 allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	 allocate_info.allocationSize = memory_requirements.size;
-	 allocate_info.memoryTypeIndex = FindMemoryType(
-	    memory_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-	 VkDeviceMemory vertex_buffer_memory;
-	 if (vkAllocateMemory(g_logical_device, &allocate_info, nullptr, &vertex_buffer_memory) != VK_SUCCESS)
-	 {
-	    throw std::runtime_error("failed to allocate vertex buffer memory!");
+	    VkMemoryAllocateInfo allocate_info = {};
+	    allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	    allocate_info.allocationSize = memory_requirements.size;
+	    allocate_info.memoryTypeIndex = FindMemoryType(
+	       memory_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	    VkDeviceMemory vertex_buffer_memory;
+	    if (vkAllocateMemory(g_logical_device, &allocate_info, nullptr, &vertex_buffer_memory) != VK_SUCCESS)
+	    {
+	       throw std::runtime_error("failed to allocate vertex buffer memory!");
+	    }
+	    vkBindBufferMemory(g_logical_device, vertex_buffer, vertex_buffer_memory, 0);
+	    void *data;
+	    vkMapMemory(g_logical_device, vertex_buffer_memory, 0, buffer_create_info.size, 0, &data);
+	    memcpy(data, vertices, (size_t)buffer_create_info.size);
+	    vkUnmapMemory(g_logical_device, vertex_buffer_memory);
+	    g_vb_map[hash] = {vertex_buffer, vertex_buffer_memory};
+	    log::debug("Created Vertex Buffer: {}", hash);
 	 }
-	 vkBindBufferMemory(g_logical_device, vertex_buffer, vertex_buffer_memory, 0);
-	 void *data;
-	 vkMapMemory(g_logical_device, vertex_buffer_memory, 0, buffer_create_info.size, 0, &data);
-	 memcpy(data, vertices, (size_t)buffer_create_info.size);
-	 vkUnmapMemory(g_logical_device, vertex_buffer_memory);
-	 g_vertex_buffers.push_back(vertex_buffer);
-	 g_vertex_buffer_memory.push_back(vertex_buffer_memory);
-	 log::debug("Created Vertex Buffer: {}", g_vertex_buffers.size()-1);
-	 return g_vertex_buffers.size()-1;
+	 else
+	 {
+	    log::debug("Reusing Vertex Buffer: {}", hash);
+	 }
+	 return hash;
       }
       
       int CreateCommandBuffer()
@@ -1185,7 +1196,7 @@ namespace fwvulkan
 	    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipelines[dh.pi_handle]);
 
 
-	    VkBuffer vertex_buffers[] = {g_vertex_buffers[dh.vb_handle]};
+	    VkBuffer vertex_buffers[] = {g_vb_map[dh.vb_handle].vb};
 	    VkDeviceSize offsets[] = {0};
 	 
 	    // log::debug("bind vertext buffer");
@@ -1291,7 +1302,7 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
       drawhandle = {
 	 buffers::CreateVertexBuffer(_mesh->vbo, _mesh->vbo_len),
 	 (int)_mesh->vbo_len,
-	 pipeline::CreatePipeline(_mesh->mat)
+	 pipeline::CreateDefaultPipeline(_mesh->mat)
       };
       g_drawhandles[_mesh] = drawhandle;
    }
@@ -1304,15 +1315,11 @@ int gGlfwVulkan::shutdown()
    log::scope topic("gGlfwVulkan");
    log::debug("shutdown");
    swapchain::CleanupSwapChain();
-   for(auto vb : fwvulkan::g_vertex_buffers)
+   for(auto vb : fwvulkan::g_vb_map)
    {
-      vkDestroyBuffer(fwvulkan::g_logical_device, vb, nullptr);
+      vkDestroyBuffer(fwvulkan::g_logical_device, vb.second.vb, nullptr);
+      vkFreeMemory(fwvulkan::g_logical_device, vb.second.vb_mem, nullptr);
    }
-   for(auto vbm : fwvulkan::g_vertex_buffer_memory)
-   {
-      vkFreeMemory(fwvulkan::g_logical_device, vbm, nullptr);      
-   }
-
    for (int i = 0; i < fwvulkan::g_max_frames_in_flight; i++)
    {
        vkDestroySemaphore(fwvulkan::g_logical_device, fwvulkan::g_image_available_semaphores[i], nullptr);
