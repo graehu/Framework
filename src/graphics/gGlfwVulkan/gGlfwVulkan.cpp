@@ -65,11 +65,15 @@ namespace fwvulkan
    const int g_max_frames_in_flight = 2;
    unsigned int g_current_frame = 0;
    unsigned int g_flight_frame = 0;
-   unsigned int g_current_buffers = 0;
    // renderpass
    // the default one used for the swapchain
    struct PassHandle
    {
+      VkFramebuffer CurrentFrame()
+      {
+	 if(frame_buffers.size() == 0) return VK_NULL_HANDLE;
+	 return frame_buffers[g_current_frame%frame_buffers.size()];
+      }
       VkRenderPass pass = VK_NULL_HANDLE;
       VkCommandBuffer cmd_buffer = VK_NULL_HANDLE;
       std::vector<VkFramebuffer> frame_buffers;
@@ -1022,7 +1026,6 @@ namespace fwvulkan
       }
       int CreateDefaultPipeline(Material mat)
       {
-	 // todo: add a cache inside here which can return handles instead of creating new pipelines.
 	 log::debug("CreateGraphicsPipeline");
 	 auto hash = hash::i32((const char*)&mat, sizeof(Material));
 	 if(g_pipe_map.find(hash) == g_pipe_map.end())
@@ -1175,16 +1178,12 @@ namespace fwvulkan
       {
 	 PassHandle passhandle = g_pass_map[pass];
 	 auto cb = passhandle.cmd_buffer;
-	 auto& frame_buffers = passhandle.frame_buffers;
-	 
-	 assert(frame_buffers.size() > 0);
 	 
 	 VkCommandBufferBeginInfo begin_info = {};
 	 begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	 begin_info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 	 begin_info.pInheritanceInfo = nullptr;
 	 
-
 	 if (vkBeginCommandBuffer(cb, &begin_info) != VK_SUCCESS)
 	 {
 	    throw std::runtime_error("failed to begin recording command buffer!");
@@ -1192,7 +1191,7 @@ namespace fwvulkan
 	 VkRenderPassBeginInfo render_pass_begin_info = {};
 	 render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	 render_pass_begin_info.renderPass = passhandle.pass;
-	 render_pass_begin_info.framebuffer = frame_buffers[g_current_buffers%frame_buffers.size()];
+         render_pass_begin_info.framebuffer = passhandle.CurrentFrame();
 	 render_pass_begin_info.renderArea.offset = {0, 0};
 	 // todo: this isn't generic
 	 render_pass_begin_info.renderArea.extent = g_swap_chain_extent;
@@ -1446,8 +1445,7 @@ int gGlfwVulkan::render()
       throw std::runtime_error("failed to present swap chain image!");
    }
    g_current_frame++;
-   g_flight_frame = g_current_buffers % g_max_frames_in_flight;
-   g_current_buffers = g_current_frame % g_pass_map["default"].frame_buffers.size();
+   g_flight_frame = g_current_frame % g_max_frames_in_flight;
    vkResetCommandPool(g_logical_device, g_command_pool, 0);
    g_draws.clear();
    return 0;
