@@ -15,6 +15,7 @@ namespace fwvulkan
 int wGlfwVulkan::init(int _width, int _height, const char* _name)
 {
    glfwInit();
+   glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
    GLFWwindow* window = glfwCreateWindow(_width, _height, _name, nullptr, nullptr);
    if (window == nullptr)

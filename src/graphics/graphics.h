@@ -6,6 +6,7 @@
 #include "../types/vec2f.h"
 #include "../types/vec3f.h"
 #include <array>
+#include <vector>
 
 // data loading and unloading is done dynamically.
 // just try rendering something and it'll load all the needed assests.
@@ -17,6 +18,7 @@ namespace fw
       enum type {  e_vertex, e_hull, e_domain, e_geomtry, e_fragment, e_task, e_mesh, e_compute, e_count };
    }
    typedef std::array<hash::string, shader::e_count> Material;
+   typedef std::vector<hash::string> PassList;
    struct Vertex
    {
       Vertex(vec2f p, vec3f c) : position(p), color(c) {}
@@ -29,6 +31,7 @@ namespace fw
       size_t vbo_len;
       const uint32_t* ibo;
       Material mat;
+      PassList passes;
    };
 }
 class graphics

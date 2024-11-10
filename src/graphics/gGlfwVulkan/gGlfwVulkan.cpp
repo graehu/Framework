@@ -62,6 +62,7 @@ namespace fwvulkan
    unsigned int g_flight_frame = 0;
    // renderpass
    // the default one used for the swapchain
+   struct DrawHandle;
    struct PassHandle
    {
       VkFramebuffer CurrentFrame()
@@ -76,10 +77,17 @@ namespace fwvulkan
       std::vector<VkImage> images;
       std::vector<VkImageView> image_views;
       std::vector<VkFramebuffer> frame_buffers;
+      std::vector<DrawHandle> draws;
 
    };
    std::map<fw::hash::string, PassHandle> g_pass_map;
-   
+   struct SemaphoreHandle
+   {
+      std::vector<VkSemaphore> image_available;
+      std::vector<VkSemaphore> render_finished;
+      std::vector<VkFence> in_flight_fences;      
+   };
+   std::map<fw::hash::string, SemaphoreHandle> g_semaphore_map;
    // shaders
    typedef std::map<fw::hash::string, VkShaderModule> shader_map;
    std::array<shader_map, fw::shader::e_count> g_shaders;
@@ -93,7 +101,7 @@ namespace fwvulkan
    
    // commands
    VkCommandPool g_command_pool = VK_NULL_HANDLE;
-   std::vector<VkCommandBuffer> g_command_buffers;
+   // std::vector<VkCommandBuffer> g_command_buffers;
    // vertex buffers
    struct VBHandle
    {
@@ -108,7 +116,6 @@ namespace fwvulkan
       int vb_handle = -1;
       int num_verts = 0;
       int pi_handle = -1;
-      // int cb_handle = -1; // these should go with renderpasses
    };
    std::map<fw::Mesh *, DrawHandle> g_drawhandles;
    //
@@ -118,18 +125,19 @@ namespace fwvulkan
    };
    const std::vector<const char *> g_device_extensions = {
       VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+      // VK_KHR_DYNAMIC_RENDERING_NAME,
       VK_EXT_MEMORY_BUDGET_EXTENSION_NAME
    };
    // Note: These layers require you to run Vulkan/1.3.280.1/setup-env.sh prior to running the executable.
    const std::vector<const char *> g_validation_layers = {
-       "VK_LAYER_KHRONOS_validation"
-       // "VK_LAYER_RENDERDOC_Capture",
-       // "VK_LAYER_MESA_device_select",
-       // "VK_LAYER_NV_optimus",
-       // "VK_LAYER_LUNARG_api_dump",
-       // "VK_LAYER_LUNARG_gfxreconstruct",
-       // "VK_LAYER_KHRONOS_profiles",
-       // "VK_LAYER_LUNARG_screenshot",
+      "VK_LAYER_KHRONOS_validation",
+      "VK_LAYER_RENDERDOC_Capture",
+      // "VK_LAYER_MESA_device_select",
+      // "VK_LAYER_NV_optimus",
+      // "VK_LAYER_LUNARG_api_dump",
+      // "VK_LAYER_LUNARG_gfxreconstruct",
+      // "VK_LAYER_KHRONOS_profiles",
+      // "VK_LAYER_LUNARG_screenshot",
    };
    struct QueueFamilyIndices
    {
@@ -249,9 +257,10 @@ namespace fwvulkan
 
       void CreateInstance()
       {
+	 log::debug("CreateInstance");
 	 if (g_enable_validation_layers && !CheckValidationLayerSupport())
 	 {
-	    log::fatal("fatal, unable to enable valiadation layers");
+	    log::fatal("fatal, unable to enable valiadation layers, you may need to run setup-env.sh");
 	 }
 	 // app info
 	 VkApplicationInfo app_info = {};
@@ -282,6 +291,7 @@ namespace fwvulkan
 	 //
 	 uint32_t glfwExtensionCount = 0;
 	 const char **glfwExtensions;
+	 // todo: find out why renderdoc dies here. (glfwGetRequiredInstanceExtensions)
 	 glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 	 std::vector<const char *> required_extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 	 if (g_enable_validation_layers)
@@ -292,21 +302,24 @@ namespace fwvulkan
 	 {
 	    required_extensions.push_back(ext);
 	 }
+	 log::debug("required exts: ");
+	 for(const char* ext : required_extensions)
+	 {
+	    log::debug("\t{}", ext);
+	 }
 	 create_info.enabledExtensionCount = static_cast<uint32_t>(required_extensions.size());
 	 create_info.ppEnabledExtensionNames = required_extensions.data();
 	 create_info.enabledLayerCount = 0;
-
 	 uint32_t extensionCount = 0;
 	 vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
 	 std::vector<VkExtensionProperties> extensions(extensionCount);
 	 vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
-
 	 log::debug("available instance extensions:");
 	 for (const auto &extension : extensions)
 	 {
 	    log::debug("\t{}", extension.extensionName);
 	 }
-	 // VK_KHR_wayland_surface is supported, consider using that.
+	 // todo: VK_KHR_wayland_surface is supported, consider using that.
 	 VkResult result = vkCreateInstance(&create_info, nullptr, &g_instance);
 	 if (result != VK_SUCCESS)
 	 {
@@ -586,13 +599,13 @@ namespace fwvulkan
       {
 	 log::debug("CleanupSwapChain");
 	 assert(g_swap_chain != VK_NULL_HANDLE);
-	 vkFreeCommandBuffers(g_logical_device, g_command_pool, static_cast<uint32_t>(g_command_buffers.size()),
-			      g_command_buffers.data());
-	 g_command_buffers.clear();
-	 
+	 // vkFreeCommandBuffers(g_logical_device, g_command_pool, static_cast<uint32_t>(g_command_buffers.size()),
+	 // 		      g_command_buffers.data());
+	 // g_command_buffers.clear();
 	 // todo: not all passes are going to want to be cleaned up when the swapchain is.
 	 for (auto pass : g_pass_map)
 	 {
+	    vkFreeCommandBuffers(g_logical_device, g_command_pool, 1, &pass.second.cmd_buffer);
 	    for (auto framebuffer : pass.second.frame_buffers)
 	    {
 	       vkDestroyFramebuffer(g_logical_device, framebuffer, nullptr);
@@ -605,8 +618,36 @@ namespace fwvulkan
 	    pass.second.image_views.clear();
 	    vkDestroyRenderPass(g_logical_device, pass.second.pass, nullptr);
 	 }
-	 g_pass_map.clear();
 	 vkDestroySwapchainKHR(g_logical_device, g_swap_chain, nullptr);
+#if 0 // todo: use this kind of thing to replace g_semaphore_map
+	 log::debug("cleaning up semaphores");
+	 for (auto pass : g_pass_map)
+	 {
+	    for (int i = 0; i < fwvulkan::g_max_frames_in_flight; i++)
+	    {
+	       log::debug("cleaning up {}:{} ({})", i, fwvulkan::g_current_frame%fwvulkan::g_max_frames_in_flight, fwvulkan::g_current_frame);
+
+	       if(0)
+	       {
+		  // this requires VK_SEMAPHORE_TYPE_TIMELINE created semaphores
+		  const VkSemaphore semas[] = {pass.second.render_finished[i]};
+		  const uint64_t vals[] = {1};
+		  VkSemaphoreWaitInfo waitinfo;
+		  waitinfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
+		  waitinfo.flags = VK_SEMAPHORE_WAIT_ANY_BIT;
+		  waitinfo.pSemaphores = semas;
+		  waitinfo.pValues = vals;
+		  vkWaitSemaphores(g_logical_device, &waitinfo, 1000000);
+		  log::debug("done waiting");
+	       }
+	       vkDestroySemaphore(g_logical_device, pass.second.image_available[i], nullptr);
+	       vkDestroySemaphore(g_logical_device, pass.second.render_finished[i], nullptr);
+	       vkDestroyFence(g_logical_device, pass.second.in_flight_fences[i], nullptr);
+	    }
+	    log::debug("done");
+	 }
+#endif
+	 g_pass_map.clear();
 	 g_swap_chain = VK_NULL_HANDLE;
       }
       void CreateSwapchainImageViews()
@@ -637,7 +678,7 @@ namespace fwvulkan
 
 	    if (vkCreateImageView(g_logical_device, &create_info, nullptr, &pass.image_views[i]) != VK_SUCCESS)
 	    {
-	       throw std::runtime_error("failed to create image viaews!");
+	       throw std::runtime_error("failed to create image views!");
 	    }
 	 }
       }
@@ -751,7 +792,94 @@ namespace fwvulkan
    }
    namespace renderpass
    {
-      void CreateDefaultRenderPass(hash::string passname)
+      VkImage CreateImage(int width, int height)
+      {
+	 assert(width > 0 && height > 0);
+	 log::debug("image dimensions: ({}, {})", width, height);
+
+	 VkImageCreateInfo imageInfo{};
+	 imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	 imageInfo.imageType = VK_IMAGE_TYPE_2D;
+	 imageInfo.extent.width = width;
+	 imageInfo.extent.height = height;
+	 imageInfo.extent.depth = 1;
+	 imageInfo.mipLevels = 1;
+	 imageInfo.arrayLayers = 1;
+	 imageInfo.format = VK_FORMAT_R8G8B8A8_SRGB;//format;
+	 imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;//tiling;
+	 imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	 imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;//usage;
+	 imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	 imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	 imageInfo.flags = 0;
+	 
+	 VkImage image = VK_NULL_HANDLE;
+	 if (vkCreateImage(g_logical_device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
+	    throw std::runtime_error("failed to create image!");
+	 }
+	 return image;
+      }
+      void CreatePassImages(fw::hash::string passname)
+      {
+	 log::debug("Create Pass Image Views");
+	 auto& pass = g_pass_map[passname];
+	 assert(pass.image_views.size() == 0);
+	 if(pass.extent.width == 0 || pass.extent.width == 0)
+	 {
+	    pass.extent = g_pass_map["default"].extent;
+	 }
+	 for(int i = 0; i < g_max_frames_in_flight; i++)
+	 {
+	    pass.images.push_back(CreateImage(pass.extent.width, pass.extent.height));
+	 }
+	 pass.image_views.resize(pass.images.size());
+
+	 for (size_t i = 0; i < pass.images.size(); i++)
+	 {
+	    VkImageViewCreateInfo create_info = {};
+	    create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	    create_info.image = pass.images[i];
+	    create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	    create_info.format = pass.image_format;
+
+	    create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+	    create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+	    create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+	    create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+	    create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	    create_info.subresourceRange.baseMipLevel = 0;
+	    create_info.subresourceRange.levelCount = 1;
+	    create_info.subresourceRange.baseArrayLayer = 0;
+	    create_info.subresourceRange.layerCount = 1;
+
+	    if (vkCreateImageView(g_logical_device, &create_info, nullptr, &pass.image_views[i]) != VK_SUCCESS)
+	    {
+	       throw std::runtime_error("failed to create image views!");
+	    }
+	 }
+	 assert(pass.frame_buffers.size() == 0);
+	 pass.frame_buffers.resize(pass.image_views.size());
+	 for (size_t i = 0; i < pass.image_views.size(); i++)
+	 {
+	    VkImageView attachments[] = {pass.image_views[i]};
+	    VkFramebufferCreateInfo framebuffer_create_info = {};
+	    framebuffer_create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+	    framebuffer_create_info.renderPass = pass.pass;
+	    framebuffer_create_info.attachmentCount = 1;
+	    framebuffer_create_info.pAttachments = attachments;
+	    framebuffer_create_info.width = pass.extent.width;
+	    framebuffer_create_info.height = pass.extent.height;
+	    framebuffer_create_info.layers = 1;
+
+	    if (vkCreateFramebuffer(g_logical_device, &framebuffer_create_info, nullptr, &pass.frame_buffers[i]) !=
+		VK_SUCCESS)
+	    {
+	       throw std::runtime_error("failed to create framebuffer!");
+	    }
+	 }
+      }
+      bool CreateDefaultRenderPass(hash::string passname)
       {
 	 log::debug("CreateDefaultRenderPass");
 	 if(g_pass_map.find(passname) == g_pass_map.end())
@@ -811,12 +939,16 @@ namespace fwvulkan
 	    {
 	       throw std::runtime_error("failed to allocate command buffers!");
 	    }
-	    g_pass_map[passname] = {pass, buffer, {}, surface_format.format, {}, {}, {}};
-	    g_command_buffers.push_back(buffer);
+	    g_pass_map[passname] = {pass, buffer, {}, surface_format.format, {}, {}, {}, {}};
 	    log::debug("Renderpass '{}' created.", passname.m_literal);
-
+	    return true;
 	 }
+	 return false;
       }
+   }
+   namespace barriers
+   {
+      bool CreatePassSemaphores(hash::string);
    }
    namespace swapchain
    {
@@ -1164,24 +1296,24 @@ namespace fwvulkan
 	 return hash;
       }
       
-      int CreateCommandBuffer()
-      {
-	 log::debug("Create Command buffer");
-	 VkCommandBufferAllocateInfo alloc_info = {};
-	 alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	 alloc_info.commandPool = g_command_pool;
-	 alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	 alloc_info.commandBufferCount = 1;// (uint32_t)command_buffers.size();
-	 VkCommandBuffer buffer;
-	 if (vkAllocateCommandBuffers(g_logical_device, &alloc_info, &buffer) != VK_SUCCESS)
-	 {
-	    throw std::runtime_error("failed to allocate command buffers!");
-	 }
-	 g_command_buffers.push_back(buffer);
-	 log::debug("Created command buffer: {}", g_command_buffers.size()-1);
-	 return g_command_buffers.size()-1;
-      }
-      void RecordPass(hash::string passname, std::vector<DrawHandle> dhs)
+      // int CreateCommandBuffer()
+      // {
+      // 	 log::debug("Create Command buffer");
+      // 	 VkCommandBufferAllocateInfo alloc_info = {};
+      // 	 alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+      // 	 alloc_info.commandPool = g_command_pool;
+      // 	 alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+      // 	 alloc_info.commandBufferCount = 1;// (uint32_t)command_buffers.size();
+      // 	 VkCommandBuffer buffer;
+      // 	 if (vkAllocateCommandBuffers(g_logical_device, &alloc_info, &buffer) != VK_SUCCESS)
+      // 	 {
+      // 	    throw std::runtime_error("failed to allocate command buffers!");
+      // 	 }
+      // 	 g_command_buffers.push_back(buffer);
+      // 	 log::debug("Created command buffer: {}", g_command_buffers.size()-1);
+      // 	 return g_command_buffers.size()-1;
+      // }
+      void RecordPass(hash::string passname)
       {
 	 PassHandle pass = g_pass_map[passname];
 	 
@@ -1194,9 +1326,18 @@ namespace fwvulkan
 	 {
 	    throw std::runtime_error("failed to begin recording command buffer!");
 	 }
+	 // if(passname != hash::string("default"))
+	 // {
+	 //    if (vkEndCommandBuffer(pass.cmd_buffer) != VK_SUCCESS)
+	 //    {
+	 //       throw std::runtime_error("failed to record command buffer!");
+	 //    }
+	 //    return;
+	 // }
 	 VkRenderPassBeginInfo render_pass_begin_info = {};
 	 render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	 render_pass_begin_info.renderPass = pass.pass;
+	 log::debug("pass {} fb {} extent {}, {}", passname.m_literal, (size_t)pass.CurrentFrame(), pass.extent.width, pass.extent.height);
          render_pass_begin_info.framebuffer = pass.CurrentFrame();
 	 render_pass_begin_info.renderArea.offset = {0, 0};
 	 render_pass_begin_info.renderArea.extent = pass.extent;
@@ -1209,7 +1350,7 @@ namespace fwvulkan
 	 // log::debug("begin renderpass");
 	 vkCmdBeginRenderPass(pass.cmd_buffer, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 	 uint32_t pipeline_hash = 0;
-	 for(auto dh : dhs)
+	 for(auto dh : pass.draws)
 	 {
 	    // log::debug("Recording Draw vb: {} pi: {} nverts: {}", dh.vb_handle, dh.pi_handle, dh.num_verts);
 	    // log::debug("bind pipeline");
@@ -1246,43 +1387,45 @@ namespace fwvulkan
    }
    namespace barriers
    {
-      void CreateSemaphores()
+      bool CreatePassSemaphores(hash::string passname)
       {
 	 log::debug("CreateSemaphores");
-	 assert(g_image_available_semaphores.size() == 0);
-	 assert(g_render_finished_semaphores.size() == 0);
-	 assert(g_in_flight_fences.size() == 0);
-	 
-	 g_image_available_semaphores.resize(g_max_frames_in_flight);
-	 g_render_finished_semaphores.resize(g_max_frames_in_flight);
-	 g_in_flight_fences.resize(g_max_frames_in_flight);
-
-	 VkSemaphoreCreateInfo semaphore_create_info = {};
-	 semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-	 VkFenceCreateInfo fence_create_info = {};
-	 fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	 fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-	 for (int i = 0; i < g_max_frames_in_flight; i++)
+	 if(auto it = g_semaphore_map.find(passname); it == g_semaphore_map.end())
 	 {
-	    if (vkCreateSemaphore(g_logical_device, &semaphore_create_info, nullptr, &g_image_available_semaphores[i]) !=
-		VK_SUCCESS)
-	    {
-	       throw std::runtime_error("failed to create semaphore!");
-	    }
+	    auto& semas = g_semaphore_map[passname];
+	    semas.image_available.resize(g_max_frames_in_flight);
+	    semas.render_finished.resize(g_max_frames_in_flight);
+	    semas.in_flight_fences.resize(g_max_frames_in_flight);
 
-	    if (vkCreateSemaphore(g_logical_device, &semaphore_create_info, nullptr, &g_render_finished_semaphores[i]) !=
-		VK_SUCCESS)
-	    {
-	       throw std::runtime_error("failed to create semaphore!");
-	    }
+	    VkSemaphoreCreateInfo semaphore_create_info = {};
+	    semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-	    if (vkCreateFence(g_logical_device, &fence_create_info, nullptr, &g_in_flight_fences[i]) != VK_SUCCESS)
+	    VkFenceCreateInfo fence_create_info = {};
+	    fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	    fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+	    for (int i = 0; i < g_max_frames_in_flight; i++)
 	    {
-	       throw std::runtime_error("failed to create semaphore!");
+	       if (vkCreateSemaphore(g_logical_device, &semaphore_create_info, nullptr, &semas.image_available[i]) !=
+		   VK_SUCCESS)
+	       {
+		  throw std::runtime_error("failed to create semaphore!");
+	       }
+
+	       if (vkCreateSemaphore(g_logical_device, &semaphore_create_info, nullptr, &semas.render_finished[i]) !=
+		   VK_SUCCESS)
+	       {
+		  throw std::runtime_error("failed to create semaphore!");
+	       }
+
+	       if (vkCreateFence(g_logical_device, &fence_create_info, nullptr, &semas.in_flight_fences[i]) != VK_SUCCESS)
+	       {
+		  throw std::runtime_error("failed to create semaphore!");
+	       }
 	    }
+	    return true;
 	 }
+	 return false;
       }
    }
 }
@@ -1310,13 +1453,13 @@ int gGlfwVulkan::init()
    swapchain::CreateSwapChain();
    swapchain::CreateSwapchainImageViews();
    swapchain::CreateSwapchainFrameBuffers();
-   barriers::CreateSemaphores();
+   barriers::CreatePassSemaphores("default");
    return 0;
 }
 hash::string shaders[shader::e_count];
 void gGlfwVulkan::visit(class physics::collider::polygon* /*_poly*/){}
 void gGlfwVulkan::visit(class camera * /*_camera*/) {}
-std::vector<fwvulkan::DrawHandle> g_draws;
+
 void gGlfwVulkan::visit(fw::Mesh* _mesh)
 {
    using namespace fwvulkan;
@@ -1333,7 +1476,10 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
       g_drawhandles[_mesh] = drawhandle;
    }
    else { drawhandle = handles_iter->second; }
-   g_draws.push_back(drawhandle);
+   for (auto pass : _mesh->passes)
+   {
+      g_pass_map[pass].draws.push_back(drawhandle);
+   }
 }
 int gGlfwVulkan::shutdown()
 {
@@ -1352,12 +1498,15 @@ int gGlfwVulkan::shutdown()
       vkDestroyPipelineLayout(g_logical_device, pipeline.second.layout, nullptr);
    }
    g_pipe_map.clear();
-   
-   for (int i = 0; i < fwvulkan::g_max_frames_in_flight; i++)
+
+   for(auto sema : g_semaphore_map)
    {
-       vkDestroySemaphore(fwvulkan::g_logical_device, fwvulkan::g_image_available_semaphores[i], nullptr);
-       vkDestroySemaphore(fwvulkan::g_logical_device, fwvulkan::g_render_finished_semaphores[i], nullptr);
-       vkDestroyFence(fwvulkan::g_logical_device, fwvulkan::g_in_flight_fences[i], nullptr);
+      for (int i = 0; i < fwvulkan::g_max_frames_in_flight; i++)
+      {
+	 vkDestroySemaphore(fwvulkan::g_logical_device, sema.second.image_available[i], nullptr);
+	 vkDestroySemaphore(fwvulkan::g_logical_device, sema.second.render_finished[i], nullptr);
+	 vkDestroyFence(fwvulkan::g_logical_device, sema.second.in_flight_fences[i], nullptr);
+      }
    }
    vkDestroyCommandPool(fwvulkan::g_logical_device, fwvulkan::g_command_pool, nullptr);
    for(int t = fw::shader::e_fragment; t != fw::shader::e_count; t++)
@@ -1390,69 +1539,96 @@ int gGlfwVulkan::update() { return 0; }
 int gGlfwVulkan::render()
 {
    using namespace fwvulkan;
-   fwvulkan::buffers::RecordPass("default", g_draws);
-   // log::debug("render frames: {} {} {}", g_current_frame, g_flight_frame, g_current_buffers);
-   vkWaitForFences(g_logical_device, 1, &g_in_flight_fences[g_flight_frame], VK_TRUE, std::numeric_limits<uint64_t>::max());
-
-   uint32_t image_index;
-   VkResult result = vkAcquireNextImageKHR(g_logical_device, g_swap_chain, std::numeric_limits<uint64_t>::max(),
-					   g_image_available_semaphores[g_flight_frame], VK_NULL_HANDLE, &image_index);
-   if (result == VK_ERROR_OUT_OF_DATE_KHR || g_resized)
+   for(auto pass : g_pass_map)
    {
-      g_resized = false;
-      swapchain::RecreateSwapChain();
-      return 0;
+      fwvulkan::buffers::RecordPass(pass.first);
    }
-   else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+   for(auto pass : g_pass_map)
    {
-      throw std::runtime_error("failed to acquire swap chain image!");
+      vkWaitForFences(g_logical_device, 1, &g_semaphore_map[pass.first].in_flight_fences[g_flight_frame], VK_TRUE, std::numeric_limits<uint64_t>::max());
    }
-   VkSubmitInfo submit_info = {};
-   submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-   VkSemaphore wait_semaphores[] = {g_image_available_semaphores[g_flight_frame]};
-   VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-   submit_info.waitSemaphoreCount = 1;
-   submit_info.pWaitSemaphores = wait_semaphores;
-   submit_info.pWaitDstStageMask = wait_stages;
-   submit_info.commandBufferCount = g_command_buffers.size();
-   // log::debug("image index: {}", image_index);
-   submit_info.pCommandBuffers = g_command_buffers.data();
-   // log::debug("num command buffers: {}", g_command_buffers.size());
-
-   VkSemaphore signal_semaphores[] = {g_render_finished_semaphores[g_flight_frame]};
-   submit_info.signalSemaphoreCount = 1;
-   submit_info.pSignalSemaphores = signal_semaphores;
-
-   vkResetFences(g_logical_device, 1, &g_in_flight_fences[g_flight_frame]);
-   if (vkQueueSubmit(g_graphics_queue, 1, &submit_info, g_in_flight_fences[g_flight_frame]) != VK_SUCCESS)
+   // this is needed for present, it's not needed for graphics queue submit.
+   uint32_t image_index = 0;
    {
-      throw std::runtime_error("failed to submit draw command buffer!");
+      // todo: check if this is required for all renderpasses, or if it's only for swap chains.
+      // ----: looks like it's swapchain specific.
+      // todo: this isn't generic
+      VkResult result = vkAcquireNextImageKHR(g_logical_device, g_swap_chain, std::numeric_limits<uint64_t>::max(),
+					      g_semaphore_map["default"].image_available[g_flight_frame], VK_NULL_HANDLE, &image_index);
+      if (result == VK_ERROR_OUT_OF_DATE_KHR || g_resized)
+      {
+	 g_resized = false;
+	 swapchain::RecreateSwapChain();
+	 return 0;
+      }
+      else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+      {
+	 throw std::runtime_error("failed to acquire swap chain image!");
+      }
    }
-   
-   VkPresentInfoKHR present_info = {};
-   present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-   present_info.waitSemaphoreCount = 1;
-   present_info.pWaitSemaphores = signal_semaphores;
-   VkSwapchainKHR swap_chains[] = {g_swap_chain};
-   present_info.swapchainCount = 1;
-   present_info.pSwapchains = swap_chains;
-   present_info.pImageIndices = &image_index;
-   present_info.pResults = nullptr;
-
-   result = vkQueuePresentKHR(g_present_queue, &present_info);
-   if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+   // required for present and graphics queue.
+   // todo: this isn't generic
+   VkSemaphore signal_semaphores[] = {g_semaphore_map["default"].render_finished[g_flight_frame]};
+   for(auto pass : g_pass_map)
    {
-      swapchain::RecreateSwapChain();
+      log::debug("pass: {}", pass.first.m_literal);
+      if(pass.first != hash::string("default")) continue;
+      VkSubmitInfo submit_info = {};
+      submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+      VkSemaphore wait_semaphores[] = {g_semaphore_map[pass.first].image_available[g_flight_frame]};
+      VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+      submit_info.waitSemaphoreCount = 1;
+      submit_info.pWaitSemaphores = wait_semaphores;
+      submit_info.pWaitDstStageMask = wait_stages;
+      submit_info.commandBufferCount = 1;
+      
+      VkCommandBuffer cmd_buffers[] = {g_pass_map[pass.first].cmd_buffer};
+      submit_info.pCommandBuffers = cmd_buffers;
+      
+      VkSemaphore signals[] = {g_semaphore_map[pass.first].render_finished[g_flight_frame]};
+      submit_info.signalSemaphoreCount = 1;
+      submit_info.pSignalSemaphores = signals;
+      
+      log::debug("made it past fence?");
+      vkResetFences(g_logical_device, 1, &g_semaphore_map[pass.first].in_flight_fences[g_flight_frame]);
+      log::debug("yes");
+      log::debug("made it past submit?");
+      // todo: find out why this hangs when we try submit a non default renderpass.
+      if (vkQueueSubmit(g_graphics_queue, 1, &submit_info, g_semaphore_map[pass.first].in_flight_fences[g_flight_frame]) != VK_SUCCESS)
+      {
+	 throw std::runtime_error("failed to submit draw command buffer!");
+      }
+      log::debug("yes");
    }
-   else if (result != VK_SUCCESS)
+   // handle present
    {
-      throw std::runtime_error("failed to present swap chain image!");
+      VkPresentInfoKHR present_info = {};
+      present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+      present_info.waitSemaphoreCount = 1;
+      present_info.pWaitSemaphores = signal_semaphores;
+      VkSwapchainKHR swap_chains[] = {g_swap_chain};
+      present_info.swapchainCount = 1;
+      present_info.pSwapchains = swap_chains;
+      present_info.pImageIndices = &image_index;
+      present_info.pResults = nullptr;
+      VkResult result = vkQueuePresentKHR(g_present_queue, &present_info);
+      if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+      {
+	 swapchain::RecreateSwapChain();
+      }
+      else if (result != VK_SUCCESS)
+      {
+	 throw std::runtime_error("failed to present swap chain image!");
+      }
    }
    g_current_frame++;
    g_flight_frame = g_current_frame % g_max_frames_in_flight;
    vkResetCommandPool(g_logical_device, g_command_pool, 0);
-   g_draws.clear();
+   for(auto& pass : g_pass_map)
+   {
+      pass.second.draws.clear();
+   }
    return 0;
 }
 
@@ -1502,8 +1678,13 @@ bool gGlfwVulkan::register_shader(fw::hash::string name, const char* path, fw::s
 bool gGlfwVulkan::register_pass(fw::hash::string pass)
 {
    using namespace fwvulkan;
-   renderpass::CreateDefaultRenderPass(pass);
-   return true;
+   if(renderpass::CreateDefaultRenderPass(pass))
+   {
+      renderpass::CreatePassImages(pass);
+      barriers::CreatePassSemaphores(pass);
+      return true;
+   }
+   return false;
 }
 
 iRenderVisitor* gGlfwVulkan::getRenderer()

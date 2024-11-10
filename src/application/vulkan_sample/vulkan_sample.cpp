@@ -49,16 +49,17 @@ void vulkan_sample::run()
    m_graphics->register_shader("triangle", "shaders/triangle.frag.spv", shader::e_fragment);
    
    std::array<uint32_t,3> ibo = {0, 1, 2};
-   Mesh mesh1 = {triangle_1.data(), triangle_1.size(), ibo.data(), {}};
+   Mesh mesh1 = {triangle_1.data(), triangle_1.size(), ibo.data(), {}, {"default"}};
    mesh1.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
    mesh1.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
    
-   Mesh mesh2 = {triangle_2.data(), triangle_2.size(), ibo.data(), {}};
+   Mesh mesh2 = {triangle_2.data(), triangle_2.size(), ibo.data(), {}, {"doot"}};
    mesh2.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
    mesh2.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
    
    while (m_window->update())
    {
+      m_graphics->register_pass("doot");
       m_graphics->getRenderer()->visit(&mesh1);
       m_graphics->getRenderer()->visit(&mesh2);
       m_graphics->render();
@@ -68,6 +69,8 @@ void vulkan_sample::run()
 
 void vulkan_sample::shutdown()
 {
+   log::scope vulkan_sample("vulkan_sample");
    m_graphics->shutdown();
    m_window->shutdown();
+   log::debug("vulkan_sample finished.");
 }
