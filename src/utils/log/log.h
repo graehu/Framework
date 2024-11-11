@@ -145,6 +145,11 @@ namespace fw
 	 topics::logline<e_error>(_message, _args...);
       }
       template<typename... Args>
+      void warn(const char* _message, Args... _args)
+      {
+	 topics::logline<e_warning>(_message, _args...);
+      }
+      template<typename... Args>
       void debug(const char* _message, Args... _args)
       {
 	 topics::logline<e_debug>(_message, _args...);

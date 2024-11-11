@@ -76,6 +76,7 @@ namespace fwvulkan
       VkFormat image_format;
       std::vector<VkImage> images;
       std::vector<VkImageView> image_views;
+      std::vector<VkDeviceMemory> image_mems;
       std::vector<VkFramebuffer> frame_buffers;
       std::vector<DrawHandle> draws;
 
@@ -131,7 +132,7 @@ namespace fwvulkan
    // Note: These layers require you to run Vulkan/1.3.280.1/setup-env.sh prior to running the executable.
    const std::vector<const char *> g_validation_layers = {
       "VK_LAYER_KHRONOS_validation",
-      "VK_LAYER_RENDERDOC_Capture",
+      // "VK_LAYER_RENDERDOC_Capture",
       // "VK_LAYER_MESA_device_select",
       // "VK_LAYER_NV_optimus",
       // "VK_LAYER_LUNARG_api_dump",
@@ -155,6 +156,23 @@ namespace fwvulkan
       std::vector<VkSurfaceFormatKHR> formats;
       std::vector<VkPresentModeKHR> present_modes;
    };
+   namespace utils
+   {
+      uint32_t FindMemoryType(uint32_t type_filter, VkMemoryPropertyFlags properties)
+      {
+	 VkPhysicalDeviceMemoryProperties memory_properties;
+	 vkGetPhysicalDeviceMemoryProperties(g_physical_device, &memory_properties);
+
+	 for (uint32_t i = 0; i < memory_properties.memoryTypeCount; i++)
+	 {
+	    if (type_filter & (1 << i) && (memory_properties.memoryTypes[i].propertyFlags & properties) == properties)
+	    {
+	       return i;
+	    }
+	 }
+	 throw std::runtime_error("failed to find suitable memory type!");
+      }
+   }
 
    namespace instance
    {
@@ -192,6 +210,9 @@ namespace fwvulkan
 	 {
 	    case VkDebugUtilsMessageSeverityFlagBitsEXT::VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
 	       log::error("error: {}", pCallbackData->pMessage);
+	       break;
+	    case VkDebugUtilsMessageSeverityFlagBitsEXT::VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
+	       log::warn("warn: {}", pCallbackData->pMessage);
 	       break;
 	    default:
 	       log::debug("info: {}", pCallbackData->pMessage);
@@ -573,7 +594,7 @@ namespace fwvulkan
       void CreateSwapchainFrameBuffers()
       {
 	 log::debug("CreateSwapchainFrameBuffers");
-	 auto& pass = g_pass_map["default"];
+	 auto& pass = g_pass_map["swapchain"];
 	 assert(pass.frame_buffers.size() == 0);
 	 pass.frame_buffers.resize(pass.image_views.size());
 	 for (size_t i = 0; i < pass.image_views.size(); i++)
@@ -599,26 +620,39 @@ namespace fwvulkan
       {
 	 log::debug("CleanupSwapChain");
 	 assert(g_swap_chain != VK_NULL_HANDLE);
-	 // vkFreeCommandBuffers(g_logical_device, g_command_pool, static_cast<uint32_t>(g_command_buffers.size()),
-	 // 		      g_command_buffers.data());
-	 // g_command_buffers.clear();
 	 // todo: not all passes are going to want to be cleaned up when the swapchain is.
 	 for (auto pass : g_pass_map)
 	 {
-	    vkFreeCommandBuffers(g_logical_device, g_command_pool, 1, &pass.second.cmd_buffer);
 	    for (auto framebuffer : pass.second.frame_buffers)
 	    {
 	       vkDestroyFramebuffer(g_logical_device, framebuffer, nullptr);
 	    }
-	    pass.second.frame_buffers.clear();
 	    for (auto view : pass.second.image_views)
 	    {
 	       vkDestroyImageView(g_logical_device, view, nullptr);
 	    }
+	    if (pass.first != hash::string("swapchain"))
+	    {
+	       // note: we don't allocate these for the swapchain
+	       for (auto image : pass.second.images)
+	       {
+		  vkDestroyImage(g_logical_device, image, nullptr);
+	       }
+	    }
+	    for (auto mem : pass.second.image_mems)
+	    {
+	       vkFreeMemory(g_logical_device, mem, nullptr);
+	    }
+	    pass.second.frame_buffers.clear();
 	    pass.second.image_views.clear();
+	    pass.second.images.clear();
+	    pass.second.image_mems.clear();
+	    //
+	    vkFreeCommandBuffers(g_logical_device, g_command_pool, 1, &pass.second.cmd_buffer);
 	    vkDestroyRenderPass(g_logical_device, pass.second.pass, nullptr);
 	 }
 	 vkDestroySwapchainKHR(g_logical_device, g_swap_chain, nullptr);
+	 
 #if 0 // todo: use this kind of thing to replace g_semaphore_map
 	 log::debug("cleaning up semaphores");
 	 for (auto pass : g_pass_map)
@@ -653,7 +687,7 @@ namespace fwvulkan
       void CreateSwapchainImageViews()
       {
 	 log::debug("Create Swapchain Image Views");
-	 auto& pass = g_pass_map["default"];
+	 auto& pass = g_pass_map["swapchain"];
 	 assert(pass.image_views.size() == 0);
 	 pass.image_views.resize(pass.images.size());
 
@@ -686,7 +720,7 @@ namespace fwvulkan
       {
 	 for (const auto &available_format : available_formats)
 	 {
-	    if (available_format.format == VK_FORMAT_B8G8R8A8_UNORM &&
+	    if (available_format.format == VK_FORMAT_B8G8R8A8_SRGB &&
 		available_format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
 	    {
 	       return available_format;
@@ -734,7 +768,7 @@ namespace fwvulkan
       {
 	 log::debug("Create Swap Chain");
 	 assert(g_swap_chain == VK_NULL_HANDLE);
-	 auto& pass = g_pass_map["default"];
+	 auto& pass = g_pass_map["swapchain"];
 	 SwapChainSupportDetails swap_chain_support = device::QuerySwapChainSupport(g_physical_device, g_surface);
 	 VkSurfaceFormatKHR surface_format = ChooseSwapSurfaceFormat(swap_chain_support.formats);
 	 VkPresentModeKHR present_mode = ChooseSwapPresentMode(swap_chain_support.present_modes);
@@ -792,26 +826,38 @@ namespace fwvulkan
    }
    namespace renderpass
    {
-      VkImage CreateImage(int width, int height)
+      // create pass rendertarget
+      VkImage CreatePassImage(hash::string passname)
       {
-	 assert(width > 0 && height > 0);
-	 log::debug("image dimensions: ({}, {})", width, height);
+	 auto& pass = g_pass_map[passname];
+	 assert(pass.extent.width > 0 && pass.extent.height > 0);
+
 
 	 VkImageCreateInfo imageInfo{};
 	 imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	 imageInfo.imageType = VK_IMAGE_TYPE_2D;
-	 imageInfo.extent.width = width;
-	 imageInfo.extent.height = height;
+	 imageInfo.extent.width = pass.extent.width;
+	 imageInfo.extent.height = pass.extent.height;
 	 imageInfo.extent.depth = 1;
 	 imageInfo.mipLevels = 1;
 	 imageInfo.arrayLayers = 1;
-	 imageInfo.format = VK_FORMAT_R8G8B8A8_SRGB;//format;
+	 
+	 imageInfo.format = pass.image_format;// VK_FORMAT_R8G8B8A8_UNORM;//format;
 	 imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;//tiling;
 	 imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	 imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;//usage;
+	 // this is a rendertarget
+	 imageInfo.usage =
+	    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+	    VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+	    VK_IMAGE_USAGE_SAMPLED_BIT;
+	 
 	 imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	 imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	 imageInfo.flags = 0;
+	 // todo: check on these.
+	 imageInfo.queueFamilyIndexCount = 0;
+	 imageInfo.pQueueFamilyIndices = nullptr;
+
 	 
 	 VkImage image = VK_NULL_HANDLE;
 	 if (vkCreateImage(g_logical_device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
@@ -819,28 +865,55 @@ namespace fwvulkan
 	 }
 	 return image;
       }
+
       void CreatePassImages(fw::hash::string passname)
       {
-	 log::debug("Create Pass Image Views");
 	 auto& pass = g_pass_map[passname];
-	 assert(pass.image_views.size() == 0);
+
 	 if(pass.extent.width == 0 || pass.extent.width == 0)
 	 {
-	    pass.extent = g_pass_map["default"].extent;
+	    pass.extent = g_pass_map["swapchain"].extent;
 	 }
-	 for(int i = 0; i < g_max_frames_in_flight; i++)
-	 {
-	    pass.images.push_back(CreateImage(pass.extent.width, pass.extent.height));
-	 }
-	 pass.image_views.resize(pass.images.size());
+	 log::debug("CreatePassImages '{}' ({}, {}) format: {}", passname.m_literal,pass.extent.width, pass.extent.height, pass.image_format);
 
+	 assert(pass.images.size() == 0);
+	 assert(pass.frame_buffers.size() == 0);
+	 assert(pass.image_views.size() == 0);
+	 assert(pass.image_mems.size() == 0);
+	 
+	 pass.images.resize(g_max_frames_in_flight);
+	 pass.image_views.resize(g_max_frames_in_flight);
+	 pass.image_mems.resize(g_max_frames_in_flight);
+	 pass.frame_buffers.resize(g_max_frames_in_flight);
+	 
 	 for (size_t i = 0; i < pass.images.size(); i++)
 	 {
+	    pass.images[i] = CreatePassImage(passname);
+	    
+	    VkMemoryAllocateInfo alloc_info = {};
+	    alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	    
+	    VkMemoryRequirements mem_requirements;
+	    vkGetImageMemoryRequirements(g_logical_device, pass.images[i], &mem_requirements);
+	    
+	    alloc_info.allocationSize = mem_requirements.size;
+	    alloc_info.memoryTypeIndex = utils::FindMemoryType(mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	    if (vkAllocateMemory(g_logical_device, &alloc_info, nullptr, &pass.image_mems[i]) != VK_SUCCESS)
+	    {
+	       throw std::runtime_error("failed to allocate image mem!");
+	    }
+	    if (vkBindImageMemory(g_logical_device, pass.images[i], pass.image_mems[i], 0) != VK_SUCCESS)
+	    {
+	       throw std::runtime_error("failed to failed to bind image mem!");
+	    }
+
 	    VkImageViewCreateInfo create_info = {};
 	    create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	    create_info.image = pass.images[i];
+	    create_info.pNext = nullptr;
 	    create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
 	    create_info.format = pass.image_format;
+	    create_info.flags = 0;
 
 	    create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
 	    create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -857,12 +930,8 @@ namespace fwvulkan
 	    {
 	       throw std::runtime_error("failed to create image views!");
 	    }
-	 }
-	 assert(pass.frame_buffers.size() == 0);
-	 pass.frame_buffers.resize(pass.image_views.size());
-	 for (size_t i = 0; i < pass.image_views.size(); i++)
-	 {
-	    VkImageView attachments[] = {pass.image_views[i]};
+	    
+	    VkImageView attachments[] = { pass.image_views[i] };
 	    VkFramebufferCreateInfo framebuffer_create_info = {};
 	    framebuffer_create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 	    framebuffer_create_info.renderPass = pass.pass;
@@ -881,9 +950,9 @@ namespace fwvulkan
       }
       bool CreateDefaultRenderPass(hash::string passname)
       {
-	 log::debug("CreateDefaultRenderPass");
 	 if(g_pass_map.find(passname) == g_pass_map.end())
 	 {
+	    log::debug("Creating Default Renderpass: '{}'", passname.m_literal);
 	    SwapChainSupportDetails swap_chain_support = device::QuerySwapChainSupport(g_physical_device, g_surface);
 	    VkSurfaceFormatKHR surface_format = swapchain::ChooseSwapSurfaceFormat(swap_chain_support.formats);
 	    
@@ -895,7 +964,15 @@ namespace fwvulkan
 	    color_attachement.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	    color_attachement.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	    color_attachement.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	    color_attachement.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	    
+	    if(passname == hash::string("swapchain"))
+	    {
+	       color_attachement.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	    }
+	    else
+	    {
+	       color_attachement.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	    }
 
 	    VkAttachmentReference color_attachemnt_reference = {};
 	    color_attachemnt_reference.attachment = 0;
@@ -907,11 +984,13 @@ namespace fwvulkan
 	    subpass_description.pColorAttachments = &color_attachemnt_reference;
 
 	    VkSubpassDependency subpass_dependency = {};
+
 	    subpass_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 	    subpass_dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	    subpass_dependency.dstSubpass = 0;
 	    subpass_dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	    subpass_dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
 
 	    VkRenderPassCreateInfo render_pass_create_info = {};
 	    render_pass_create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -939,8 +1018,7 @@ namespace fwvulkan
 	    {
 	       throw std::runtime_error("failed to allocate command buffers!");
 	    }
-	    g_pass_map[passname] = {pass, buffer, {}, surface_format.format, {}, {}, {}, {}};
-	    log::debug("Renderpass '{}' created.", passname.m_literal);
+	    g_pass_map[passname] = {pass, buffer, {}, surface_format.format, {}, {}, {}, {}, {}};
 	    return true;
 	 }
 	 return false;
@@ -966,7 +1044,7 @@ namespace fwvulkan
 	 }
 	 vkDeviceWaitIdle(g_logical_device);
 	 CleanupSwapChain();
-	 renderpass::CreateDefaultRenderPass("default");
+	 renderpass::CreateDefaultRenderPass("swapchain");
 	 CreateSwapChain();
 	 CreateSwapchainImageViews();
 	 CreateSwapchainFrameBuffers();
@@ -1067,7 +1145,7 @@ namespace fwvulkan
       }
       VkViewport GetDefaultViewport()
       {
-	 auto& pass = g_pass_map["default"];
+	 auto& pass = g_pass_map["swapchain"];
 	 VkViewport viewport = {};
 	 viewport.x = 0.0f;
 	 viewport.y = 0.0f;
@@ -1079,7 +1157,7 @@ namespace fwvulkan
       }
       VkRect2D GetDefaultScissor()
       {
-	 auto& pass = g_pass_map["default"];
+	 auto& pass = g_pass_map["swapchain"];
 	 VkRect2D scissor = {};
 	 scissor.offset = {0, 0};
 	 scissor.extent = pass.extent;
@@ -1213,7 +1291,7 @@ namespace fwvulkan
 	    pipeline_ci.layout = pipeline_layout;
 	    // note: this pipeline isn't limited to this render pass.
 	    // ----: but we do require a render pass, so setup a default.
-	    pipeline_ci.renderPass = g_pass_map["default"].pass;
+	    pipeline_ci.renderPass = g_pass_map["swapchain"].pass;
 	    pipeline_ci.subpass = 0;
 	    pipeline_ci.basePipelineHandle = VK_NULL_HANDLE;
 	    pipeline_ci.basePipelineIndex = -1;
@@ -1237,21 +1315,6 @@ namespace fwvulkan
    }
    namespace buffers
    {
-      uint32_t FindMemoryType(uint32_t type_filter, VkMemoryPropertyFlags properties)
-      {
-	 VkPhysicalDeviceMemoryProperties memory_properties;
-	 vkGetPhysicalDeviceMemoryProperties(g_physical_device, &memory_properties);
-
-	 for (uint32_t i = 0; i < memory_properties.memoryTypeCount; i++)
-	 {
-	    if (type_filter & (1 << i) && (memory_properties.memoryTypes[i].propertyFlags & properties) == properties)
-	    {
-	       return i;
-	    }
-	 }
-	 throw std::runtime_error("failed to find suitable memory type!");
-      }
-
       int CreateVertexBuffer(const fw::Vertex* vertices, int num_vertices)
       {
 	 log::debug("Create Vertex Buffer");
@@ -1274,7 +1337,7 @@ namespace fwvulkan
 	    VkMemoryAllocateInfo allocate_info = {};
 	    allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	    allocate_info.allocationSize = memory_requirements.size;
-	    allocate_info.memoryTypeIndex = FindMemoryType(
+	    allocate_info.memoryTypeIndex = utils::FindMemoryType(
 	       memory_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 	    VkDeviceMemory vertex_buffer_memory;
 	    if (vkAllocateMemory(g_logical_device, &allocate_info, nullptr, &vertex_buffer_memory) != VK_SUCCESS)
@@ -1295,27 +1358,9 @@ namespace fwvulkan
 	 }
 	 return hash;
       }
-      
-      // int CreateCommandBuffer()
-      // {
-      // 	 log::debug("Create Command buffer");
-      // 	 VkCommandBufferAllocateInfo alloc_info = {};
-      // 	 alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-      // 	 alloc_info.commandPool = g_command_pool;
-      // 	 alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-      // 	 alloc_info.commandBufferCount = 1;// (uint32_t)command_buffers.size();
-      // 	 VkCommandBuffer buffer;
-      // 	 if (vkAllocateCommandBuffers(g_logical_device, &alloc_info, &buffer) != VK_SUCCESS)
-      // 	 {
-      // 	    throw std::runtime_error("failed to allocate command buffers!");
-      // 	 }
-      // 	 g_command_buffers.push_back(buffer);
-      // 	 log::debug("Created command buffer: {}", g_command_buffers.size()-1);
-      // 	 return g_command_buffers.size()-1;
-      // }
       void RecordPass(hash::string passname)
       {
-	 PassHandle pass = g_pass_map[passname];
+	 PassHandle& pass = g_pass_map[passname];
 	 
 	 VkCommandBufferBeginInfo begin_info = {};
 	 begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1326,18 +1371,11 @@ namespace fwvulkan
 	 {
 	    throw std::runtime_error("failed to begin recording command buffer!");
 	 }
-	 // if(passname != hash::string("default"))
-	 // {
-	 //    if (vkEndCommandBuffer(pass.cmd_buffer) != VK_SUCCESS)
-	 //    {
-	 //       throw std::runtime_error("failed to record command buffer!");
-	 //    }
-	 //    return;
-	 // }
+
 	 VkRenderPassBeginInfo render_pass_begin_info = {};
 	 render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	 render_pass_begin_info.renderPass = pass.pass;
-	 log::debug("pass {} fb {} extent {}, {}", passname.m_literal, (size_t)pass.CurrentFrame(), pass.extent.width, pass.extent.height);
+	 // log::debug("pass {} fb {} extent {}, {}", passname.m_literal, (size_t)pass.CurrentFrame(), pass.extent.width, pass.extent.height);
          render_pass_begin_info.framebuffer = pass.CurrentFrame();
 	 render_pass_begin_info.renderArea.offset = {0, 0};
 	 render_pass_begin_info.renderArea.extent = pass.extent;
@@ -1356,7 +1394,7 @@ namespace fwvulkan
 	    // log::debug("bind pipeline");
 	    if(uint32_t hash = dh.pi_handle; hash != pipeline_hash)
 	    {
-	       vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[dh.pi_handle].pipeline);
+	       vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[hash].pipeline);
 	       // note: setting viewport and scissor when we bind pipeline incase it's changed
 	       // todo: it would be nicer to have this sort of thing covered as a init frame pass or something.
 	       VkViewport vp[] = {pipeline::GetDefaultViewport()};
@@ -1449,11 +1487,11 @@ int gGlfwVulkan::init()
    device::PickPhysicalDevice();
    device::CreateLogicalDevice();
    swapchain::CreateCommandPool();
-   renderpass::CreateDefaultRenderPass("default");
+   renderpass::CreateDefaultRenderPass("swapchain");
    swapchain::CreateSwapChain();
    swapchain::CreateSwapchainImageViews();
    swapchain::CreateSwapchainFrameBuffers();
-   barriers::CreatePassSemaphores("default");
+   barriers::CreatePassSemaphores("swapchain");
    return 0;
 }
 hash::string shaders[shader::e_count];
@@ -1551,11 +1589,8 @@ int gGlfwVulkan::render()
    // this is needed for present, it's not needed for graphics queue submit.
    uint32_t image_index = 0;
    {
-      // todo: check if this is required for all renderpasses, or if it's only for swap chains.
-      // ----: looks like it's swapchain specific.
-      // todo: this isn't generic
       VkResult result = vkAcquireNextImageKHR(g_logical_device, g_swap_chain, std::numeric_limits<uint64_t>::max(),
-					      g_semaphore_map["default"].image_available[g_flight_frame], VK_NULL_HANDLE, &image_index);
+					      g_semaphore_map["swapchain"].image_available[g_flight_frame], VK_NULL_HANDLE, &image_index);
       if (result == VK_ERROR_OUT_OF_DATE_KHR || g_resized)
       {
 	 g_resized = false;
@@ -1567,46 +1602,39 @@ int gGlfwVulkan::render()
 	 throw std::runtime_error("failed to acquire swap chain image!");
       }
    }
-   // required for present and graphics queue.
-   // todo: this isn't generic
-   VkSemaphore signal_semaphores[] = {g_semaphore_map["default"].render_finished[g_flight_frame]};
+   std::vector<VkSemaphore> all_signals;
    for(auto pass : g_pass_map)
    {
-      log::debug("pass: {}", pass.first.m_literal);
-      if(pass.first != hash::string("default")) continue;
+      VkSemaphore wait_semaphores[] = {g_semaphore_map[pass.first].image_available[g_flight_frame]};
+      VkSemaphore signals[] = {g_semaphore_map[pass.first].render_finished[g_flight_frame]};
+      VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+      VkCommandBuffer cmd_buffers[] = {g_pass_map[pass.first].cmd_buffer};
+      
       VkSubmitInfo submit_info = {};
       submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-      VkSemaphore wait_semaphores[] = {g_semaphore_map[pass.first].image_available[g_flight_frame]};
-      VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-      submit_info.waitSemaphoreCount = 1;
-      submit_info.pWaitSemaphores = wait_semaphores;
+      // todo: find out why vkQueueSubmit hangs if we add waits for non swapchain.
+      submit_info.waitSemaphoreCount = pass.first == hash::string("swapchain") ? 1 : 0;
+      submit_info.pWaitSemaphores = pass.first == hash::string("swapchain") ? wait_semaphores : nullptr;
       submit_info.pWaitDstStageMask = wait_stages;
       submit_info.commandBufferCount = 1;
-      
-      VkCommandBuffer cmd_buffers[] = {g_pass_map[pass.first].cmd_buffer};
       submit_info.pCommandBuffers = cmd_buffers;
-      
-      VkSemaphore signals[] = {g_semaphore_map[pass.first].render_finished[g_flight_frame]};
       submit_info.signalSemaphoreCount = 1;
       submit_info.pSignalSemaphores = signals;
       
-      log::debug("made it past fence?");
+      all_signals.push_back(signals[0]);
+
       vkResetFences(g_logical_device, 1, &g_semaphore_map[pass.first].in_flight_fences[g_flight_frame]);
-      log::debug("yes");
-      log::debug("made it past submit?");
-      // todo: find out why this hangs when we try submit a non default renderpass.
       if (vkQueueSubmit(g_graphics_queue, 1, &submit_info, g_semaphore_map[pass.first].in_flight_fences[g_flight_frame]) != VK_SUCCESS)
       {
 	 throw std::runtime_error("failed to submit draw command buffer!");
       }
-      log::debug("yes");
    }
    // handle present
    {
       VkPresentInfoKHR present_info = {};
       present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-      present_info.waitSemaphoreCount = 1;
-      present_info.pWaitSemaphores = signal_semaphores;
+      present_info.waitSemaphoreCount = all_signals.size();
+      present_info.pWaitSemaphores = all_signals.data();
       VkSwapchainKHR swap_chains[] = {g_swap_chain};
       present_info.swapchainCount = 1;
       present_info.pSwapchains = swap_chains;
