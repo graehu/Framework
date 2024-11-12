@@ -41,6 +41,11 @@ const std::vector<Vertex> triangle_2 = {
    {{(-0.5f+1.0f)*.5f, ( 0.5f)*.5f}, {1.0f, 0.0f, 1.0f}}
 };
 
+// todo: add model load
+// todo: add texture load
+// todo: add pass dependencies
+// todo: add pass framebuffer blending/compositing
+
 void vulkan_sample::run()
 {
    commandline::parse();

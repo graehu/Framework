@@ -341,6 +341,7 @@ namespace fwvulkan
 	    log::debug("\t{}", extension.extensionName);
 	 }
 	 // todo: VK_KHR_wayland_surface is supported, consider using that.
+	 // ----: apparently renderdoc doesn't support it.
 	 VkResult result = vkCreateInstance(&create_info, nullptr, &g_instance);
 	 if (result != VK_SUCCESS)
 	 {
@@ -1564,13 +1565,6 @@ int gGlfwVulkan::shutdown()
       vkDestroySurfaceKHR(fwvulkan::g_instance, fwvulkan::g_surface, nullptr);
    }
 
-   // the window should clean these up.
-   // vkDestroyInstance(instance, nullptr);
-   // if (window != nullptr)
-   // {
-   //     glfwDestroyWindow(window);
-   //     glfwTerminate();
-   // }
    return 0;
 }
 int gGlfwVulkan::update() { return 0; }
@@ -1613,11 +1607,14 @@ int gGlfwVulkan::render()
       VkSubmitInfo submit_info = {};
       submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
       // todo: find out why vkQueueSubmit hangs if we add waits for non swapchain.
+      // ----: Ok, so the vkAcquireNextImageKHR triggers the image_available semaphore, which allows submission/execution.
+      // todo: define better waits per pass.
       submit_info.waitSemaphoreCount = pass.first == hash::string("swapchain") ? 1 : 0;
       submit_info.pWaitSemaphores = pass.first == hash::string("swapchain") ? wait_semaphores : nullptr;
       submit_info.pWaitDstStageMask = wait_stages;
       submit_info.commandBufferCount = 1;
       submit_info.pCommandBuffers = cmd_buffers;
+      // note: this triggers when all commands are complete.
       submit_info.signalSemaphoreCount = 1;
       submit_info.pSignalSemaphores = signals;
       
