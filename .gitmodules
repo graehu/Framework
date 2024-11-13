@@ -20,3 +20,7 @@
 	path = libs/emsdk
 	url = git@github.com:emscripten-core/emsdk.git
 	shallow = true
+[submodule "libs/vulkan"]
+	path = libs/vulkan
+	url = git@github.com:KhronosGroup/Vulkan-Headers.git
+	shallow = true

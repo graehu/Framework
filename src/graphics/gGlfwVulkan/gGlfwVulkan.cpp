@@ -1,6 +1,6 @@
 #include "gGlfwVulkan.h"
-#include "../../../../Libs/Vulkan/1.3.280.1/x86_64/include/vulkan/vulkan.hpp"
-#include "../../../../Libs/glfw-3.4/include/GLFW/glfw3.h"
+#include "vulkan/vulkan.hpp"
+#include "GLFW/glfw3.h"
 #include <cassert>
 #include <cstdint>
 #include <iostream>

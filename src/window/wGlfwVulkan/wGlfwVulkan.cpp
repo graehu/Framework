@@ -1,6 +1,6 @@
 #include "wGlfwVulkan.h"
 #define GLFW_INCLUDE_VULKAN
-#include "../../../../Libs/glfw-3.4/include/GLFW/glfw3.h"
+#include "GLFW/glfw3.h"
 
 namespace fwvulkan
 {
