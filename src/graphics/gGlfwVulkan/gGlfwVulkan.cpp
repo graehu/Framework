@@ -27,7 +27,7 @@ struct vkVertex : public fw::Vertex
       std::array<VkVertexInputAttributeDescription, 2> attribute_description = {};
       attribute_description[0].binding = 0;
       attribute_description[0].location = 0;
-      attribute_description[0].format = VK_FORMAT_R32G32_SFLOAT;
+      attribute_description[0].format = VK_FORMAT_R32G32B32_SFLOAT;
       attribute_description[0].offset = offsetof(Vertex, position);
 
       attribute_description[1].binding = 0;
@@ -109,13 +109,22 @@ namespace fwvulkan
       VkBuffer vb;
       VkDeviceMemory vb_mem;
    };
+   // index buffers
+   struct IBHandle
+   {
+      VkBuffer ib;
+      VkDeviceMemory ib_mem;
+   };
    std::map<uint32_t, VBHandle> g_vb_map;
+   std::map<uint32_t, IBHandle> g_ib_map;
    // mesh
    std::vector<Mesh*> g_meshes;
    struct DrawHandle
    {
       int vb_handle = -1;
       int num_verts = 0;
+      int ib_handle = -1;
+      int num_indices = 0;
       int pi_handle = -1;
    };
    std::map<fw::Mesh *, DrawHandle> g_drawhandles;
@@ -1136,6 +1145,7 @@ namespace fwvulkan
 	 rasteriser_create_info.depthClampEnable = VK_FALSE;
 	 rasteriser_create_info.polygonMode = VK_POLYGON_MODE_FILL;
 	 rasteriser_create_info.lineWidth = 1.0f;
+	 // note: VK_CULL_MODE_NONE for debugging culling.
 	 rasteriser_create_info.cullMode = VK_CULL_MODE_BACK_BIT;
 	 rasteriser_create_info.frontFace = VK_FRONT_FACE_CLOCKWISE;
 	 rasteriser_create_info.depthBiasEnable = VK_FALSE;
@@ -1198,7 +1208,7 @@ namespace fwvulkan
       {
 	 VkPipelineInputAssemblyStateCreateInfo input_create_info = {};
 	 input_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	 input_create_info.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+	 input_create_info.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	 input_create_info.primitiveRestartEnable = VK_FALSE;
 	 return input_create_info;
       }
@@ -1270,6 +1280,7 @@ namespace fwvulkan
 		  }
 	       }
 	    }
+	    assert(shader_count != 0);
 	    auto vertex_input_ci = GetDefaultVertexInputState();
 	    auto input_assembly_ci = GetDefaultIAState();
 	    auto viewport_state_ci = GetDefaultViewportState();
@@ -1359,6 +1370,49 @@ namespace fwvulkan
 	 }
 	 return hash;
       }
+      int CreateIndexBuffer(const uint16_t* indices, int num_indices)
+      {
+	 log::debug("Create Index Buffer");
+	 uint32_t hash = hash::i32((const char*)indices, num_indices*sizeof(uint16_t));
+	 if (g_ib_map.find(hash) == g_ib_map.end())
+	 {
+	    VkBufferCreateInfo buffer_create_info = {};
+	    buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	    buffer_create_info.size = sizeof(uint16_t) * num_indices;
+	    buffer_create_info.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+	    buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	    VkBuffer index_buffer;
+	    if (vkCreateBuffer(g_logical_device, &buffer_create_info, nullptr, &index_buffer) != VK_SUCCESS)
+	    {
+	       throw std::runtime_error("failed to create index buffer!");
+	    }
+	    VkMemoryRequirements memory_requirements;
+	    vkGetBufferMemoryRequirements(g_logical_device, index_buffer, &memory_requirements);
+
+	    VkMemoryAllocateInfo allocate_info = {};
+	    allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	    allocate_info.allocationSize = memory_requirements.size;
+	    allocate_info.memoryTypeIndex = utils::FindMemoryType(
+	       memory_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	    VkDeviceMemory index_buffer_memory;
+	    if (vkAllocateMemory(g_logical_device, &allocate_info, nullptr, &index_buffer_memory) != VK_SUCCESS)
+	    {
+	       throw std::runtime_error("failed to allocate index buffer memory!");
+	    }
+	    vkBindBufferMemory(g_logical_device, index_buffer, index_buffer_memory, 0);
+	    void *data;
+	    vkMapMemory(g_logical_device, index_buffer_memory, 0, buffer_create_info.size, 0, &data);
+	    memcpy(data, indices, (size_t)buffer_create_info.size);
+	    vkUnmapMemory(g_logical_device, index_buffer_memory);
+	    g_ib_map[hash] = {index_buffer, index_buffer_memory};
+	    log::debug("Created Index Buffer: {}", hash);
+	 }
+	 else
+	 {
+	    log::debug("Reusing Index Buffer: {}", hash);
+	 }
+	 return hash;
+      }
       void RecordPass(hash::string passname)
       {
 	 PassHandle& pass = g_pass_map[passname];
@@ -1411,8 +1465,10 @@ namespace fwvulkan
 	    // log::debug("bind vertext buffer");
 	    vkCmdBindVertexBuffers(pass.cmd_buffer, 0, 1, vertex_buffers, offsets);
 	 
+	    vkCmdBindIndexBuffer(pass.cmd_buffer, g_ib_map[dh.ib_handle].ib, 0, VK_INDEX_TYPE_UINT16);
 	    // log::debug("record draw");
-	    vkCmdDraw(pass.cmd_buffer, dh.num_verts, 1, 0, 0);
+	    // vkCmdDraw(pass.cmd_buffer, dh.num_verts, 1, 0, 0);
+	    vkCmdDrawIndexed(pass.cmd_buffer, dh.num_indices, 1, 0, 0, 0);
 	 }
 	 // log::debug("end renderpass");
 	 vkCmdEndRenderPass(pass.cmd_buffer);
@@ -1510,6 +1566,8 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
       drawhandle = {
 	 buffers::CreateVertexBuffer(_mesh->vbo, _mesh->vbo_len),
 	 (int)_mesh->vbo_len,
+	 buffers::CreateIndexBuffer(_mesh->ibo, _mesh->ibo_len),
+	 (int)_mesh->ibo_len,
 	 pipeline::CreateDefaultPipeline(_mesh->mat)
       };
       g_drawhandles[_mesh] = drawhandle;
@@ -1530,6 +1588,11 @@ int gGlfwVulkan::shutdown()
    {
       vkDestroyBuffer(fwvulkan::g_logical_device, vb.second.vb, nullptr);
       vkFreeMemory(fwvulkan::g_logical_device, vb.second.vb_mem, nullptr);
+   }
+   for(auto ib : fwvulkan::g_ib_map)
+   {
+      vkDestroyBuffer(fwvulkan::g_logical_device, ib.second.ib, nullptr);
+      vkFreeMemory(fwvulkan::g_logical_device, ib.second.ib_mem, nullptr);
    }
    for(auto pipeline : g_pipe_map)
    {

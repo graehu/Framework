@@ -23,7 +23,8 @@ libs = "../../../libs"
 config.include_paths = [
     f"{libs}/fmt/include/",
     f"{libs}/vulkan/include/",
-    f"{libs}/glfw/include/"
+    f"{libs}/glfw/include/",
+    f"{libs}/tinygltf/",
 ]
 
 config.library_paths = [libs]
