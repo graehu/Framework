@@ -3,6 +3,7 @@
 #include "../../utils/params.h"
 #include "../../window/window.h"
 #include "../../graphics/graphics.h"
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <thread>
@@ -32,28 +33,27 @@ void vulkan_sample::init()
 }
 
 const std::vector<Vertex> triangle_1 = {
-   {{ 0.0f,-0.5f}, {1.0f, 0.0f, 0.0f}},
-   {{ 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-   {{-0.5f, 0.5f}, {1.0f, 0.0f, 1.0f}}
+   {{ 0.0f,-0.5f}, {1.0f, 0.0f, 0.0f}, {1, 1}},
+   {{ 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}, {0, 0}},
+   {{-0.5f, 0.5f}, {1.0f, 0.0f, 1.0f}, {0, 0}}
 };
 
 const std::vector<Vertex> triangle_2 = {
-   {{( 0.0f+1.0f)*.5f, (-0.5f)*.5f}, {1.0f, 0.0f, 0.0f}},
-   {{( 0.5f+1.0f)*.5f, ( 0.5f)*.5f}, {0.0f, 1.0f, 0.0f}},
-   {{(-0.5f+1.0f)*.5f, ( 0.5f)*.5f}, {1.0f, 0.0f, 1.0f}}
+   {{( 0.0f+1.0f)*.5f, (-0.5f)*.5f}, {1.0f, 0.0f, 0.0f}, {1, 1} }, 
+   {{( 0.5f+1.0f)*.5f, ( 0.5f)*.5f}, {0.0f, 1.0f, 0.0f}, {0, 0} }, 
+   {{(-0.5f+1.0f)*.5f, ( 0.5f)*.5f}, {1.0f, 0.0f, 1.0f}, {0, 0} }, 
 };
 
 const std::vector<Vertex> quad_verts = {
-   {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-   {{ 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-   {{ 0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}},
-   {{-0.5f,  0.5f}, {1.0f, 1.0f, 1.0f}}
+   {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0, 0}},
+   {{ 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1, 0}},
+   {{ 0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}, {1, 1}},
+   {{-0.5f,  0.5f}, {1.0f, 1.0f, 1.0f}, {0, 1}}
 };
 
 const std::array<uint16_t, 6> quad_indices = {0, 1, 2, 2, 3, 0};
 
-void loadmodel(const char* modelpath, std::vector<Vertex>& verts, std::vector<uint16_t>& indices);
-
+void loadmodel(const char* modelpath, std::vector<Vertex>& verts, std::vector<uint16_t>& indices, std::vector<unsigned char>& image, int& width, int& height);
 // todo: add texture load
 // todo: add pass dependencies
 // todo: add pass framebuffer blending/compositing
@@ -68,32 +68,42 @@ void vulkan_sample::run()
    m_graphics->register_shader("triangle", "shaders/triangle.frag.spv", shader::e_fragment);
    
    std::array<uint16_t,3> ibo = {0, 1, 2};
-   Mesh mesh1 = {triangle_1.data(), triangle_1.size(), ibo.data(), ibo.size(), {}, {"swapchain"}};
+   Mesh mesh1 = {triangle_1.data(), triangle_1.size(), ibo.data(), ibo.size(), {},{},{},{},{"swapchain"}};
    mesh1.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
    mesh1.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
    
-   Mesh mesh2 = {triangle_2.data(), triangle_2.size(), ibo.data(), ibo.size(), {}, {"swapchain"}};
+   Mesh mesh2 = {triangle_2.data(), triangle_2.size(), ibo.data(), ibo.size(), {},{},{},{},{"swapchain"}};
    mesh2.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
    mesh2.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
 
-   Mesh quad = {quad_verts.data(), quad_verts.size(), quad_indices.data(), quad_indices.size(), {}, {"swapchain"}};
+   Mesh quad = {quad_verts.data(), quad_verts.size(), quad_indices.data(), quad_indices.size(), {},{},{},{},{"swapchain"}};
    quad.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
    quad.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
    
-   std::vector<Vertex> model_verts;   std::vector<uint16_t> model_indices;
-   loadmodel("../../../libs/tinygltf/models/Cube/Cube.gltf", model_verts, model_indices);
+   std::vector<Vertex> model_verts;   std::vector<uint16_t> model_indices; std::vector<unsigned char> image; int width, height;
+   loadmodel("../../../libs/tinygltf/models/Cube/Cube.gltf", model_verts, model_indices, image, width, height);
    
-   Mesh model = {model_verts.data(), model_verts.size(), model_indices.data(), model_indices.size(), {}, {"swapchain"}};
+   Mesh model = {
+      model_verts.data(),
+      model_verts.size(),
+      model_indices.data(),
+      model_indices.size(),
+      image.data(), (size_t)width, (size_t)height,
+      {}, {"swapchain"}};
    model.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
    model.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
+
+   quad.image = image.data();
+   quad.image_width = width;
+   quad.image_height = height;
    
    while (m_window->update())
    {
       // m_graphics->register_pass("zzzz");
       // m_graphics->getRenderer()->visit(&mesh1);
-      // m_graphics->getRenderer()->visit(&quad);
-      m_graphics->getRenderer()->visit(&model);
-      m_graphics->getRenderer()->visit(&mesh2);
+      m_graphics->getRenderer()->visit(&quad);
+      // m_graphics->getRenderer()->visit(&model);
+      // m_graphics->getRenderer()->visit(&mesh2);
       m_graphics->render();
       std::this_thread::sleep_for(std::chrono::milliseconds(30));
    }
@@ -116,7 +126,7 @@ void vulkan_sample::shutdown()
 
 #include "tiny_gltf.h"
 
-void loadmodel(const char* modelpath, std::vector<Vertex>& verts, std::vector<uint16_t>& indices)
+void loadmodel(const char* modelpath, std::vector<Vertex>& verts, std::vector<uint16_t>& indices, std::vector<unsigned char>& image, int& width, int& height)
 {
    log::debug("loading model: {}", modelpath);
    using namespace tinygltf;
@@ -147,6 +157,28 @@ void loadmodel(const char* modelpath, std::vector<Vertex>& verts, std::vector<ui
       log::error("Failed to parse {}", modelpath);
       return;
    }
+   // for (auto& image : model.images)
+   // {
+   //    log::info("image: {}",image.name);
+   //    log::info("image size: {}",image.image.size());
+   // }
+   // for (auto& texture : model.textures)
+   // {
+   //    log::info("texture: {}",texture.name);
+   // }
+   // image.resize(model.images[0].image.size());
+   image = model.images[0].image;
+   width = model.images[0].width;
+   height = model.images[0].height;
+   
+   // for(int i = 0; i < height; i++)
+   // {
+   //    for(int ii = 0; ii < width; ii++)
+   //    {
+   // 	 fw::log::debug_inline("{}", (char)image[i*width+ii]);
+   //    }
+   //    fw::log::debug(",");
+   // }
 
    for (auto& primitive : model.meshes[0].primitives)
    {
@@ -161,7 +193,7 @@ void loadmodel(const char* modelpath, std::vector<Vertex>& verts, std::vector<ui
 	       { positions[i * 3 + 0]*scale,  positions[i * 3 + 1]*scale,  positions[i * 3 + 2]*scale },
 	       // note: debug colours
 	       // {float((i+0)%3), float((i+1)%3), float((1+2)%3)} 
-	       {1.0f, 1.0f, 1.0f}
+	       {1.0f, 1.0f, 1.0f}, {0,0}
 	    });
       }
 

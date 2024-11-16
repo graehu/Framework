@@ -6,6 +6,20 @@ namespace fw
 {
    namespace hash
    {
+      constexpr std::uint32_t hash_buffer(const char* data, std::size_t len)
+      {
+	 std::uint32_t b    = 378551;
+	 std::uint32_t a    = 63689;
+	 std::uint32_t hashout = 0;
+
+	 for(std::size_t i = 0; i < len; i++)
+	 {
+	    hashout = hashout * a + (std::uint32_t)data[i];
+	    a    = a * b;
+	 }
+
+	 return (hashout & 0x7FFFFFFF);
+      }
       // todo: add 64 bit variant
       // origin: https://gist.github.com/Lee-R/3839813
       // FNV-1a 32bit hashing algorithm.

@@ -21,9 +21,11 @@ namespace fw
    typedef std::vector<hash::string> PassList;
    struct Vertex
    {
-      Vertex(vec3f p, vec3f c) : position(p), color(c) {}
+      Vertex(vec3f p, vec3f c, vec2f u) : position(p), color(c), uv(u) {}
       vec3f position;
       vec3f color;
+      vec2f uv;
+      
    };
    struct Mesh
    {
@@ -31,6 +33,8 @@ namespace fw
       size_t vbo_len;
       const uint16_t* ibo;
       size_t ibo_len;
+      unsigned char* image;
+      size_t image_width, image_height;
       Material mat;
       PassList passes;
    };

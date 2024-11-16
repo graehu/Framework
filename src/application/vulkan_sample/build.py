@@ -15,6 +15,7 @@ config.source_files = [
     "../../utils/log/log.cpp",
     "../../types/vec2f.cpp",
     "../../types/vec3f.cpp",
+    "../../types/mat4x4f.cpp",
     "../../window/wGlfwVulkan/wGlfwVulkan.cpp",
     "../../graphics/gGlfwVulkan/gGlfwVulkan.cpp",
     
