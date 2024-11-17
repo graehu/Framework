@@ -31,6 +31,13 @@ void vulkan_sample::init()
    m_graphics = graphics::graphicsFactory();
    m_graphics->init();
 }
+const std::array<unsigned int, 16> test_image =
+{
+   0xff00ffff, 0xff00ffff, 0xff00ffff, 0xff00ffff,
+   0xff00ffff, 0xff00ffff, 0xff00ffff, 0xff00ffff,
+   0xff00ffff, 0xff00ffff, 0xff00ffff, 0xff00ffff,
+   0xff00ffff, 0xff00ffff, 0xff00ffff, 0xff00ffff,
+};
 
 const std::vector<Vertex> triangle_1 = {
    {{ 0.0f,-0.5f}, {1.0f, 0.0f, 0.0f}, {1, 1}},
@@ -88,14 +95,14 @@ void vulkan_sample::run()
       model_verts.size(),
       model_indices.data(),
       model_indices.size(),
-      image.data(), (size_t)width, (size_t)height,
+      test_image.data(), (size_t)4, (size_t)4, // todo: convert non image
       {}, {"swapchain"}};
    model.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
    model.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
 
-   quad.image = image.data();
-   quad.image_width = width;
-   quad.image_height = height;
+   quad.image = test_image.data();
+   quad.image_width = 4;
+   quad.image_height = 4;
    
    while (m_window->update())
    {

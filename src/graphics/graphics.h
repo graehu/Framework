@@ -33,7 +33,7 @@ namespace fw
       size_t vbo_len;
       const uint16_t* ibo;
       size_t ibo_len;
-      unsigned char* image;
+      const unsigned int* image;
       size_t image_width, image_height;
       Material mat;
       PassList passes;

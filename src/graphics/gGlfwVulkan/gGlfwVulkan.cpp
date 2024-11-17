@@ -85,9 +85,28 @@ namespace fwvulkan
    std::vector<VkDeviceMemory> g_uniformBuffersMemory;
    std::vector<void *> g_uniformBuffersMapped;
    VkSampler g_sampler;
-   VkImage g_sample_image;
-   VkImageView g_sample_imageview;
+   
+   const std::array<unsigned int, 16> test_image =
+   {
+      0xff00ffff, 0xff00ffff, 0xff00ffff, 0xff00ffff,
+      0xff00ffff, 0xff00ffff, 0xff00ffff, 0xff00ffff,
+      0xff00ffff, 0xff00ffff, 0xff00ffff, 0xff00ffff,
+      0xff00ffff, 0xff00ffff, 0xff00ffff, 0xff00ffff,
+   };
+   
+   // const std::array<unsigned int, 16> test_image =
+   // {
+   //    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+   //    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+   //    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+   //    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+   // };
+   
+   // VkImage g_sample_image;
+   // VkImageView g_sample_imageview;
+   // VkDeviceMemory g_sample_image_mem;
    ////
+   
    // renderpass
    // the default one used for the swapchain
    struct DrawHandle;
@@ -245,9 +264,15 @@ namespace fwvulkan
 	 submitInfo.commandBufferCount = 1;
 	 submitInfo.pCommandBuffers = &cb;
 
-	 vkQueueSubmit(g_graphics_queue, 1, &submitInfo, VK_NULL_HANDLE);
-	 vkQueueWaitIdle(g_graphics_queue);
-
+	 if(vkQueueSubmit(g_graphics_queue, 1, &submitInfo, VK_NULL_HANDLE)  != VK_SUCCESS)
+	 {
+	    throw std::runtime_error("failed to submit one time command buffer!");
+	 }
+	 if(vkQueueWaitIdle(g_graphics_queue) != VK_SUCCESS)
+	 {
+	    throw std::runtime_error("failed to wait for one time command buffer!");
+	 }
+	 log::debug("One time command buffer {} run, freeing.", size_t(cb));
 	 vkFreeCommandBuffers(g_logical_device, g_command_pool, 1, &cb);
       }
       void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
@@ -255,6 +280,7 @@ namespace fwvulkan
 	 (void)format;
 	 RecordAndSubmit([&](VkCommandBuffer cb)
 	 {
+	    log::debug("Transitioning image {} from {} to {}", size_t(image), oldLayout, newLayout);
 	    VkImageMemoryBarrier barrier{};
 	    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 	    barrier.oldLayout = oldLayout;
@@ -293,12 +319,13 @@ namespace fwvulkan
 	    {
 	       throw std::invalid_argument("unsupported layout transition!");
 	    }
-	    vkCmdPipelineBarrier(cb,source, dest,0, 0, nullptr, 0, nullptr, 1, &barrier);
+	    vkCmdPipelineBarrier(cb, source, dest, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 	 });
       }
       void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
 	 RecordAndSubmit([&](VkCommandBuffer cb)
 	 {
+	    log::debug("Record CopyBufferToImage");
 	    VkBufferImageCopy region{};
 	    region.bufferOffset = 0;
 	    region.bufferRowLength = 0;
@@ -390,30 +417,34 @@ namespace fwvulkan
 	 }
 	 return view;
       }
-      VkDescriptorSetLayout CreateDescriptorSetLayout(VkDescriptorType* types, VkShaderStageFlags* stage_flags, int num) {
+      VkDescriptorSetLayout CreateDescriptorSetLayout(VkDescriptorType* types, VkShaderStageFlags* stage_flags, int num)
+      {
 	 log::debug("CreateDescriptorSetLayout");
-	 VkDescriptorSetLayoutBinding bindings[num];
+	 assert(num < 16);
+	 std::array<VkDescriptorSetLayoutBinding, 16> bindings;
+		      
 	 for (int i = 0; i < num; i++)
 	 {
 	    bindings[i].binding = i;
 	    bindings[i].descriptorCount = 1;
-	    bindings[i].descriptorType = types[i]; //VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	    bindings[i].descriptorType = types[i];
 	    bindings[i].pImmutableSamplers = nullptr;
-	    bindings[i].stageFlags = stage_flags[i]; //VK_SHADER_STAGE_VERTEX_BIT;
+	    bindings[i].stageFlags = stage_flags[i];
+	    log::debug("binding {}: t:{} s:{}", i, types[i], stage_flags[i]);
 	 }
 
-        VkDescriptorSetLayoutCreateInfo layoutInfo{};
-        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layoutInfo.bindingCount = num;
-        layoutInfo.pBindings = bindings;
+	 VkDescriptorSetLayoutCreateInfo layout_ci{};
+	 layout_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	 layout_ci.bindingCount = num;
+	 layout_ci.pBindings = bindings.data();
 	
-	VkDescriptorSetLayout descriptor_set;
-        if (vkCreateDescriptorSetLayout(g_logical_device, &layoutInfo, nullptr, &descriptor_set) != VK_SUCCESS)
-	{
-            throw std::runtime_error("failed to create descriptor set layout!");
-        }
-	return descriptor_set;
-    }
+	 VkDescriptorSetLayout descriptor_set;
+	 if (vkCreateDescriptorSetLayout(g_logical_device, &layout_ci, nullptr, &descriptor_set) != VK_SUCCESS)
+	 {
+	    throw std::runtime_error("failed to create descriptor set layout!");
+	 }
+	 return descriptor_set;
+      }
       void CreateBuffer(void* source, size_t size, VkBufferUsageFlags usage, VkBuffer& buffer, VkDeviceMemory& memory)
       {
 	 VkBufferCreateInfo buffer_create_info = {};
@@ -441,28 +472,35 @@ namespace fwvulkan
 	 vkBindBufferMemory(g_logical_device, buffer, memory, 0);
 	 if(source != nullptr)
 	 {
-	    void *data;
+	    const char* buff_type = "unknown";
+	    buff_type = usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT ? "copy" : buff_type;
+	    buff_type = usage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT ? "vertex" : buff_type;
+	    buff_type = usage & VK_BUFFER_USAGE_INDEX_BUFFER_BIT ? "index" : buff_type;
+	    buff_type = usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT ? "uniform" : buff_type;
+	    
+	    void *data = nullptr; 
 	    vkMapMemory(g_logical_device, memory, 0, buffer_create_info.size, 0, &data);
+	    log::debug("Copying to {} buffer {} from {}", buff_type, data, source);
 	    memcpy(data, source, (size_t)buffer_create_info.size);
 	    vkUnmapMemory(g_logical_device, memory);
 	 }
       }
       VkDescriptorPool CreateDescriptorPool()
       {
-	 VkDescriptorPoolSize poolSize[2];
-	 poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	 poolSize[0].descriptorCount = g_max_frames_in_flight;
-	 poolSize[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	 poolSize[1].descriptorCount = g_max_frames_in_flight;
+	 VkDescriptorPoolSize pool_sizes[2];
+	 pool_sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	 pool_sizes[0].descriptorCount = g_max_frames_in_flight;
+	 pool_sizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	 pool_sizes[1].descriptorCount = g_max_frames_in_flight;
 
-	 VkDescriptorPoolCreateInfo poolInfo{};
-	 poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	 poolInfo.poolSizeCount = 2;
-	 poolInfo.pPoolSizes = poolSize;
-	 poolInfo.maxSets = g_max_frames_in_flight;
+	 VkDescriptorPoolCreateInfo pool_ci{};
+	 pool_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	 pool_ci.poolSizeCount = 2;
+	 pool_ci.pPoolSizes = &pool_sizes[0];
+	 pool_ci.maxSets = g_max_frames_in_flight;
 
 	 VkDescriptorPool pool;
-	 if (vkCreateDescriptorPool(g_logical_device, &poolInfo, nullptr, &pool) != VK_SUCCESS) {
+	 if (vkCreateDescriptorPool(g_logical_device, &pool_ci, nullptr, &pool) != VK_SUCCESS) {
             throw std::runtime_error("failed to create descriptor pool!");
 	 }
 	 return pool;
@@ -516,21 +554,24 @@ namespace fwvulkan
             vkUpdateDescriptorSets(g_logical_device, 1, descriptorWrites, 0, nullptr);
 	 }
       }
+      int CreateIMHandle(const unsigned int* image, size_t width, size_t height);
       void CreateDescriptorSets()
       {
 	 std::vector<VkDescriptorSetLayout> layouts(g_max_frames_in_flight, g_descriptor_set_layout);
-	 VkDescriptorSetAllocateInfo allocInfo{};
-	 allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	 allocInfo.descriptorPool = g_descriptor_pool;
-	 allocInfo.descriptorSetCount = g_max_frames_in_flight;
-	 allocInfo.pSetLayouts = layouts.data();
+	 VkDescriptorSetAllocateInfo alloc_info{};
+	 alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	 alloc_info.descriptorPool = g_descriptor_pool;
+	 alloc_info.descriptorSetCount = g_max_frames_in_flight;
+	 alloc_info.pSetLayouts = layouts.data();
 	 g_descriptor_sets.resize(g_max_frames_in_flight);
 	 
-	 if (vkAllocateDescriptorSets(g_logical_device, &allocInfo, g_descriptor_sets.data()) != VK_SUCCESS)
+	 if (vkAllocateDescriptorSets(g_logical_device, &alloc_info, g_descriptor_sets.data()) != VK_SUCCESS)
 	 {
             throw std::runtime_error("failed to allocate descriptor sets!");
 	 }
-	 SetDescriptorImage(g_sampler, g_sample_imageview);
+	 auto handle = CreateIMHandle(test_image.data(), 4, 4);
+	 
+	 SetDescriptorImage(g_sampler, g_im_map[handle].view);
       }
 
       VkSampler CreateSampler()
@@ -559,26 +600,47 @@ namespace fwvulkan
 	 }
 	 return sampler;
       }
-      // todo: make image memory allocation a part of create image
-      int CreateIMHandle(unsigned char* image, size_t width, size_t height)
+      int CreateIMHandle(const unsigned int* image_buffer, size_t width, size_t height)
       {
-	 if (image == nullptr) return 0;
-	 
-	 size_t image_size = width*height*sizeof(unsigned char);
-	 uint32_t hash = hash::hash_buffer((const char*)image, image_size);
+	 if (image_buffer == nullptr) return 0;
+	 // todo: grab type size, not 4.
+	 size_t image_size = width*height*4;
+	 uint32_t hash = hash::hash_buffer((const char*)image_buffer, image_size);
 	 if (g_im_map.find(hash) == g_im_map.end())
 	 {
 	    VkBuffer copy_buffer = VK_NULL_HANDLE;
 	    VkDeviceMemory copy_memory = VK_NULL_HANDLE;
 	    {
+	       // this shows the correct data
+	       // log::debug("before image size: w:{} h:{} size:{}", width, height, image_size);
+	       // for(int i = 0; i < height; i++)
+	       // {
+	       // 	  for(int ii = 0; ii < width; ii++)
+	       // 	  {
+	       // 	     log::debug_inline("{0:x},", image_buffer[i*width+ii]);
+	       // 	  }
+	       // 	  log::debug("");
+	       // }
 	       VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-	       CreateBuffer((void*)image, image_size, usage, copy_buffer, copy_memory);
+	       CreateBuffer((void*)image_buffer, image_size, usage, copy_buffer, copy_memory);
+	       // void* data; // this shows the correct data
+	       // log::debug("after image size: w:{} h:{} size:{}", width, height, image_size);
+	       // vkMapMemory(g_logical_device, copy_memory, 0, width*height*4, 0, &data);
+	       // for(int i = 0; i < height; i++)
+	       // {
+	       // 	  for(int ii = 0; ii < width; ii++)
+	       // 	  {
+	       // 	     log::debug_inline("{0:x},", ((unsigned int*)data)[i*width+ii]);
+	       // 	  }
+	       // 	  log::debug("");
+	       // }
+	       // vkUnmapMemory(g_logical_device, copy_memory);
 	    }
 	    VkImage image = VK_NULL_HANDLE;
 	    VkDeviceMemory image_memory = VK_NULL_HANDLE;
 	    {
 	       const VkImageUsageFlags usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-	       CreateImage(width, height, VK_FORMAT_B8G8R8A8_SRGB, usage, image, image_memory);
+	       CreateImage(width, height, VK_FORMAT_R8G8B8A8_SRGB, usage, image, image_memory);
 	    }
 	    utils::TransitionImageLayout(image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	    utils::CopyBufferToImage(copy_buffer, image, width, height);
@@ -774,11 +836,15 @@ namespace fwvulkan
 	 uint32_t glfwExtensionCount = 0;
 	 const char **glfwExtensions;
 	 // todo: find out why renderdoc dies here. (glfwGetRequiredInstanceExtensions)
+	 // if(g_enable_validation_layers) log::debug("death");
 	 glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+	 // if(g_enable_validation_layers) log::debug("life");
 	 std::vector<const char *> required_extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 	 if (g_enable_validation_layers)
 	 {
 	    required_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+	    // required_extensions.push_back("VK_EXT_debug_marker");
+	    // required_extensions.push_back("VK_EXT_tooling_info");
 	 }
 	 for(auto ext : g_instance_extensions)
 	 {
@@ -1359,18 +1425,17 @@ namespace fwvulkan
 	    subpass_dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	    subpass_dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-
-	    VkRenderPassCreateInfo render_pass_create_info = {};
-	    render_pass_create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	    render_pass_create_info.attachmentCount = 1;
-	    render_pass_create_info.pAttachments = &color_attachement;
-	    render_pass_create_info.subpassCount = 1;
-	    render_pass_create_info.pSubpasses = &subpass_description;
-	    render_pass_create_info.dependencyCount = 1;
-	    render_pass_create_info.pDependencies = &subpass_dependency;
+	    VkRenderPassCreateInfo render_pass_ci = {};
+	    render_pass_ci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	    render_pass_ci.attachmentCount = 1;
+	    render_pass_ci.pAttachments = &color_attachement;
+	    render_pass_ci.subpassCount = 1;
+	    render_pass_ci.pSubpasses = &subpass_description;
+	    render_pass_ci.dependencyCount = 1;
+	    render_pass_ci.pDependencies = &subpass_dependency;
 	    
 	    VkRenderPass pass;
-	    if (vkCreateRenderPass(g_logical_device, &render_pass_create_info, nullptr, &pass) != VK_SUCCESS)
+	    if (vkCreateRenderPass(g_logical_device, &render_pass_ci, nullptr, &pass) != VK_SUCCESS)
 	    {
 	       throw std::runtime_error("failed to create render pass!");
 	    }
@@ -1488,29 +1553,29 @@ namespace fwvulkan
 	 static VkVertexInputBindingDescription vert_binding_description = vkVertex::GetBindingDescription();
 	 static std::array<VkVertexInputAttributeDescription, 3> vert_attribute_description = vkVertex::GetAttributeDescriptions();
 	 
-	 VkPipelineVertexInputStateCreateInfo vertex_input_create_info = {};
-	 vertex_input_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	 vertex_input_create_info.vertexBindingDescriptionCount = 1;
-	 vertex_input_create_info.pVertexBindingDescriptions = &vert_binding_description;
-	 vertex_input_create_info.vertexAttributeDescriptionCount = static_cast<uint32_t>(vert_attribute_description.size());
-	 vertex_input_create_info.pVertexAttributeDescriptions = vert_attribute_description.data();
-	 return vertex_input_create_info;
+	 VkPipelineVertexInputStateCreateInfo vertex_input_ci = {};
+	 vertex_input_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	 vertex_input_ci.vertexBindingDescriptionCount = 1;
+	 vertex_input_ci.pVertexBindingDescriptions = &vert_binding_description;
+	 vertex_input_ci.vertexAttributeDescriptionCount = vert_attribute_description.size();
+	 vertex_input_ci.pVertexAttributeDescriptions = vert_attribute_description.data();
+	 return vertex_input_ci;
       }
       VkPipelineRasterizationStateCreateInfo GetDefaultRasterState()
       {
-	 VkPipelineRasterizationStateCreateInfo rasteriser_create_info = {};
-	 rasteriser_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-	 rasteriser_create_info.depthClampEnable = VK_FALSE;
-	 rasteriser_create_info.polygonMode = VK_POLYGON_MODE_FILL;
-	 rasteriser_create_info.lineWidth = 1.0f;
+	 VkPipelineRasterizationStateCreateInfo rasteriser_ci = {};
+	 rasteriser_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	 rasteriser_ci.depthClampEnable = VK_FALSE;
+	 rasteriser_ci.polygonMode = VK_POLYGON_MODE_FILL;
+	 rasteriser_ci.lineWidth = 1.0f;
 	 // note: VK_CULL_MODE_NONE for debugging culling.
-	 rasteriser_create_info.cullMode = VK_CULL_MODE_BACK_BIT;
-	 rasteriser_create_info.frontFace = VK_FRONT_FACE_CLOCKWISE;
-	 rasteriser_create_info.depthBiasEnable = VK_FALSE;
-	 rasteriser_create_info.depthBiasConstantFactor = 0.0f;
-	 rasteriser_create_info.depthBiasClamp = 0.0f;
-	 rasteriser_create_info.depthBiasSlopeFactor = 0.0f;
-	 return rasteriser_create_info;
+	 rasteriser_ci.cullMode = VK_CULL_MODE_BACK_BIT;
+	 rasteriser_ci.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	 rasteriser_ci.depthBiasEnable = VK_FALSE;
+	 rasteriser_ci.depthBiasConstantFactor = 0.0f;
+	 rasteriser_ci.depthBiasClamp = 0.0f;
+	 rasteriser_ci.depthBiasSlopeFactor = 0.0f;
+	 return rasteriser_ci;
       }
       VkViewport GetDefaultViewport()
       {
@@ -1542,25 +1607,25 @@ namespace fwvulkan
 	 static VkRect2D scissor = {};
 	 scissor = GetDefaultScissor();
 
-	 VkPipelineViewportStateCreateInfo viewport_state_create_info = {};
-	 viewport_state_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-	 viewport_state_create_info.viewportCount = 1;
-	 viewport_state_create_info.pViewports = &viewport;
-	 viewport_state_create_info.scissorCount = 1;
-	 viewport_state_create_info.pScissors = &scissor;
-	 return viewport_state_create_info;
+	 VkPipelineViewportStateCreateInfo viewport_state_ci = {};
+	 viewport_state_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	 viewport_state_ci.viewportCount = 1;
+	 viewport_state_ci.pViewports = &viewport;
+	 viewport_state_ci.scissorCount = 1;
+	 viewport_state_ci.pScissors = &scissor;
+	 return viewport_state_ci;
       }
       VkPipelineMultisampleStateCreateInfo GetDefaultMultisampleState()
       {
-	 VkPipelineMultisampleStateCreateInfo multisample_create_info = {};
-	 multisample_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-	 multisample_create_info.sampleShadingEnable = VK_FALSE;
-	 multisample_create_info.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-	 multisample_create_info.minSampleShading = 1.0f;
-	 multisample_create_info.pSampleMask = nullptr;
-	 multisample_create_info.alphaToCoverageEnable = VK_FALSE;
-	 multisample_create_info.alphaToOneEnable = VK_FALSE;
-	 return multisample_create_info;
+	 VkPipelineMultisampleStateCreateInfo multisample_ci = {};
+	 multisample_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	 multisample_ci.sampleShadingEnable = VK_FALSE;
+	 multisample_ci.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	 multisample_ci.minSampleShading = 1.0f;
+	 multisample_ci.pSampleMask = nullptr;
+	 multisample_ci.alphaToCoverageEnable = VK_FALSE;
+	 multisample_ci.alphaToOneEnable = VK_FALSE;
+	 return multisample_ci;
       }
       VkPipelineInputAssemblyStateCreateInfo GetDefaultIAState()
       {
@@ -1585,7 +1650,7 @@ namespace fwvulkan
 	 color_blend_attachment_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	 color_blend_attachment_state.alphaBlendOp = VK_BLEND_OP_ADD;
 	 
-	  VkPipelineColorBlendStateCreateInfo color_blending_create_info = {};
+	 VkPipelineColorBlendStateCreateInfo color_blending_create_info = {};
 	 color_blending_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	 color_blending_create_info.logicOpEnable = VK_FALSE;
 	 // logic op is disabled so this line is optional.
@@ -1602,13 +1667,13 @@ namespace fwvulkan
       }
       VkPipelineLayoutCreateInfo GetDefaultPipelineLayout()
       {
-	 VkPipelineLayoutCreateInfo pipeline_layout_create_info = {};
-	 pipeline_layout_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	 pipeline_layout_create_info.setLayoutCount = 1;
-	 pipeline_layout_create_info.pSetLayouts = &g_descriptor_set_layout;
-	 pipeline_layout_create_info.pushConstantRangeCount = 0;
-	 pipeline_layout_create_info.pPushConstantRanges = nullptr;
-	 return pipeline_layout_create_info;
+	 VkPipelineLayoutCreateInfo pipeline_layout_ci = {};
+	 pipeline_layout_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	 pipeline_layout_ci.setLayoutCount = 1;
+	 pipeline_layout_ci.pSetLayouts = &g_descriptor_set_layout;
+	 pipeline_layout_ci.pushConstantRangeCount = 0;
+	 pipeline_layout_ci.pPushConstantRanges = nullptr;
+	 return pipeline_layout_ci;
       }
       int CreateDefaultPipeline(Material mat)
       {
@@ -1650,9 +1715,9 @@ namespace fwvulkan
 	       VK_DYNAMIC_STATE_VIEWPORT,
 	       VK_DYNAMIC_STATE_SCISSOR
 	    };
-	    VkPipelineDynamicStateCreateInfo dynamic_state_ci{};
+	    VkPipelineDynamicStateCreateInfo dynamic_state_ci = {};
 	    dynamic_state_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-	    dynamic_state_ci.dynamicStateCount = static_cast<uint32_t>(dynamic_states.size());
+	    dynamic_state_ci.dynamicStateCount = dynamic_states.size();
 	    dynamic_state_ci.pDynamicStates = dynamic_states.data();
 	    
 	    VkGraphicsPipelineCreateInfo pipeline_ci = {};
@@ -1717,7 +1782,7 @@ namespace fwvulkan
 	 render_pass_begin_info.renderArea.extent = pass.extent;
 
 	 // log::debug("bound fb: {}", g_current_frame);
-	 VkClearValue clear_color = {{{0.0f, 0.0f, 0.0f, 1.0f}}}; // fixes a warning
+	 VkClearValue clear_color = {{{0.0f, 1.0f, 1.0f, 1.0f}}}; // fixes a warning
 	 render_pass_begin_info.clearValueCount = 1;
 	 render_pass_begin_info.pClearValues = &clear_color;
 	 
@@ -1812,16 +1877,19 @@ namespace fwvulkan
    }
 } // namespace fwvulkan
 
+fwvulkan::UniformBufferObject ubo = {};
+float g_dt;
 
 void UpdateUniformBuffer(uint32_t currentImage)
 {
    using namespace fwvulkan;
+   g_dt += 1.0/60.0;
    // static auto startTime = std::chrono::high_resolution_clock::now();
 
    // auto currentTime = std::chrono::high_resolution_clock::now();
    // float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-   UniformBufferObject ubo = {};
+   ubo.model.rotateZ(g_dt);
    // memset(&ubo, 1, sizeof(UniformBufferObject));
    // ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
    // ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -1853,6 +1921,7 @@ int gGlfwVulkan::init()
 
    // todo: this sucks
    {
+      // buffers::CreateImage(4, 4, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, g_sample_image, g_sample_image_mem);
       g_sampler = buffers::CreateSampler();
       buffers::CreateUniformBuffers();
       VkDescriptorType types[] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER };
@@ -1893,7 +1962,8 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
       };
       
       // todo: this sucks
-      buffers::SetDescriptorImage(g_sampler, g_im_map[drawhandle.im_handle].view);
+      if(drawhandle.im_handle)
+	 buffers::SetDescriptorImage(g_sampler, g_im_map[drawhandle.im_handle].view);
       g_drawhandles[_mesh] = drawhandle;
    }
    else { drawhandle = handles_iter->second; }
@@ -1955,6 +2025,10 @@ int gGlfwVulkan::shutdown()
       vkFreeMemory(g_logical_device, g_uniformBuffersMemory[i], nullptr);
    }
    
+   // sampler clean-up
+   // vkDestroyImage(g_logical_device, g_sample_image, nullptr);
+   // vkDestroyImageView(g_logical_device, g_sample_imageview, nullptr);
+   // vkFreeMemory(g_logical_device, g_sample_image_mem, nullptr);
    vkDestroySampler(g_logical_device, g_sampler, nullptr);
    vkDestroyDescriptorPool(g_logical_device, g_descriptor_pool, nullptr);
    vkDestroyDescriptorSetLayout(g_logical_device, g_descriptor_set_layout, nullptr);
