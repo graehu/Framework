@@ -108,8 +108,8 @@ void vulkan_sample::run()
    {
       // m_graphics->register_pass("zzzz");
       // m_graphics->getRenderer()->visit(&mesh1);
-      m_graphics->getRenderer()->visit(&quad);
-      // m_graphics->getRenderer()->visit(&model);
+      // m_graphics->getRenderer()->visit(&quad);
+      m_graphics->getRenderer()->visit(&model);
       // m_graphics->getRenderer()->visit(&mesh2);
       m_graphics->render();
       std::this_thread::sleep_for(std::chrono::milliseconds(30));

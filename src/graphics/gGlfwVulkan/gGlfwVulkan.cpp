@@ -383,6 +383,9 @@ namespace fwvulkan
 	    
 	 alloc_info.allocationSize = mem_requirements.size;
 	 alloc_info.memoryTypeIndex = utils::FindMemoryType(mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	 log::debug("image ({}, {}) requirements size: {} align: {}", width, height, mem_requirements.size, mem_requirements.alignment);
+	 
 	 if (vkAllocateMemory(g_logical_device, &alloc_info, nullptr, &image_memory) != VK_SUCCESS)
 	 {
 	    throw std::runtime_error("failed to allocate image mem!");
@@ -394,24 +397,24 @@ namespace fwvulkan
       }
       VkImageView CreateImageView(VkImage image, VkFormat format)
       {
-	 VkImageViewCreateInfo create_info{};
-	 create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	 create_info.image = image;
-	 create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	 create_info.format = format;
-	 create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	 create_info.subresourceRange.baseMipLevel = 0;
-	 create_info.subresourceRange.levelCount = 1;
-	 create_info.subresourceRange.baseArrayLayer = 0;
-	 create_info.subresourceRange.layerCount = 1;
+	 VkImageViewCreateInfo image_view_ci = {};
+	 image_view_ci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	 image_view_ci.image = image;
+	 image_view_ci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	 image_view_ci.format = format;
+	 image_view_ci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	 image_view_ci.subresourceRange.baseMipLevel = 0;
+	 image_view_ci.subresourceRange.levelCount = 1;
+	 image_view_ci.subresourceRange.baseArrayLayer = 0;
+	 image_view_ci.subresourceRange.layerCount = 1;
 
-	 create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-	 create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-	 create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-	 create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+	 image_view_ci.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+	 image_view_ci.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+	 image_view_ci.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+	 image_view_ci.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
 	 VkImageView view;
-	 if (vkCreateImageView(g_logical_device, &create_info, nullptr, &view) != VK_SUCCESS)
+	 if (vkCreateImageView(g_logical_device, &image_view_ci, nullptr, &view) != VK_SUCCESS)
 	 {
 	    throw std::runtime_error("failed to create texture image view!");
 	 }
@@ -430,10 +433,10 @@ namespace fwvulkan
 	    bindings[i].descriptorType = types[i];
 	    bindings[i].pImmutableSamplers = nullptr;
 	    bindings[i].stageFlags = stage_flags[i];
-	    log::debug("binding {}: t:{} s:{}", i, types[i], stage_flags[i]);
+	    log::debug("Descriptor binding {}: t:{} s:{}", i, types[i], stage_flags[i]);
 	 }
 
-	 VkDescriptorSetLayoutCreateInfo layout_ci{};
+	 VkDescriptorSetLayoutCreateInfo layout_ci = {};
 	 layout_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	 layout_ci.bindingCount = num;
 	 layout_ci.pBindings = bindings.data();
@@ -640,16 +643,16 @@ namespace fwvulkan
 	    VkDeviceMemory image_memory = VK_NULL_HANDLE;
 	    {
 	       const VkImageUsageFlags usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-	       CreateImage(width, height, VK_FORMAT_R8G8B8A8_SRGB, usage, image, image_memory);
+	       CreateImage(width, height, VK_FORMAT_R8G8B8A8_UINT, usage, image, image_memory);
 	    }
-	    utils::TransitionImageLayout(image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	    utils::TransitionImageLayout(image, VK_FORMAT_R8G8B8A8_UINT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	    utils::CopyBufferToImage(copy_buffer, image, width, height);
-	    utils::TransitionImageLayout(image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	    utils::TransitionImageLayout(image, VK_FORMAT_R8G8B8A8_UINT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	    
 	    vkDestroyBuffer(g_logical_device, copy_buffer, nullptr);
 	    vkFreeMemory(g_logical_device, copy_memory, nullptr);
 
-	    VkImageView view = CreateImageView(image, VK_FORMAT_R8G8B8A8_SRGB);
+	    VkImageView view = CreateImageView(image, VK_FORMAT_R8G8B8A8_UINT);
 	    
 	    g_im_map[hash] = {image, view, image_memory};
 	    log::debug("Created IMHandle: {}", hash);
@@ -1585,8 +1588,8 @@ namespace fwvulkan
 	 viewport.y = 0.0f;
 	 viewport.width = (float)pass.extent.width;
 	 viewport.height = (float)pass.extent.height;
-	 viewport.minDepth = 0.0f;
-	 viewport.maxDepth = 1.0f;
+	 viewport.minDepth = 0.1f;
+	 viewport.maxDepth = 100.0f;
 	 return viewport;
       }
       VkRect2D GetDefaultScissor()
@@ -1650,20 +1653,20 @@ namespace fwvulkan
 	 color_blend_attachment_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	 color_blend_attachment_state.alphaBlendOp = VK_BLEND_OP_ADD;
 	 
-	 VkPipelineColorBlendStateCreateInfo color_blending_create_info = {};
-	 color_blending_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	 color_blending_create_info.logicOpEnable = VK_FALSE;
+	 VkPipelineColorBlendStateCreateInfo color_blend_state_ci = {};
+	 color_blend_state_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	 color_blend_state_ci.logicOpEnable = VK_FALSE;
 	 // logic op is disabled so this line is optional.
-	 color_blending_create_info.logicOp = VK_LOGIC_OP_COPY;
+	 color_blend_state_ci.logicOp = VK_LOGIC_OP_COPY;
 	 //
-	 color_blending_create_info.attachmentCount = 1;
-	 color_blending_create_info.pAttachments = &color_blend_attachment_state;
+	 color_blend_state_ci.attachmentCount = 1;
+	 color_blend_state_ci.pAttachments = &color_blend_attachment_state;
 	 // optional constants. I think these are actually used, they're just initialised to zero by defualt.
-	 color_blending_create_info.blendConstants[0] = 0.0f;
-	 color_blending_create_info.blendConstants[1] = 0.0f;
-	 color_blending_create_info.blendConstants[2] = 0.0f;
-	 color_blending_create_info.blendConstants[3] = 0.0f;
-	 return color_blending_create_info;
+	 color_blend_state_ci.blendConstants[0] = 0.0f;
+	 color_blend_state_ci.blendConstants[1] = 0.0f;
+	 color_blend_state_ci.blendConstants[2] = 0.0f;
+	 color_blend_state_ci.blendConstants[3] = 0.0f;
+	 return color_blend_state_ci;
       }
       VkPipelineLayoutCreateInfo GetDefaultPipelineLayout()
       {
@@ -1884,17 +1887,12 @@ void UpdateUniformBuffer(uint32_t currentImage)
 {
    using namespace fwvulkan;
    g_dt += 1.0/60.0;
-   // static auto startTime = std::chrono::high_resolution_clock::now();
-
-   // auto currentTime = std::chrono::high_resolution_clock::now();
-   // float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
+   auto extent = g_pass_map["swapchain"].extent;
+   ubo.proj.perspective(60.0f, (float)extent.width / extent.height, 0.1f, 100.f);
+   ubo.view.translate(0, 0, -10);
+   mat4x4f mat; mat.rotateX(g_dt);
    ubo.model.rotateZ(g_dt);
-   // memset(&ubo, 1, sizeof(UniformBufferObject));
-   // ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-   // ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-   // ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float) swapChainExtent.height, 0.1f, 10.0f);
-   // ubo.proj[1][1] *= -1;
+   ubo.model = ubo.model*mat;
 
    memcpy(g_uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }
