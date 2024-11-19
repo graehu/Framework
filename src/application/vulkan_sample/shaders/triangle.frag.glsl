@@ -9,7 +9,7 @@ layout(location = 0) out vec4 out_color;
 void main()
 {
    out_color = texture(albedo, in_uv);
-   // out_color = mix(out_color, vec4(in_uv,0,1), 0.5);
+   out_color = mix(out_color, vec4(in_uv,0,1), 0.1);
    // out_color = mix(out_color, vec4(1,0,1,1), 0.5);
    // out_color = vec4(in_uv,0,1);
    // out_color = vec4(in_uv,0,1);

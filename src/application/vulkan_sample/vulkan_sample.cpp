@@ -84,8 +84,12 @@ void vulkan_sample::run()
    mesh2.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
 
    Mesh quad = {quad_verts.data(), quad_verts.size(), quad_indices.data(), quad_indices.size(), {},{},{},{},{"swapchain"}};
+   quad.image = test_image.data();
+   quad.image_width = 4;
+   quad.image_height = 4;
    quad.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
    quad.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
+
    
    std::vector<Vertex> model_verts;   std::vector<uint16_t> model_indices; std::vector<unsigned char> image; int width, height;
    loadmodel("../../../libs/tinygltf/models/Cube/Cube.gltf", model_verts, model_indices, image, width, height);
@@ -95,14 +99,10 @@ void vulkan_sample::run()
       model_verts.size(),
       model_indices.data(),
       model_indices.size(),
-      test_image.data(), (size_t)4, (size_t)4, // todo: convert non image
+      (unsigned int*)image.data(), (size_t)width, (size_t)height, // todo: convert non image
       {}, {"swapchain"}};
    model.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
    model.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
-
-   quad.image = test_image.data();
-   quad.image_width = 4;
-   quad.image_height = 4;
    
    while (m_window->update())
    {
@@ -142,8 +142,7 @@ void loadmodel(const char* modelpath, std::vector<Vertex>& verts, std::vector<ui
    TinyGLTF loader;
    std::string err;
    std::string warn;
-   // todo: this scale is because the cube clips / gets culled.
-   const float scale = 0.99f;
+   const float scale = 1.0f;
 
    bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, modelpath);
    //bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, argv[1]); // for binary glTF(.glb)
@@ -164,51 +163,38 @@ void loadmodel(const char* modelpath, std::vector<Vertex>& verts, std::vector<ui
       log::error("Failed to parse {}", modelpath);
       return;
    }
-   // for (auto& image : model.images)
-   // {
-   //    log::info("image: {}",image.name);
-   //    log::info("image size: {}",image.image.size());
-   // }
-   // for (auto& texture : model.textures)
-   // {
-   //    log::info("texture: {}",texture.name);
-   // }
-   // image.resize(model.images[0].image.size());
+
    image = model.images[0].image;
    width = model.images[0].width;
    height = model.images[0].height;
    
-   // for(int i = 0; i < height; i++)
-   // {
-   //    for(int ii = 0; ii < width; ii++)
-   //    {
-   // 	 fw::log::debug_inline("{}", (char)image[i*width+ii]);
-   //    }
-   //    fw::log::debug(",");
-   // }
-
    for (auto& primitive : model.meshes[0].primitives)
    {
       const tinygltf::Accessor& pos_accessor = model.accessors[primitive.attributes["POSITION"]];
       const tinygltf::BufferView& pos_bufferView = model.bufferViews[pos_accessor.bufferView];
       const tinygltf::Buffer& pos_buffer = model.buffers[pos_bufferView.buffer];
 
+      const tinygltf::Accessor& uv_accessor = model.accessors[primitive.attributes["TEXCOORD"]];
+      const tinygltf::BufferView& uv_bufferView = model.bufferViews[uv_accessor.bufferView];
+      const tinygltf::Buffer& uv_buffer = model.buffers[pos_bufferView.buffer];
+
       const float* positions = reinterpret_cast<const float*>(&pos_buffer.data[pos_bufferView.byteOffset + pos_accessor.byteOffset]);
-      
+      const float* uvs = reinterpret_cast<const float*>(&uv_buffer.data[uv_bufferView.byteOffset + uv_accessor.byteOffset]);
       for (size_t i = 0; i < pos_accessor.count; ++i) {
 	 verts.push_back({
 	       { positions[i * 3 + 0]*scale,  positions[i * 3 + 1]*scale,  positions[i * 3 + 2]*scale },
 	       // note: debug colours
 	       // {float((i+0)%3), float((i+1)%3), float((1+2)%3)} 
-	       {1.0f, 1.0f, 1.0f}, {0,0}
+	       {1.0f, 1.0f, 1.0f}, { uvs[i * 2 + 0], uvs[i * 2 + 1] }
 	    });
       }
-
+      
       const tinygltf::Accessor& idx_accessor = model.accessors[primitive.indices];
       const tinygltf::BufferView& idx_bufferView = model.bufferViews[idx_accessor.bufferView];
       const tinygltf::Buffer& idx_buffer = model.buffers[idx_bufferView.buffer];
       const uint16_t *data = reinterpret_cast<const uint16_t *>(&idx_buffer.data[idx_bufferView.byteOffset + idx_accessor.byteOffset]);
       indices.resize(idx_accessor.count);
+      
       for (size_t i = 0; i < idx_accessor.count; ++i) {
 	 indices[i] = data[i];
       }

@@ -383,8 +383,6 @@ namespace fwvulkan
 	    
 	 alloc_info.allocationSize = mem_requirements.size;
 	 alloc_info.memoryTypeIndex = utils::FindMemoryType(mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-	 log::debug("image ({}, {}) requirements size: {} align: {}", width, height, mem_requirements.size, mem_requirements.alignment);
 	 
 	 if (vkAllocateMemory(g_logical_device, &alloc_info, nullptr, &image_memory) != VK_SUCCESS)
 	 {
@@ -394,6 +392,7 @@ namespace fwvulkan
 	 {
 	    throw std::runtime_error("failed to failed to bind image mem!");
 	 }
+	 log::debug("Created Image ({}, {}) requirements size: {} align: {} vkmem: {}", width, height, mem_requirements.size, mem_requirements.alignment, (size_t)image_memory);
       }
       VkImageView CreateImageView(VkImage image, VkFormat format)
       {
@@ -459,15 +458,15 @@ namespace fwvulkan
 	 {
 	    throw std::runtime_error("failed to create buffer!");
 	 }
-	 VkMemoryRequirements memory_requirements;
-	 vkGetBufferMemoryRequirements(g_logical_device, buffer, &memory_requirements);
+	 VkMemoryRequirements requirements;
+	 vkGetBufferMemoryRequirements(g_logical_device, buffer, &requirements);
 
 	 VkMemoryAllocateInfo allocate_info = {};
 	 allocate_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	 allocate_info.allocationSize = memory_requirements.size;
+	 allocate_info.allocationSize = requirements.size;
 	 // todo: make sure we always want host visible and host coherent
-	 allocate_info.memoryTypeIndex = utils::FindMemoryType(
-	    memory_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	 auto property_bits = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	 allocate_info.memoryTypeIndex = utils::FindMemoryType(requirements.memoryTypeBits, property_bits);
 	 if (vkAllocateMemory(g_logical_device, &allocate_info, nullptr, &memory) != VK_SUCCESS)
 	 {
 	    throw std::runtime_error("failed to allocate buffer memory!");
@@ -643,16 +642,16 @@ namespace fwvulkan
 	    VkDeviceMemory image_memory = VK_NULL_HANDLE;
 	    {
 	       const VkImageUsageFlags usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-	       CreateImage(width, height, VK_FORMAT_R8G8B8A8_UINT, usage, image, image_memory);
+	       CreateImage(width, height, VK_FORMAT_R8G8B8A8_SRGB, usage, image, image_memory);
 	    }
-	    utils::TransitionImageLayout(image, VK_FORMAT_R8G8B8A8_UINT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	    utils::TransitionImageLayout(image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	    utils::CopyBufferToImage(copy_buffer, image, width, height);
-	    utils::TransitionImageLayout(image, VK_FORMAT_R8G8B8A8_UINT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	    utils::TransitionImageLayout(image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	    
 	    vkDestroyBuffer(g_logical_device, copy_buffer, nullptr);
 	    vkFreeMemory(g_logical_device, copy_memory, nullptr);
 
-	    VkImageView view = CreateImageView(image, VK_FORMAT_R8G8B8A8_UINT);
+	    VkImageView view = CreateImageView(image, VK_FORMAT_R8G8B8A8_SRGB);
 	    
 	    g_im_map[hash] = {image, view, image_memory};
 	    log::debug("Created IMHandle: {}", hash);
@@ -1919,7 +1918,6 @@ int gGlfwVulkan::init()
 
    // todo: this sucks
    {
-      // buffers::CreateImage(4, 4, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, g_sample_image, g_sample_image_mem);
       g_sampler = buffers::CreateSampler();
       buffers::CreateUniformBuffers();
       VkDescriptorType types[] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER };
