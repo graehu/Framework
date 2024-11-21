@@ -10,6 +10,7 @@
 #include <functional>
 #include <array>
 #include <vector>
+#include <vulkan/vulkan_core.h>
 #include "../../utils/log/log.h"
 #include "../../utils/params.h"
 #include "../../types/mat4x4f.h"
@@ -198,7 +199,7 @@ namespace fwvulkan
    // Note: These layers require you to run Vulkan/1.3.280.1/setup-env.sh prior to running the executable.
    const std::vector<const char *> g_validation_layers = {
       "VK_LAYER_KHRONOS_validation",
-      // "VK_LAYER_RENDERDOC_Capture",
+      "VK_LAYER_RENDERDOC_Capture",
       // "VK_LAYER_MESA_device_select",
       // "VK_LAYER_NV_optimus",
       // "VK_LAYER_LUNARG_api_dump",
@@ -536,7 +537,7 @@ namespace fwvulkan
 	    imageInfo.imageView = image_view;
 	    imageInfo.sampler = sampler;
 
-            VkWriteDescriptorSet descriptorWrites[2];
+            VkWriteDescriptorSet descriptorWrites[2] = {{}, {}};
             descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             descriptorWrites[0].dstSet = g_descriptor_sets[i];
             descriptorWrites[0].dstBinding = 0;
@@ -553,7 +554,7 @@ namespace fwvulkan
 	    descriptorWrites[1].descriptorCount = 1;
 	    descriptorWrites[1].pImageInfo = &imageInfo;
 
-            vkUpdateDescriptorSets(g_logical_device, 1, descriptorWrites, 0, nullptr);
+            vkUpdateDescriptorSets(g_logical_device, 2, descriptorWrites, 0, nullptr);
 	 }
       }
       int CreateIMHandle(const unsigned int* image, size_t width, size_t height);
@@ -837,10 +838,7 @@ namespace fwvulkan
 	 //
 	 uint32_t glfwExtensionCount = 0;
 	 const char **glfwExtensions;
-	 // todo: find out why renderdoc dies here. (glfwGetRequiredInstanceExtensions)
-	 // if(g_enable_validation_layers) log::debug("death");
 	 glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-	 // if(g_enable_validation_layers) log::debug("life");
 	 std::vector<const char *> required_extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 	 if (g_enable_validation_layers)
 	 {

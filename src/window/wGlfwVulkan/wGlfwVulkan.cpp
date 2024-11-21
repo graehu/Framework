@@ -1,6 +1,7 @@
 #include "wGlfwVulkan.h"
 #define GLFW_INCLUDE_VULKAN
 #include "GLFW/glfw3.h"
+#include "../../utils/log/log.h"
 
 namespace fwvulkan
 {
@@ -12,11 +13,19 @@ namespace fwvulkan
    }
 }
 
+void error_callback(int code, const char* description)
+{
+   fw::log::debug("{}:{{}}", code, description);
+    // display_error_message(code, description);
+}
+
 int wGlfwVulkan::init(int _width, int _height, const char* _name)
 {
    glfwInit();
    glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+   glfwSetErrorCallback(error_callback);
+   
    GLFWwindow* window = glfwCreateWindow(_width, _height, _name, nullptr, nullptr);
    if (window == nullptr)
    {
