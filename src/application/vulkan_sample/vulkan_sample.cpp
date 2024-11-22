@@ -25,6 +25,7 @@ void vulkan_sample::init()
    fw::log::scope fw("fw");
    fw::log::topics::add("window");
    m_window = window::windowFactory();
+   m_width = 1920; m_height = 1080;
    m_window->init(m_width, m_height, m_name);
 
    fw::log::topics::add("graphics");
@@ -174,12 +175,37 @@ void loadmodel(const char* modelpath, std::vector<Vertex>& verts, std::vector<ui
       const tinygltf::BufferView& pos_bufferView = model.bufferViews[pos_accessor.bufferView];
       const tinygltf::Buffer& pos_buffer = model.buffers[pos_bufferView.buffer];
 
-      const tinygltf::Accessor& uv_accessor = model.accessors[primitive.attributes["TEXCOORD"]];
+      const tinygltf::Accessor& uv_accessor = model.accessors[primitive.attributes["TEXCOORD_0"]];
       const tinygltf::BufferView& uv_bufferView = model.bufferViews[uv_accessor.bufferView];
       const tinygltf::Buffer& uv_buffer = model.buffers[pos_bufferView.buffer];
 
       const float* positions = reinterpret_cast<const float*>(&pos_buffer.data[pos_bufferView.byteOffset + pos_accessor.byteOffset]);
       const float* uvs = reinterpret_cast<const float*>(&uv_buffer.data[uv_bufferView.byteOffset + uv_accessor.byteOffset]);
+      // switch(uv_accessor.type)
+      // {
+      // 	 case TINYGLTF_TYPE_VEC2: //TINYGLTF_TYPE_VEC2
+      // 	 {
+      // 	    switch (uv_accessor.componentType)
+      // 	    {
+      // 	       case TINYGLTF_COMPONENT_TYPE_FLOAT:
+      // 	       {
+      // 		  log::debug("this float");
+      // 		  break;
+      // 	       }
+      // 	       case TINYGLTF_COMPONENT_TYPE_DOUBLE :
+      // 	       {
+      // 		  log::debug("that double");
+      // 		  break;
+      // 	       }
+      // 	    }
+      // 	    break;
+      // 	 }
+      // 	 default:
+      // 	 {
+      // 	    log::debug("unknown type");
+      // 	 }
+      // }
+
       for (size_t i = 0; i < pos_accessor.count; ++i) {
 	 verts.push_back({
 	       { positions[i * 3 + 0]*scale,  positions[i * 3 + 1]*scale,  positions[i * 3 + 2]*scale },

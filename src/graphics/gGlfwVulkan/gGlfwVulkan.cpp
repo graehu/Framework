@@ -1886,7 +1886,7 @@ void UpdateUniformBuffer(uint32_t currentImage)
    g_dt += 1.0/60.0;
    auto extent = g_pass_map["swapchain"].extent;
    ubo.proj.perspective(60.0f, (float)extent.width / extent.height, 0.1f, 100.f);
-   ubo.view.translate(0, 0, -10);
+   ubo.view.translate(0, 0, -5);
    mat4x4f mat; mat.rotateX(g_dt);
    ubo.model.rotateZ(g_dt);
    ubo.model = ubo.model*mat;
