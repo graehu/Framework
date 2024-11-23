@@ -52,7 +52,7 @@ const std::vector<Vertex> triangle_2 = {
    {{(-0.5f+1.0f)*.5f, ( 0.5f)*.5f}, {1.0f, 0.0f, 1.0f}, {0, 0} }, 
 };
 
-const std::vector<Vertex> quad_verts = {
+std::vector<Vertex> quad_verts = {
    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0, 0}},
    {{ 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1, 0}},
    {{ 0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}, {1, 1}},
@@ -62,7 +62,11 @@ const std::vector<Vertex> quad_verts = {
 const std::array<uint16_t, 6> quad_indices = {0, 1, 2, 2, 3, 0};
 
 void loadmodel(const char* modelpath, std::vector<Vertex>& verts, std::vector<uint16_t>& indices, std::vector<unsigned char>& image, int& width, int& height);
-// todo: add texture load
+
+// todo: depth testing
+// todo: per draw descriptors
+
+
 // todo: add pass dependencies
 // todo: add pass framebuffer blending/compositing
 
@@ -84,10 +88,16 @@ void vulkan_sample::run()
    mesh2.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
    mesh2.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
 
+   // for(auto& v : quad_verts)
+   // {
+   //    v.position.i += 3.0f;
+   // }
+   
    Mesh quad = {quad_verts.data(), quad_verts.size(), quad_indices.data(), quad_indices.size(), {},{},{},{},{"swapchain"}};
-   quad.image = test_image.data();
-   quad.image_width = 4;
-   quad.image_height = 4;
+   // quad.image = test_image.data();
+   // quad.image_width = 4;
+   // quad.image_height = 4;
+
    quad.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
    quad.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
 
@@ -108,9 +118,9 @@ void vulkan_sample::run()
    while (m_window->update())
    {
       // m_graphics->register_pass("zzzz");
-      // m_graphics->getRenderer()->visit(&mesh1);
-      // m_graphics->getRenderer()->visit(&quad);
       m_graphics->getRenderer()->visit(&model);
+      m_graphics->getRenderer()->visit(&quad);
+      // m_graphics->getRenderer()->visit(&mesh1);
       // m_graphics->getRenderer()->visit(&mesh2);
       m_graphics->render();
       std::this_thread::sleep_for(std::chrono::milliseconds(30));

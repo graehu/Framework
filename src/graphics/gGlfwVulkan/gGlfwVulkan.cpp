@@ -85,27 +85,23 @@ namespace fwvulkan
    std::vector<VkBuffer> g_uniformBuffers;
    std::vector<VkDeviceMemory> g_uniformBuffersMemory;
    std::vector<void *> g_uniformBuffersMapped;
-   VkSampler g_sampler;
+   // For anything where it's safer to have sane data at initialisation.
+   //
    
-   const std::array<unsigned int, 16> test_image =
+   namespace initdata
    {
-      0xff00ffff, 0xff00ffff, 0xff00ffff, 0xff00ffff,
-      0xff00ffff, 0xff00ffff, 0xff00ffff, 0xff00ffff,
-      0xff00ffff, 0xff00ffff, 0xff00ffff, 0xff00ffff,
-      0xff00ffff, 0xff00ffff, 0xff00ffff, 0xff00ffff,
-   };
+      namespace images
+      {
+	 const std::array<unsigned int, 16> argb =
+	 {
+	    0x00000000, 0xffff00ff, 0x00000000, 0xffff00ff,
+	    0xffff00ff, 0x00000000, 0xffff00ff, 0x00000000,
+	    0x00000000, 0xffff00ff, 0x00000000, 0xffff00ff,
+	    0xffff00ff, 0x00000000, 0xffff00ff, 0x00000000,
+	 };
+      }
+   }
    
-   // const std::array<unsigned int, 16> test_image =
-   // {
-   //    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-   //    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-   //    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-   //    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-   // };
-   
-   // VkImage g_sample_image;
-   // VkImageView g_sample_imageview;
-   // VkDeviceMemory g_sample_image_mem;
    ////
    
    // renderpass
@@ -169,9 +165,14 @@ namespace fwvulkan
       VkImageView view;
       VkDeviceMemory image_mem;
    };
+   struct SamHandle
+   {
+      VkSampler sampler;
+   };
    std::map<uint32_t, VBHandle> g_vb_map;
    std::map<uint32_t, IBHandle> g_ib_map;
    std::map<uint32_t, IMHandle> g_im_map;
+   std::map<uint32_t, SamHandle> g_sam_map;
    // mesh
    std::vector<Mesh*> g_meshes;
    struct DrawHandle
@@ -193,8 +194,10 @@ namespace fwvulkan
    };
    const std::vector<const char *> g_device_extensions = {
       VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+      VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
       // VK_KHR_DYNAMIC_RENDERING_NAME,
-      VK_EXT_MEMORY_BUDGET_EXTENSION_NAME
+      // VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
+
    };
    // Note: These layers require you to run Vulkan/1.3.280.1/setup-env.sh prior to running the executable.
    const std::vector<const char *> g_validation_layers = {
@@ -353,26 +356,26 @@ namespace fwvulkan
       {
 	 log::debug("Create Image");
 	 assert(width > 0 && height > 0);
-	 VkImageCreateInfo imageInfo{};
-	 imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	 imageInfo.imageType = VK_IMAGE_TYPE_2D;
-	 imageInfo.extent.width = width;
-	 imageInfo.extent.height = height;
-	 imageInfo.extent.depth = 1;
-	 imageInfo.mipLevels = 1;
-	 imageInfo.arrayLayers = 1;
-	 imageInfo.format = format;
-	 imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL; // todo: maybe different?
-	 imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	 imageInfo.usage = usage;
-	 imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-	 imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	 imageInfo.flags = 0;
+	 VkImageCreateInfo image_ci = {};
+	 image_ci.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	 image_ci.imageType = VK_IMAGE_TYPE_2D;
+	 image_ci.extent.width = width;
+	 image_ci.extent.height = height;
+	 image_ci.extent.depth = 1;
+	 image_ci.mipLevels = 1;
+	 image_ci.arrayLayers = 1;
+	 image_ci.format = format;
+	 image_ci.tiling = VK_IMAGE_TILING_OPTIMAL; // todo: maybe different?
+	 image_ci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	 image_ci.usage = usage;
+	 image_ci.samples = VK_SAMPLE_COUNT_1_BIT;
+	 image_ci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	 image_ci.flags = 0;
 	 // todo: check on these.
-	 imageInfo.queueFamilyIndexCount = 0;
-	 imageInfo.pQueueFamilyIndices = nullptr;
+	 image_ci.queueFamilyIndexCount = 0;
+	 image_ci.pQueueFamilyIndices = nullptr;
 
-	 if (vkCreateImage(g_logical_device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
+	 if (vkCreateImage(g_logical_device, &image_ci, nullptr, &image) != VK_SUCCESS) {
 	    throw std::runtime_error("failed to create image!");
 	 }
 	 
@@ -450,12 +453,12 @@ namespace fwvulkan
       }
       void CreateBuffer(void* source, size_t size, VkBufferUsageFlags usage, VkBuffer& buffer, VkDeviceMemory& memory)
       {
-	 VkBufferCreateInfo buffer_create_info = {};
-	 buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	 buffer_create_info.size = size;
-	 buffer_create_info.usage = usage;
-	 buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	 if (vkCreateBuffer(g_logical_device, &buffer_create_info, nullptr, &buffer) != VK_SUCCESS)
+	 VkBufferCreateInfo buffer_ci = {};
+	 buffer_ci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	 buffer_ci.size = size;
+	 buffer_ci.usage = usage;
+	 buffer_ci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	 if (vkCreateBuffer(g_logical_device, &buffer_ci, nullptr, &buffer) != VK_SUCCESS)
 	 {
 	    throw std::runtime_error("failed to create buffer!");
 	 }
@@ -482,9 +485,9 @@ namespace fwvulkan
 	    buff_type = usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT ? "uniform" : buff_type;
 	    
 	    void *data = nullptr; 
-	    vkMapMemory(g_logical_device, memory, 0, buffer_create_info.size, 0, &data);
+	    vkMapMemory(g_logical_device, memory, 0, buffer_ci.size, 0, &data);
 	    log::debug("Copying to {} buffer {} from {}", buff_type, data, source);
-	    memcpy(data, source, (size_t)buffer_create_info.size);
+	    memcpy(data, source, (size_t)buffer_ci.size);
 	    vkUnmapMemory(g_logical_device, memory);
 	 }
       }
@@ -508,6 +511,7 @@ namespace fwvulkan
 	 }
 	 return pool;
       }
+      // todo: make a handle for these
       void CreateUniformBuffers()
       {
 	 VkDeviceSize bufferSize = sizeof(UniformBufferObject);
@@ -522,6 +526,12 @@ namespace fwvulkan
 	    vkMapMemory(g_logical_device, g_uniformBuffersMemory[i], 0, bufferSize, 0, &g_uniformBuffersMapped[i]);
 	 }
       }
+      // todo: this does more than set the image, it also sets the uniform buffer.
+      // ----: That's not ideal, I think more correctly you would create descriptors and rebind them when recording a pass.
+      // ----: so probably you need descriptor sets per draw handle, which can change the images and transforms.
+      // ----: Global transforms/constants should probably be in a push constant, or bound to the pipeline differently.
+      // ----: descriptor table or something.
+      // todo: consider bindless descriptors: VK_EXT_descriptor_indexing
       void SetDescriptorImage(VkSampler sampler, VkImageView image_view)
       {
 	 log::debug("SetDescriptorImage: {}", size_t(image_view));
@@ -557,7 +567,9 @@ namespace fwvulkan
             vkUpdateDescriptorSets(g_logical_device, 2, descriptorWrites, 0, nullptr);
 	 }
       }
-      int CreateIMHandle(const unsigned int* image, size_t width, size_t height);
+      int CreateImageHandle(const unsigned int* image, size_t width, size_t height);
+      int CreateSamplerHandle(VkFilter filtering, VkSamplerAddressMode uv_mode, bool enable_aniso);
+      // these are bound to descriptor pool and descriptor_set_layout
       void CreateDescriptorSets()
       {
 	 std::vector<VkDescriptorSetLayout> layouts(g_max_frames_in_flight, g_descriptor_set_layout);
@@ -572,38 +584,60 @@ namespace fwvulkan
 	 {
             throw std::runtime_error("failed to allocate descriptor sets!");
 	 }
-	 auto handle = CreateIMHandle(test_image.data(), 4, 4);
-	 
-	 SetDescriptorImage(g_sampler, g_im_map[handle].view);
+	 auto im_handle = CreateImageHandle(initdata::images::argb.data(), 4, 4);
+	 auto sam_handle = CreateSamplerHandle(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, true);
+	 SetDescriptorImage(g_sam_map[sam_handle].sampler, g_im_map[im_handle].view);
       }
-
-      VkSampler CreateSampler()
+      // todo: make this configurable, almost everything in here you would want to configure as a user.
+      VkSampler CreateSampler(VkFilter filtering, VkSamplerAddressMode uv_mode, bool enable_aniso)
       {
 	 VkPhysicalDeviceProperties properties{};
 	 vkGetPhysicalDeviceProperties(g_physical_device, &properties);
 
-	 VkSamplerCreateInfo create_info{};
-	 create_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	 create_info.magFilter = VK_FILTER_LINEAR;
-	 create_info.minFilter = VK_FILTER_LINEAR;
-	 create_info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	 create_info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	 create_info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	 create_info.anisotropyEnable = VK_TRUE;
-	 create_info.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
-	 create_info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-	 create_info.unnormalizedCoordinates = VK_FALSE;
-	 create_info.compareEnable = VK_FALSE;
-	 create_info.compareOp = VK_COMPARE_OP_ALWAYS;
-	 create_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	 VkSamplerMipmapMode mode;
+	 switch(filtering)
+	 {
+	    case VK_FILTER_LINEAR: mode = VK_SAMPLER_MIPMAP_MODE_LINEAR; break;
+
+	    case VK_FILTER_CUBIC_IMG: mode = VK_SAMPLER_MIPMAP_MODE_LINEAR; break;
+	       // VK_FILTER_CUBIC_EXT is the same value as VK_FILTER_CUBIC_IMG
+	       // case VK_FILTER_CUBIC_EXT: mode = VK_SAMPLER_MIPMAP_MODE_LINEAR; break;
+	    case VK_FILTER_MAX_ENUM: mode = VK_SAMPLER_MIPMAP_MODE_MAX_ENUM; break;
+	    case VK_FILTER_NEAREST: mode = VK_SAMPLER_MIPMAP_MODE_NEAREST; break;
+	 }
+	 if(mode == VK_SAMPLER_MIPMAP_MODE_NEAREST && enable_aniso) {log::debug("CreateSampler: aniso and nearest sampling might not be wanted");}
+	 VkSamplerCreateInfo sampler_ci{};
+	 sampler_ci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	 sampler_ci.magFilter = filtering;
+	 sampler_ci.minFilter = filtering;
+	 sampler_ci.addressModeU = uv_mode;
+	 sampler_ci.addressModeV = uv_mode;
+	 sampler_ci.addressModeW = uv_mode;
+	 sampler_ci.anisotropyEnable = enable_aniso ?  VK_FALSE : VK_TRUE;
+	 sampler_ci.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+	 sampler_ci.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	 sampler_ci.unnormalizedCoordinates = VK_FALSE;
+	 sampler_ci.compareEnable = VK_FALSE;
+	 sampler_ci.compareOp = VK_COMPARE_OP_ALWAYS;
+	 sampler_ci.mipmapMode = mode;
 	 VkSampler sampler = VK_NULL_HANDLE;
-	 if (vkCreateSampler(g_logical_device, &create_info, nullptr, &sampler) != VK_SUCCESS)
+	 if (vkCreateSampler(g_logical_device, &sampler_ci, nullptr, &sampler) != VK_SUCCESS)
 	 {
             throw std::runtime_error("failed to create texture sampler!");
 	 }
 	 return sampler;
       }
-      int CreateIMHandle(const unsigned int* image_buffer, size_t width, size_t height)
+      int CreateSamplerHandle(VkFilter filtering, VkSamplerAddressMode uv_mode, bool enable_aniso)
+      {
+	 struct { VkFilter f; VkSamplerAddressMode u; bool a; } params = {filtering, uv_mode, enable_aniso};
+	 auto hash = fw::hash::hash_buffer((const char*)&params, sizeof(params));
+	 if (g_sam_map.find(hash) == g_sam_map.end())
+	 {
+	    g_sam_map[hash] = {CreateSampler(filtering, uv_mode, enable_aniso)};
+	 }
+	 return hash;
+      }
+      int CreateImageHandle(const unsigned int* image_buffer, size_t width, size_t height)
       {
 	 if (image_buffer == nullptr) return 0;
 	 // todo: grab type size, not 4.
@@ -663,7 +697,7 @@ namespace fwvulkan
 	 }
 	 return hash;
       }
-      int CreateVBHandle(const fw::Vertex* vertices, int num_vertices)
+      int CreateVertexBufferHandle(const fw::Vertex* vertices, int num_vertices)
       {
 	 // uint32_t hash = hash::i32((const char*)vertices, num_vertices*sizeof(fw::Vertex));
 	 uint32_t hash = hash::hash_buffer((const char*)vertices, num_vertices*sizeof(fw::Vertex));
@@ -681,7 +715,7 @@ namespace fwvulkan
 	 }
 	 return hash;
       }
-      int CreateIBHandle(const uint16_t* indices, int num_indices)
+      int CreateIndexBufferHandle(const uint16_t* indices, int num_indices)
       {
 	 uint32_t hash = hash::hash_buffer((const char*)indices, num_indices*sizeof(uint16_t));
 	 if (g_ib_map.find(hash) == g_ib_map.end())
@@ -1916,7 +1950,6 @@ int gGlfwVulkan::init()
 
    // todo: this sucks
    {
-      g_sampler = buffers::CreateSampler();
       buffers::CreateUniformBuffers();
       VkDescriptorType types[] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER };
       VkShaderStageFlags stages[] = { VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
@@ -1946,18 +1979,21 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
    if(handles_iter == g_drawhandles.end())
    {
       drawhandle = {
-	 buffers::CreateVBHandle(_mesh->vbo, _mesh->vbo_len),
+	 buffers::CreateVertexBufferHandle(_mesh->vbo, _mesh->vbo_len),
 	 (int)_mesh->vbo_len,
-	 buffers::CreateIBHandle(_mesh->ibo, _mesh->ibo_len),
+	 buffers::CreateIndexBufferHandle(_mesh->ibo, _mesh->ibo_len),
 	 (int)_mesh->ibo_len,
-	 buffers::CreateIMHandle(_mesh->image, _mesh->image_width, _mesh->image_height),
+	 buffers::CreateImageHandle(_mesh->image, _mesh->image_width, _mesh->image_height),
 	 (int)_mesh->image_width, (int)_mesh->image_height,
 	 pipeline::CreateDefaultPipeline(_mesh->mat)
       };
       
-      // todo: this sucks
+      // todo: this sucks, the sampler is associated with the material, not the draw handler or the image.
       if(drawhandle.im_handle)
-	 buffers::SetDescriptorImage(g_sampler, g_im_map[drawhandle.im_handle].view);
+      {
+	 auto sam_handle = buffers::CreateSamplerHandle(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, true);
+	 buffers::SetDescriptorImage(g_sam_map[sam_handle].sampler, g_im_map[drawhandle.im_handle].view);
+      }
       g_drawhandles[_mesh] = drawhandle;
    }
    else { drawhandle = handles_iter->second; }
@@ -2019,11 +2055,12 @@ int gGlfwVulkan::shutdown()
       vkFreeMemory(g_logical_device, g_uniformBuffersMemory[i], nullptr);
    }
    
-   // sampler clean-up
-   // vkDestroyImage(g_logical_device, g_sample_image, nullptr);
-   // vkDestroyImageView(g_logical_device, g_sample_imageview, nullptr);
-   // vkFreeMemory(g_logical_device, g_sample_image_mem, nullptr);
-   vkDestroySampler(g_logical_device, g_sampler, nullptr);
+   for (auto sam : g_sam_map)
+   {
+      vkDestroySampler(g_logical_device, sam.second.sampler, nullptr);
+   }
+   g_sam_map.clear();
+   
    vkDestroyDescriptorPool(g_logical_device, g_descriptor_pool, nullptr);
    vkDestroyDescriptorSetLayout(g_logical_device, g_descriptor_set_layout, nullptr);
    
