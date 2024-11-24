@@ -49,6 +49,7 @@ config.include_paths = [
 config.library_paths = [
     "../../../libs/"
 ]
+
 config.warnings = ["all", "extra", "pedantic"]
 config.debug_info = True
 config.link_libraries = ["stdc++", "m", "SDLmain", "SDL", "SDL_image", "OpenGL", "GL", "fwcore"]

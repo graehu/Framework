@@ -21,11 +21,17 @@ config.object_path = "objects/glfw"
 config.output_file = "libglfwstatic"
 config.confply_log_config = False
 
+
 if config.confply.platform == "linux":
     config.defines = ["_GLFW_X11"]
     config.source_files = [
         "glfw/src/context.c",
+        "glfw/src/platform.c",
         "glfw/src/init.c",
+        "glfw/src/null_init.c",
+        "glfw/src/null_window.c",
+        "glfw/src/null_monitor.c",
+        "glfw/src/null_joystick.c",
         "glfw/src/input.c",
         "glfw/src/monitor.c",
         "glfw/src/vulkan.c",
@@ -35,7 +41,9 @@ if config.confply.platform == "linux":
         "glfw/src/x11_window.c",
         "glfw/src/xkb_unicode.c",
         "glfw/src/posix_time.c",
+        "glfw/src/posix_module.c",
         "glfw/src/posix_thread.c",
+        "glfw/src/posix_poll.c",
         "glfw/src/glx_context.c",
         "glfw/src/egl_context.c",
         "glfw/src/osmesa_context.c",

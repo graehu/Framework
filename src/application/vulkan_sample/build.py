@@ -18,7 +18,6 @@ config.source_files = [
     "../../types/mat4x4f.cpp",
     "../../window/wGlfwVulkan/wGlfwVulkan.cpp",
     "../../graphics/gGlfwVulkan/gGlfwVulkan.cpp",
-    
 ]
 libs = "../../../libs"
 config.include_paths = [
@@ -31,7 +30,7 @@ config.include_paths = [
 config.library_paths = [libs]
 config.warnings = ["all", "extra", "pedantic"]
 config.debug_info = True
-config.rebuild_on_change = False
+config.rebuild_on_change = True
 config.link_libraries = ["fwcore", "stdc++", "glfwstatic", "vulkan"]
 config.standard = "c++17"
 config.output_file = "vulkan_sample.bin"

@@ -1,9 +1,5 @@
-#ifndef IRENDERVISITOR_H
-#define IRENDERVISITOR_H
+#pragma once
 
-
-//class sprite;
-#include "graphics.h"
 class camera;
 namespace physics
 {
@@ -18,17 +14,15 @@ namespace physics
 //class coasterRider;
 //class skybox;
 
-namespace fw {
-   struct Mesh;
-}
+namespace fw {struct Mesh;}
 
 class iRenderVisitor
 {
  public:
 
   // virtual void visit(sprite* _sprite) = 0;
-  virtual void visit(camera* _camera) = 0;
-   virtual void visit(physics::collider::polygon* _poly) = 0;
+   virtual void visit(camera* _camera) = 0;
+   virtual void visit(physics::collider::polygon* _poly) = 0;	 
    virtual void visit(fw::Mesh* _mesh) = 0;
   //virtual void visit(Graph* _graph) = 0;
   //virtual void visit(object3D* _object3D) = 0;
@@ -40,6 +34,3 @@ class iRenderVisitor
  private:
 
 };
-
-
-#endif//IRENDERVISITOR_H

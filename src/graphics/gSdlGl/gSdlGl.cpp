@@ -157,6 +157,8 @@ iRenderVisitor* gSdlGl::getRenderer()
    return (iRenderVisitor*)this;
 }
 
+void gSdlGl::visit(fw::Mesh* _mesh){(void)_mesh;}
+
 graphics* graphics::graphicsFactory()
 {
    return (graphics*)new gSdlGl;
