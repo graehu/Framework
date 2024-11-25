@@ -80,11 +80,11 @@ void vulkan_sample::run()
    m_graphics->register_shader("triangle", "shaders/triangle.frag.spv", shader::e_fragment);
    
    std::array<uint16_t,3> ibo = {0, 1, 2};
-   Mesh mesh1 = {triangle_1.data(), triangle_1.size(), ibo.data(), ibo.size(), {},{},{},{},{"swapchain"}};
+   Mesh mesh1 = {triangle_1.data(), triangle_1.size(), ibo.data(), ibo.size(), {},{},{},{},{"swapchain"}, {}};
    mesh1.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
    mesh1.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
    
-   Mesh mesh2 = {triangle_2.data(), triangle_2.size(), ibo.data(), ibo.size(), {},{},{},{},{"swapchain"}};
+   Mesh mesh2 = {triangle_2.data(), triangle_2.size(), ibo.data(), ibo.size(), {},{},{},{},{"swapchain"}, {}};
    mesh2.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
    mesh2.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
 
@@ -93,7 +93,7 @@ void vulkan_sample::run()
    //    v.position.i += 3.0f;
    // }
    
-   Mesh quad = {quad_verts.data(), quad_verts.size(), quad_indices.data(), quad_indices.size(), {},{},{},{},{"swapchain"}};
+   Mesh quad = {quad_verts.data(), quad_verts.size(), quad_indices.data(), quad_indices.size(), {},{},{},{},{"swapchain"}, {}};
    // quad.image = test_image.data();
    // quad.image_width = 4;
    // quad.image_height = 4;
@@ -111,10 +111,11 @@ void vulkan_sample::run()
       model_indices.data(),
       model_indices.size(),
       (unsigned int*)image.data(), (size_t)width, (size_t)height, // todo: convert non image
-      {}, {"swapchain"}};
+      {}, {"swapchain"}, {}};
+
    model.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
    model.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
-   
+   float time = 0;
    while (m_window->update())
    {
       // m_graphics->register_pass("zzzz");
@@ -123,7 +124,9 @@ void vulkan_sample::run()
       // m_graphics->getRenderer()->visit(&mesh1);
       // m_graphics->getRenderer()->visit(&mesh2);
       m_graphics->render();
-      std::this_thread::sleep_for(std::chrono::milliseconds(30));
+      model.transform.translate(time, 0, 0);
+      std::this_thread::sleep_for(std::chrono::milliseconds(16));
+      time += 1.0f/60.0f;
    }
 }
 

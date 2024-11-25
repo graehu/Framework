@@ -5,6 +5,7 @@
 
 #include "../types/vec2f.h"
 #include "../types/vec3f.h"
+#include "../types/mat4x4f.h"
 #include <array>
 #include <vector>
 
@@ -37,6 +38,7 @@ namespace fw
       size_t image_width, image_height;
       Material mat;
       PassList passes;
+      mat4x4f transform;
    };
 }
 class graphics

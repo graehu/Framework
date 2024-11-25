@@ -9,6 +9,11 @@ import confply.log as log
 config.version_hash='77a83ef65a5e032b989b8a76ac0083e9'
 ############# modify_below ################
 
+# todo: this wont compile unless you run source em++ like so
+# source libs/emsdk/emsdk_env.sh && ./tools/confply/confply.py --in src/application/mpeg_sample/build_wasm.cpp.py
+# either add this to rcbash or find a way to run update path nicely for the python terminal.
+# probably better.
+
 config.confply.log_topic = "wasm"
 config.confply.tool = "em++"
 exported_functions = ['_fillArray', '_decode_packet', '_init_heaps']

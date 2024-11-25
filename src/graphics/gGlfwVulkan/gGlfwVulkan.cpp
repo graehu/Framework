@@ -75,11 +75,16 @@ namespace fwvulkan
    VkDescriptorPool g_descriptor_pool;
    
    std::vector<VkDescriptorSet> g_descriptor_sets;
-   struct UniformBufferObject
+   struct DefaultUniforms
    {
-      mat4x4f model;
+      mat4x4f model[16];
       mat4x4f view;
       mat4x4f proj;
+   };
+   DefaultUniforms ubo = {};
+   struct DefaultPushConstants
+   {
+      uint32_t id;
    };
    VkDescriptorSetLayout g_descriptor_set_layout;
    std::vector<VkBuffer> g_uniformBuffers;
@@ -177,6 +182,7 @@ namespace fwvulkan
    std::vector<Mesh*> g_meshes;
    struct DrawHandle
    {
+      Mesh* owner = nullptr;
       int vb_handle = -1;
       int num_verts = 0;
       int ib_handle = -1;
@@ -349,7 +355,6 @@ namespace fwvulkan
    }
    namespace buffers
    {
-
       // todo: this has a bunch of duplicated code in it, make a generic create image.
       // buffers::internal::CreateImage
       void CreateImage(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImage& image, VkDeviceMemory& image_memory)
@@ -512,18 +517,21 @@ namespace fwvulkan
 	 return pool;
       }
       // todo: make a handle for these
-      void CreateUniformBuffers()
+      void CreateUniformBuffer(VkDeviceSize buffer_size, VkBuffer& buffer, VkDeviceMemory& mem, void*& mapping)
       {
-	 VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-
+	 CreateBuffer(nullptr, buffer_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, buffer, mem);
+	 vkMapMemory(g_logical_device, mem, 0, buffer_size, 0, &mapping);
+      }
+      void CreateDefaultUniformBuffers()
+      {
+	 VkDeviceSize buffer_size = sizeof(DefaultUniforms);
 	 g_uniformBuffers.resize(g_max_frames_in_flight);
 	 g_uniformBuffersMemory.resize(g_max_frames_in_flight);
 	 g_uniformBuffersMapped.resize(g_max_frames_in_flight);
 
 	 for (size_t i = 0; i < g_max_frames_in_flight; i++)
 	 {
-	    CreateBuffer(nullptr, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, g_uniformBuffers[i], g_uniformBuffersMemory[i]);
-	    vkMapMemory(g_logical_device, g_uniformBuffersMemory[i], 0, bufferSize, 0, &g_uniformBuffersMapped[i]);
+	    CreateUniformBuffer(buffer_size, g_uniformBuffers[i], g_uniformBuffersMemory[i], g_uniformBuffersMapped[i]);
 	 }
       }
       // todo: this does more than set the image, it also sets the uniform buffer.
@@ -540,7 +548,7 @@ namespace fwvulkan
             VkDescriptorBufferInfo bufferInfo{};
             bufferInfo.buffer = g_uniformBuffers[i];
             bufferInfo.offset = 0;
-            bufferInfo.range = sizeof(UniformBufferObject);
+            bufferInfo.range = sizeof(DefaultUniforms);
 
 	    VkDescriptorImageInfo imageInfo{};
 	    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1705,8 +1713,15 @@ namespace fwvulkan
 	 pipeline_layout_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	 pipeline_layout_ci.setLayoutCount = 1;
 	 pipeline_layout_ci.pSetLayouts = &g_descriptor_set_layout;
-	 pipeline_layout_ci.pushConstantRangeCount = 0;
-	 pipeline_layout_ci.pPushConstantRanges = nullptr;
+	 
+	 VkPushConstantRange push_constant;
+	 push_constant.offset = 0;
+	 push_constant.size = sizeof(DefaultPushConstants);
+	 push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+	 pipeline_layout_ci.pPushConstantRanges = &push_constant;
+	 pipeline_layout_ci.pushConstantRangeCount = 1;
+	 
 	 return pipeline_layout_ci;
       }
       int CreateDefaultPipeline(Material mat)
@@ -1823,8 +1838,11 @@ namespace fwvulkan
 	 // log::debug("begin renderpass");
 	 vkCmdBeginRenderPass(pass.cmd_buffer, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 	 uint32_t pipeline_hash = 0;
+	 uint32_t id = 0;
 	 for(auto dh : pass.draws)
 	 {
+	    // todo: push constants have limited mat4x4s atm, fix it.
+	    assert(id < 16);
 	    // log::debug("Recording Draw vb: {} pi: {} nverts: {}", dh.vb_handle, dh.pi_handle, dh.num_verts);
 	    // log::debug("bind pipeline");
 	    if(uint32_t hash = dh.pi_handle; hash != pipeline_hash)
@@ -1843,7 +1861,10 @@ namespace fwvulkan
 	    
 	    VkBuffer vertex_buffers[] = {g_vb_map[dh.vb_handle].vb};
 	    VkDeviceSize offsets[] = {0};
-	 
+	    DefaultPushConstants constants = {id};
+	    memcpy(&ubo.model[id], &dh.owner->transform, sizeof(mat4x4f));
+	    vkCmdPushConstants(pass.cmd_buffer, g_pipe_map[pipeline_hash].layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(DefaultPushConstants), &constants);
+
 	    // log::debug("bind vertext buffer");
 	    vkCmdBindVertexBuffers(pass.cmd_buffer, 0, 1, vertex_buffers, offsets);
 	 
@@ -1853,6 +1874,7 @@ namespace fwvulkan
 	    // log::debug("record draw");
 	    // vkCmdDraw(pass.cmd_buffer, dh.num_verts, 1, 0, 0);
 	    vkCmdDrawIndexed(pass.cmd_buffer, dh.num_indices, 1, 0, 0, 0);
+	    id++;
 	 }
 
 	 // log::debug("end renderpass");
@@ -1911,22 +1933,15 @@ namespace fwvulkan
    }
 } // namespace fwvulkan
 
-fwvulkan::UniformBufferObject ubo = {};
-float g_dt;
-
 void UpdateUniformBuffer(uint32_t currentImage)
 {
    using namespace fwvulkan;
-   g_dt += 1.0/60.0;
    auto extent = g_pass_map["swapchain"].extent;
    ubo.proj.perspective(60.0f, (float)extent.width / extent.height, 0.1f, 100.f);
    ubo.view.translate(0, 0, -5);
-   mat4x4f mat; mat.rotateX(g_dt);
-   ubo.model.rotateZ(g_dt);
-   ubo.model = ubo.model*mat;
-
    memcpy(g_uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }
+
 int gGlfwVulkan::init()
 {
    using namespace fwvulkan;
@@ -1950,7 +1965,7 @@ int gGlfwVulkan::init()
 
    // todo: this sucks
    {
-      buffers::CreateUniformBuffers();
+      buffers::CreateDefaultUniformBuffers();
       VkDescriptorType types[] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER };
       VkShaderStageFlags stages[] = { VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
       g_descriptor_set_layout = buffers::CreateDescriptorSetLayout(types, stages, 2);
@@ -1978,7 +1993,7 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
    auto handles_iter = g_drawhandles.find(_mesh);
    if(handles_iter == g_drawhandles.end())
    {
-      drawhandle = {
+      drawhandle = { _mesh,
 	 buffers::CreateVertexBufferHandle(_mesh->vbo, _mesh->vbo_len),
 	 (int)_mesh->vbo_len,
 	 buffers::CreateIndexBufferHandle(_mesh->ibo, _mesh->ibo_len),
