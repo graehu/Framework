@@ -176,7 +176,8 @@ namespace fwvulkan
    };
    std::map<uint32_t, VBHandle> g_vb_map;
    std::map<uint32_t, IBHandle> g_ib_map;
-   std::map<uint32_t, IMHandle> g_im_map;
+   std::map<uint32_t, IMHandle> g_im_map;         // readonly/sampled.
+   std::map<fw::hash::string, IMHandle> g_rt_map; // render targets.
    std::map<uint32_t, SamHandle> g_sam_map;
    // mesh
    std::vector<Mesh*> g_meshes;
@@ -248,6 +249,35 @@ namespace fwvulkan
 	 }
 	 throw std::runtime_error("failed to find suitable memory type!");
       }
+      VkFormat FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
+      {
+	 for (VkFormat format : candidates)
+	 {
+	    VkFormatProperties props;
+	    vkGetPhysicalDeviceFormatProperties(g_physical_device, format, &props);
+
+	    if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
+	    {
+	       return format;
+	    }
+	    else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
+	    {
+	       return format;
+	    }
+	 }
+	 throw std::runtime_error("failed to find supported format!");
+      }
+      VkFormat FindDepthFormat() {
+	 return FindSupportedFormat(
+	    {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
+	    VK_IMAGE_TILING_OPTIMAL,
+	    VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+	    );
+      }
+      bool hasStencilComponent(VkFormat format)
+      {
+	 return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
+      }
       
       typedef std::function<void(VkCommandBuffer)> RecordCB;
       void RecordAndSubmit(RecordCB func)
@@ -309,6 +339,20 @@ namespace fwvulkan
 	    VkPipelineStageFlags source;
 	    VkPipelineStageFlags dest;
 
+	    if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+	    {
+	       barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+	       if (hasStencilComponent(format))
+	       {
+		  barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+	       }
+	    }
+	    else
+	    {
+	       barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	    }
+
 	    if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
 	    {
 	       barrier.srcAccessMask = 0;
@@ -324,6 +368,14 @@ namespace fwvulkan
 
 	       source = VK_PIPELINE_STAGE_TRANSFER_BIT;
 	       dest = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	    }
+	    else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+	    {
+	       barrier.srcAccessMask = 0;
+	       barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+	       source = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+	       dest = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 	    }
 	    else
 	    {
@@ -403,14 +455,14 @@ namespace fwvulkan
 	 }
 	 log::debug("Created Image ({}, {}) requirements size: {} align: {} vkmem: {}", width, height, mem_requirements.size, mem_requirements.alignment, (size_t)image_memory);
       }
-      VkImageView CreateImageView(VkImage image, VkFormat format)
+      VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspect = VK_IMAGE_ASPECT_COLOR_BIT)
       {
 	 VkImageViewCreateInfo image_view_ci = {};
 	 image_view_ci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	 image_view_ci.image = image;
 	 image_view_ci.viewType = VK_IMAGE_VIEW_TYPE_2D;
 	 image_view_ci.format = format;
-	 image_view_ci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	 image_view_ci.subresourceRange.aspectMask = aspect;
 	 image_view_ci.subresourceRange.baseMipLevel = 0;
 	 image_view_ci.subresourceRange.levelCount = 1;
 	 image_view_ci.subresourceRange.baseArrayLayer = 0;
@@ -1172,12 +1224,12 @@ namespace fwvulkan
 	 pass.frame_buffers.resize(pass.image_views.size());
 	 for (size_t i = 0; i < pass.image_views.size(); i++)
 	 {
-	    VkImageView attachments[] = {pass.image_views[i]};
+	    std::array<VkImageView,2> attachments = {pass.image_views[i], g_rt_map["depth"].view};
 	    VkFramebufferCreateInfo framebuffer_create_info = {};
 	    framebuffer_create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 	    framebuffer_create_info.renderPass = pass.pass;
-	    framebuffer_create_info.attachmentCount = 1;
-	    framebuffer_create_info.pAttachments = attachments;
+	    framebuffer_create_info.attachmentCount = attachments.size();
+	    framebuffer_create_info.pAttachments = attachments.data();
 	    framebuffer_create_info.width = pass.extent.width;
 	    framebuffer_create_info.height = pass.extent.height;
 	    framebuffer_create_info.layers = 1;
@@ -1431,7 +1483,7 @@ namespace fwvulkan
 	    log::debug("Creating Default Renderpass: '{}'", passname.m_literal);
 	    SwapChainSupportDetails swap_chain_support = device::QuerySwapChainSupport(g_physical_device, g_surface);
 	    VkSurfaceFormatKHR surface_format = swapchain::ChooseSwapSurfaceFormat(swap_chain_support.formats);
-	    
+      
 	    VkAttachmentDescription color_attachement = {};
 	    color_attachement.format = surface_format.format;
 	    color_attachement.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -1440,6 +1492,16 @@ namespace fwvulkan
 	    color_attachement.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	    color_attachement.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	    color_attachement.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+	    VkAttachmentDescription depth_attachment = {};
+	    depth_attachment.format = utils::FindDepthFormat();
+	    depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	    depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	    depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	    depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	    depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	    depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	    depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	    
 	    if(passname == hash::string("swapchain"))
 	    {
@@ -1450,27 +1512,34 @@ namespace fwvulkan
 	       color_attachement.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	    }
 
-	    VkAttachmentReference color_attachemnt_reference = {};
-	    color_attachemnt_reference.attachment = 0;
-	    color_attachemnt_reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	    VkAttachmentReference color_attachment_reference = {};
+	    color_attachment_reference.attachment = 0;
+	    color_attachment_reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	    VkAttachmentReference depth_attachment_reference = {};
+	    depth_attachment_reference.attachment = 1;
+	    depth_attachment_reference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	    VkSubpassDescription subpass_description = {};
 	    subpass_description.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	    subpass_description.colorAttachmentCount = 1;
-	    subpass_description.pColorAttachments = &color_attachemnt_reference;
+	    subpass_description.pColorAttachments = &color_attachment_reference;
+	    subpass_description.pDepthStencilAttachment = &depth_attachment_reference;
 
 	    VkSubpassDependency subpass_dependency = {};
-
 	    subpass_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-	    subpass_dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	    subpass_dependency.dstSubpass = 0;
-	    subpass_dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	    subpass_dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	    subpass_dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	    subpass_dependency.srcAccessMask = 0;
+	    subpass_dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	    subpass_dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
+
+	    std::array<VkAttachmentDescription, 2> attachments = {color_attachement, depth_attachment};
 	    VkRenderPassCreateInfo render_pass_ci = {};
 	    render_pass_ci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	    render_pass_ci.attachmentCount = 1;
-	    render_pass_ci.pAttachments = &color_attachement;
+	    render_pass_ci.attachmentCount = attachments.size();
+	    render_pass_ci.pAttachments = attachments.data();
 	    render_pass_ci.subpassCount = 1;
 	    render_pass_ci.pSubpasses = &subpass_description;
 	    render_pass_ci.dependencyCount = 1;
@@ -1627,8 +1696,8 @@ namespace fwvulkan
 	 viewport.y = 0.0f;
 	 viewport.width = (float)pass.extent.width;
 	 viewport.height = (float)pass.extent.height;
-	 viewport.minDepth = 0.1f;
-	 viewport.maxDepth = 100.0f;
+	 viewport.minDepth = 0.0f;
+	 viewport.maxDepth = 1.0f;
 	 return viewport;
       }
       VkRect2D GetDefaultScissor()
@@ -1768,6 +1837,18 @@ namespace fwvulkan
 	    dynamic_state_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 	    dynamic_state_ci.dynamicStateCount = dynamic_states.size();
 	    dynamic_state_ci.pDynamicStates = dynamic_states.data();
+
+	    VkPipelineDepthStencilStateCreateInfo depth_stencil_ci = {};
+	    depth_stencil_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	    depth_stencil_ci.depthTestEnable = VK_TRUE;
+	    depth_stencil_ci.depthWriteEnable = VK_TRUE;
+	    depth_stencil_ci.depthCompareOp = VK_COMPARE_OP_LESS;
+	    depth_stencil_ci.depthBoundsTestEnable = VK_FALSE;
+	    depth_stencil_ci.minDepthBounds = 0.0f; // Optional
+	    depth_stencil_ci.maxDepthBounds = 1.0f; // Optional
+	    depth_stencil_ci.stencilTestEnable = VK_FALSE;
+	    depth_stencil_ci.front = {}; // Optional
+	    depth_stencil_ci.back = {}; // Optional
 	    
 	    VkGraphicsPipelineCreateInfo pipeline_ci = {};
 	    pipeline_ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -1778,7 +1859,7 @@ namespace fwvulkan
 	    pipeline_ci.pViewportState = &viewport_state_ci;
 	    pipeline_ci.pRasterizationState = &raster_state_ci;
 	    pipeline_ci.pMultisampleState = &multisample_state_ci;
-	    pipeline_ci.pDepthStencilState = nullptr;
+	    pipeline_ci.pDepthStencilState = &depth_stencil_ci;
 	    pipeline_ci.pColorBlendState = &blend_state_ci;
 	    pipeline_ci.pDynamicState = &dynamic_state_ci;
 	    pipeline_ci.layout = pipeline_layout;
@@ -1831,10 +1912,15 @@ namespace fwvulkan
 	 render_pass_begin_info.renderArea.extent = pass.extent;
 
 	 // log::debug("bound fb: {}", g_current_frame);
-	 VkClearValue clear_color = {{{0.0f, 1.0f, 1.0f, 1.0f}}}; // fixes a warning
-	 render_pass_begin_info.clearValueCount = 1;
-	 render_pass_begin_info.pClearValues = &clear_color;
-	 
+	 std::array<VkClearValue, 2> clear_values{};
+	 clear_values[0].color = {{0.0f, 1.0f, 1.0f, 1.0f}};
+	 // clear_values[0].depthStencil = {1.0f, 0};
+	 // clear_values[1].color = {{0.0f, 1.0f, 1.0f, 1.0f}};
+	 clear_values[1].depthStencil = {1.0f, 0};
+
+	 render_pass_begin_info.clearValueCount = clear_values.size();
+	 render_pass_begin_info.pClearValues = clear_values.data();
+	 	 
 	 // log::debug("begin renderpass");
 	 vkCmdBeginRenderPass(pass.cmd_buffer, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 	 uint32_t pipeline_hash = 0;
@@ -1975,7 +2061,18 @@ int gGlfwVulkan::init()
    }
 
    renderpass::CreateDefaultRenderPass("swapchain");
+   // todo: swapchain pass extent is set here, kinda gross.
    swapchain::CreateSwapChain();
+   {
+   	    VkFormat format = utils::FindDepthFormat();
+	    VkImage depth_image;
+	    VkDeviceMemory depth_memory;
+	    auto extent = g_pass_map["swapchain"].extent;
+	    buffers::CreateImage(extent.width, extent.height, format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depth_image, depth_memory);
+	    auto depth_view = buffers::CreateImageView(depth_image, format, VK_IMAGE_ASPECT_DEPTH_BIT);
+	    g_rt_map["depth"] = {depth_image, depth_view, depth_memory};
+	    utils::TransitionImageLayout(depth_image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+   }
    swapchain::CreateSwapchainImageViews();
    swapchain::CreateSwapchainFrameBuffers();
    barriers::CreatePassSemaphores("swapchain");
