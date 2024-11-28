@@ -1306,6 +1306,12 @@ namespace fwvulkan
 	    log::debug("done");
 	 }
 #endif
+	 auto& rt = g_rt_map["depth"];
+	 vkDestroyImage(g_logical_device, rt.image, nullptr);
+	 vkDestroyImageView(g_logical_device, rt.view, nullptr);
+	 vkFreeMemory(g_logical_device, rt.image_mem, nullptr);
+	 g_rt_map.erase("depth");
+	 
 	 g_pass_map.clear();
 	 g_swap_chain = VK_NULL_HANDLE;
       }
@@ -1567,6 +1573,18 @@ namespace fwvulkan
 	 }
 	 return false;
       }
+      
+      void CreateDepthBuffer()
+      {
+	 VkFormat format = utils::FindDepthFormat();
+	 VkImage depth_image; VkDeviceMemory depth_memory;
+	 auto extent = g_pass_map["swapchain"].extent;
+	 buffers::CreateImage(extent.width, extent.height, format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depth_image, depth_memory);
+	 auto depth_view = buffers::CreateImageView(depth_image, format, VK_IMAGE_ASPECT_DEPTH_BIT);
+	 g_rt_map["depth"] = { depth_image, depth_view, depth_memory };
+	 utils::TransitionImageLayout(depth_image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+      }
+      
    }
    namespace barriers
    {
@@ -1590,6 +1608,7 @@ namespace fwvulkan
 	 CleanupSwapChain();
 	 renderpass::CreateDefaultRenderPass("swapchain");
 	 CreateSwapChain();
+	 renderpass::CreateDepthBuffer();
 	 CreateSwapchainImageViews();
 	 CreateSwapchainFrameBuffers();
       }
@@ -1887,7 +1906,7 @@ namespace fwvulkan
 	 return hash;
       }
    }
-      namespace renderpass
+   namespace renderpass
    {
       void RecordPass(hash::string passname)
       {
@@ -2063,16 +2082,8 @@ int gGlfwVulkan::init()
    renderpass::CreateDefaultRenderPass("swapchain");
    // todo: swapchain pass extent is set here, kinda gross.
    swapchain::CreateSwapChain();
-   {
-   	    VkFormat format = utils::FindDepthFormat();
-	    VkImage depth_image;
-	    VkDeviceMemory depth_memory;
-	    auto extent = g_pass_map["swapchain"].extent;
-	    buffers::CreateImage(extent.width, extent.height, format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depth_image, depth_memory);
-	    auto depth_view = buffers::CreateImageView(depth_image, format, VK_IMAGE_ASPECT_DEPTH_BIT);
-	    g_rt_map["depth"] = {depth_image, depth_view, depth_memory};
-	    utils::TransitionImageLayout(depth_image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-   }
+   // todo: this sucks. :) 
+   renderpass::CreateDepthBuffer();
    swapchain::CreateSwapchainImageViews();
    swapchain::CreateSwapchainFrameBuffers();
    barriers::CreatePassSemaphores("swapchain");
