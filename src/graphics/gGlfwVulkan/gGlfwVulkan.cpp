@@ -50,6 +50,10 @@ struct vkVertex : public fw::Vertex
 };
 namespace fwvulkan
 {
+   // todo: I should make a header of forward declarations
+   namespace renderpass {
+      bool CreateDefaultRenderPass(hash::string passname, VkExtent2D extent, VkFormat format, VkImageLayout layout);
+   }
    // instance
    VkInstance g_instance;
    VkSurfaceKHR g_surface = VK_NULL_HANDLE;
@@ -63,6 +67,7 @@ namespace fwvulkan
    VkQueue g_graphics_queue = VK_NULL_HANDLE;
    // swapchain 
    VkSwapchainKHR g_swap_chain = VK_NULL_HANDLE;
+   VkSurfaceFormatKHR g_swapchain_surface_format = {};
    // semaphores
    std::vector<VkSemaphore> g_image_available_semaphores;
    std::vector<VkSemaphore> g_render_finished_semaphores;
@@ -130,6 +135,7 @@ namespace fwvulkan
       std::vector<DrawHandle> draws;
 
    };
+   PassHandle g_swapchain_pass;
    std::map<fw::hash::string, PassHandle> g_pass_map;
    struct SemaphoreHandle
    {
@@ -1397,7 +1403,7 @@ namespace fwvulkan
       {
 	 log::debug("Create Swap Chain");
 	 assert(g_swap_chain == VK_NULL_HANDLE);
-	 auto& pass = g_pass_map["swapchain"];
+
 	 SwapChainSupportDetails swap_chain_support = device::QuerySwapChainSupport(g_physical_device, g_surface);
 	 VkSurfaceFormatKHR surface_format = ChooseSwapSurfaceFormat(swap_chain_support.formats);
 	 VkPresentModeKHR present_mode = ChooseSwapPresentMode(swap_chain_support.present_modes);
@@ -1446,11 +1452,11 @@ namespace fwvulkan
 	    throw std::runtime_error("failed to create swap chain!");
 	 }
 
+	 renderpass::CreateDefaultRenderPass("swapchain", extent, surface_format.format, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+	 auto& pass = g_pass_map["swapchain"];
 	 vkGetSwapchainImagesKHR(g_logical_device, g_swap_chain, &image_count, nullptr);
 	 pass.images.resize(image_count);
 	 vkGetSwapchainImagesKHR(g_logical_device, g_swap_chain, &image_count, pass.images.data());
-
-	 pass.extent = extent;
       }
    }
    namespace renderpass
@@ -1527,25 +1533,16 @@ namespace fwvulkan
 	 depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	 return depth_attachment;
       }
-      bool CreateDefaultRenderPass(hash::string passname)
+      bool CreateDefaultRenderPass(hash::string passname, VkExtent2D extent, VkFormat format, VkImageLayout layout)
       {
 	 if(g_pass_map.find(passname) == g_pass_map.end())
 	 {
 	    log::debug("Creating Default Renderpass: '{}'", passname.m_literal);
-	    SwapChainSupportDetails swap_chain_support = device::QuerySwapChainSupport(g_physical_device, g_surface);
-	    VkSurfaceFormatKHR surface_format = swapchain::ChooseSwapSurfaceFormat(swap_chain_support.formats);
 	    
 	    auto colour_attachment = DefaultColourAttachment();
 	    auto depth_attachment = DefaultDepthAttachment();
 	    
-	    if(passname == hash::string("swapchain"))
-	    {
-	       colour_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-	    }
-	    else
-	    {
-	       colour_attachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	    }
+	    colour_attachment.finalLayout = layout;
 
 	    VkAttachmentReference color_attachment_reference = {};
 	    color_attachment_reference.attachment = 0;
@@ -1593,7 +1590,7 @@ namespace fwvulkan
 	       throw std::runtime_error("failed to create render pass!");
 	    }
 	    VkCommandBuffer buffer = buffers::CreateCommandBuffer();
-	    g_pass_map[passname] = {pass, buffer, {}, surface_format.format, {}, {}, {}, {}, {}};
+	    g_pass_map[passname] = {pass, buffer, extent, format, {}, {}, {}, {}, {}};
 	    return true;
 	 }
 	 return false;
@@ -1632,7 +1629,6 @@ namespace fwvulkan
 	 }
 	 vkDeviceWaitIdle(g_logical_device);
 	 CleanupSwapChain();
-	 renderpass::CreateDefaultRenderPass("swapchain");
 	 CreateSwapChain();
 	 renderpass::CreateDepthBuffer();
 	 CreateSwapchainImageViews();
@@ -2091,6 +2087,13 @@ int gGlfwVulkan::init()
       instance::CreateSurface();
    }
    device::PickPhysicalDevice();
+
+   // SwapChainSupportDetails swap_chain_support = device::QuerySwapChainSupport(g_physical_device, g_surface);
+   // VkSurfaceFormatKHR surface_format = swapchain::ChooseSwapSurfaceFormat(swap_chain_support.formats);
+   // swapchain::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities, int *window);
+   // VkPresentModeKHR present_mode = ChooseSwapPresentMode(swap_chain_support.present_modes);
+   // VkExtent2D extent = ChooseSwapExtent(swap_chain_support.capabilites, g_window);
+   
    device::CreateLogicalDevice();
    swapchain::CreateCommandPool();
 
@@ -2105,7 +2108,7 @@ int gGlfwVulkan::init()
       buffers::CreateDescriptorSets();
    }
 
-   renderpass::CreateDefaultRenderPass("swapchain");
+
    // todo: swapchain pass extent is set here, kinda gross.
    swapchain::CreateSwapChain();
    // todo: this sucks. :) 
@@ -2363,7 +2366,8 @@ bool gGlfwVulkan::register_shader(fw::hash::string name, const char* path, fw::s
 bool gGlfwVulkan::register_pass(fw::hash::string pass)
 {
    using namespace fwvulkan;
-   if(renderpass::CreateDefaultRenderPass(pass))
+   PassHandle& swapchain = g_pass_map["swapchain"];
+   if(renderpass::CreateDefaultRenderPass(pass, swapchain.extent, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL))
    {
       renderpass::CreatePassImages(pass);
       barriers::CreatePassSemaphores(pass);
