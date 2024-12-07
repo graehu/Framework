@@ -648,6 +648,21 @@ namespace fwvulkan
 	 auto sam_handle = CreateSamplerHandle(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, true);
 	 SetDescriptorImage(g_sam_map[sam_handle].sampler, g_im_map[im_handle].view);
       }
+      VkCommandBuffer CreateCommandBuffer()
+      {
+	 VkCommandBufferAllocateInfo alloc_info = {};
+	 alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	 alloc_info.commandPool = g_command_pool;
+	 alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	 alloc_info.commandBufferCount = 1;
+	    
+	 VkCommandBuffer buffer;
+	 if (vkAllocateCommandBuffers(g_logical_device, &alloc_info, &buffer) != VK_SUCCESS)
+	 {
+	    throw std::runtime_error("failed to allocate command buffers!");
+	 }
+	 return buffer;
+      }
       // todo: make this configurable, almost everything in here you would want to configure as a user.
       VkSampler CreateSampler(VkFilter filtering, VkSamplerAddressMode uv_mode, bool enable_aniso)
       {
@@ -1355,6 +1370,9 @@ namespace fwvulkan
 	 }
 	 return best_mode;
       }
+      // todo: this should be called once and stored on swapchain create / recreate.
+      // ----: right now it's awkwardly stored on the swapchain renderpass, which is just wrong.
+      // ----: the swap chain is unique, and should be treated as such, rather than stored as a render pass.
       VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities, GLFWwindow *window)
       {
 	 if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
@@ -1482,6 +1500,33 @@ namespace fwvulkan
 	    }
 	 }
       }
+
+      VkAttachmentDescription DefaultColourAttachment()
+      {
+	 VkAttachmentDescription colour_attachment = {};
+	 colour_attachment.format = VK_FORMAT_R8G8B8A8_SRGB;
+	 colour_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	 colour_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	 colour_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	 colour_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	 colour_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	 colour_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	 colour_attachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	 return colour_attachment;
+      }
+      VkAttachmentDescription DefaultDepthAttachment()
+      {
+	 VkAttachmentDescription depth_attachment = {};
+	 depth_attachment.format = utils::FindDepthFormat();
+	 depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	 depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	 depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	 depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	 depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	 depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	 depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	 return depth_attachment;
+      }
       bool CreateDefaultRenderPass(hash::string passname)
       {
 	 if(g_pass_map.find(passname) == g_pass_map.end())
@@ -1489,33 +1534,17 @@ namespace fwvulkan
 	    log::debug("Creating Default Renderpass: '{}'", passname.m_literal);
 	    SwapChainSupportDetails swap_chain_support = device::QuerySwapChainSupport(g_physical_device, g_surface);
 	    VkSurfaceFormatKHR surface_format = swapchain::ChooseSwapSurfaceFormat(swap_chain_support.formats);
-      
-	    VkAttachmentDescription color_attachement = {};
-	    color_attachement.format = surface_format.format;
-	    color_attachement.samples = VK_SAMPLE_COUNT_1_BIT;
-	    color_attachement.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	    color_attachement.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	    color_attachement.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	    color_attachement.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	    color_attachement.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-	    VkAttachmentDescription depth_attachment = {};
-	    depth_attachment.format = utils::FindDepthFormat();
-	    depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	    depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	    depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	    depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	    depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	    depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	    depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	    
+	    auto colour_attachment = DefaultColourAttachment();
+	    auto depth_attachment = DefaultDepthAttachment();
 	    
 	    if(passname == hash::string("swapchain"))
 	    {
-	       color_attachement.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	       colour_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	    }
 	    else
 	    {
-	       color_attachement.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	       colour_attachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	    }
 
 	    VkAttachmentReference color_attachment_reference = {};
@@ -1532,16 +1561,23 @@ namespace fwvulkan
 	    subpass_description.pColorAttachments = &color_attachment_reference;
 	    subpass_description.pDepthStencilAttachment = &depth_attachment_reference;
 
+	    VkPipelineStageFlags stages = {};
+	    stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	    stages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+
+	    VkAccessFlags access = {};
+	    access |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	    access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	    
 	    VkSubpassDependency subpass_dependency = {};
 	    subpass_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 	    subpass_dependency.dstSubpass = 0;
-	    subpass_dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	    subpass_dependency.srcStageMask = stages;
 	    subpass_dependency.srcAccessMask = 0;
-	    subpass_dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	    subpass_dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	    subpass_dependency.dstStageMask = stages;
+	    subpass_dependency.dstAccessMask = access;
 
-
-	    std::array<VkAttachmentDescription, 2> attachments = {color_attachement, depth_attachment};
+	    std::array<VkAttachmentDescription, 2> attachments = {colour_attachment, depth_attachment};
 	    VkRenderPassCreateInfo render_pass_ci = {};
 	    render_pass_ci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	    render_pass_ci.attachmentCount = attachments.size();
@@ -1556,18 +1592,7 @@ namespace fwvulkan
 	    {
 	       throw std::runtime_error("failed to create render pass!");
 	    }
-	    
-	    VkCommandBufferAllocateInfo alloc_info = {};
-	    alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	    alloc_info.commandPool = g_command_pool;
-	    alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	    alloc_info.commandBufferCount = 1;
-	    
-	    VkCommandBuffer buffer;
-	    if (vkAllocateCommandBuffers(g_logical_device, &alloc_info, &buffer) != VK_SUCCESS)
-	    {
-	       throw std::runtime_error("failed to allocate command buffers!");
-	    }
+	    VkCommandBuffer buffer = buffers::CreateCommandBuffer();
 	    g_pass_map[passname] = {pass, buffer, {}, surface_format.format, {}, {}, {}, {}, {}};
 	    return true;
 	 }
@@ -1578,6 +1603,7 @@ namespace fwvulkan
       {
 	 VkFormat format = utils::FindDepthFormat();
 	 VkImage depth_image; VkDeviceMemory depth_memory;
+	 // todo: more suckage.
 	 auto extent = g_pass_map["swapchain"].extent;
 	 buffers::CreateImage(extent.width, extent.height, format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depth_image, depth_memory);
 	 auto depth_view = buffers::CreateImageView(depth_image, format, VK_IMAGE_ASPECT_DEPTH_BIT);
