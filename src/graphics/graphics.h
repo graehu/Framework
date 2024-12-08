@@ -28,14 +28,19 @@ namespace fw
       vec2f uv;
       
    };
+   struct Image
+   {
+      const unsigned int* data;
+      int width = 0;
+      int height = 0;
+   };
    struct Mesh
    {
       const Vertex* vbo;
       size_t vbo_len;
       const uint16_t* ibo;
       size_t ibo_len;
-      const unsigned int* image;
-      size_t image_width, image_height;
+      Image image;
       Material mat;
       PassList passes;
       mat4x4f transform;

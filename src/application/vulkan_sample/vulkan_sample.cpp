@@ -61,14 +61,16 @@ std::vector<Vertex> quad_verts = {
 
 const std::array<uint16_t, 6> quad_indices = {0, 1, 2, 2, 3, 0};
 
-void loadmodel(const char* modelpath, std::vector<Vertex>& verts, std::vector<uint16_t>& indices, std::vector<unsigned char>& image, int& width, int& height);
+void loadmodel(const char* modelpath, std::vector<Vertex>& verts, std::vector<uint16_t>& indices, Image& info);
 
-// todo: depth testing
-// todo: per draw descriptors
+// todo: depth testing.
+// todo: per draw descriptors.
 
-
-// todo: add pass dependencies
-// todo: add pass framebuffer blending/compositing
+// todo: add pass dependencies.
+// todo: add pass framebuffer blending/compositing.
+// todo: add normal texture binds to the pipeline layout.
+// todo: add roughness textures to the pipeline layout.
+// todo: add basic pbr shaders.
 
 void vulkan_sample::run()
 {
@@ -78,39 +80,33 @@ void vulkan_sample::run()
 
    m_graphics->register_shader("triangle", "shaders/triangle.vert.spv", shader::e_vertex);
    m_graphics->register_shader("triangle", "shaders/triangle.frag.spv", shader::e_fragment);
+   m_graphics->register_shader("uv_triangle", "shaders/uv_triangle.frag.spv", shader::e_fragment);
    
    std::array<uint16_t,3> ibo = {0, 1, 2};
-   Mesh mesh1 = {triangle_1.data(), triangle_1.size(), ibo.data(), ibo.size(), {},{},{},{},{"swapchain"}, {}};
+   Mesh mesh1 = {triangle_1.data(), triangle_1.size(), ibo.data(), ibo.size(), {},{},{"swapchain"}, {}};
    mesh1.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
    mesh1.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
    
-   Mesh mesh2 = {triangle_2.data(), triangle_2.size(), ibo.data(), ibo.size(), {},{},{},{},{"swapchain"}, {}};
+   Mesh mesh2 = {triangle_2.data(), triangle_2.size(), ibo.data(), ibo.size(), {},{},{"swapchain"}, {}};
    mesh2.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
    mesh2.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
 
-   // for(auto& v : quad_verts)
-   // {
-   //    v.position.i += 3.0f;
-   // }
-   
-   Mesh quad = {quad_verts.data(), quad_verts.size(), quad_indices.data(), quad_indices.size(), {},{},{},{},{"swapchain"}, {}};
-   // quad.image = test_image.data();
-   // quad.image_width = 4;
-   // quad.image_height = 4;
+   Mesh quad = {quad_verts.data(), quad_verts.size(), quad_indices.data(), quad_indices.size(), {}, {}, {"swapchain"}, {}};
 
    quad.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
-   quad.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
+   quad.mat[fw::shader::e_fragment] = fw::hash::string("uv_triangle");
 
    
-   std::vector<Vertex> model_verts;   std::vector<uint16_t> model_indices; std::vector<unsigned char> image; int width, height;
-   loadmodel("../../../libs/tinygltf/models/Cube/Cube.gltf", model_verts, model_indices, image, width, height);
+   std::vector<Vertex> model_verts;   std::vector<uint16_t> model_indices;
+   Image image;
+   loadmodel("../../../libs/tinygltf/models/Cube/Cube.gltf", model_verts, model_indices, image);
    
    Mesh model = {
       model_verts.data(),
       model_verts.size(),
       model_indices.data(),
       model_indices.size(),
-      (unsigned int*)image.data(), (size_t)width, (size_t)height, // todo: convert non image
+      image, // todo: convert non image
       {}, {"swapchain"}, {}};
 
    model.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
@@ -147,7 +143,7 @@ void vulkan_sample::shutdown()
 
 #include "tiny_gltf.h"
 
-void loadmodel(const char* modelpath, std::vector<Vertex>& verts, std::vector<uint16_t>& indices, std::vector<unsigned char>& image, int& width, int& height)
+void loadmodel(const char* modelpath, std::vector<Vertex>& verts, std::vector<uint16_t>& indices, Image& info)
 {
    log::debug("loading model: {}", modelpath);
    using namespace tinygltf;
@@ -178,9 +174,15 @@ void loadmodel(const char* modelpath, std::vector<Vertex>& verts, std::vector<ui
       return;
    }
 
-   image = model.images[0].image;
-   width = model.images[0].width;
-   height = model.images[0].height;
+   for(auto image : model.images)
+   {
+      log::debug("image info: {}, {}, {}", image.name.c_str(), image.width, image.height);
+   }
+
+
+   info.data = (const unsigned int*)model.images[0].image.data();
+   info.width = model.images[0].width;
+   info.height = model.images[0].height;
    
    for (auto& primitive : model.meshes[0].primitives)
    {

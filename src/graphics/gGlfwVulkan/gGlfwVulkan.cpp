@@ -151,6 +151,7 @@ namespace fwvulkan
    struct PipelineHandle
    {
       VkPipeline pipeline = VK_NULL_HANDLE;
+      VkPipeline depth_pipeline = VK_NULL_HANDLE;
       VkPipelineLayout layout = VK_NULL_HANDLE;
    };
    std::map<uint32_t, PipelineHandle> g_pipe_map;
@@ -1847,18 +1848,21 @@ namespace fwvulkan
 	       throw std::runtime_error("failed to create pipeline layout!");
 	    }
 	    unsigned int shader_count = 0;
-	    VkPipelineShaderStageCreateInfo shader_create_infos[fw::shader::e_count] = {};
+	    std::array<VkPipelineShaderStageCreateInfo,fw::shader::e_count> shader_stage_ci = {};
+	    VkShaderModule vertex_shader = {};
 	    for(int i = 0; i < fw::shader::e_count; i++)
 	    {
 	       if(mat[i].is_valid())
 	       {
 		  if(auto module = g_shaders[i].find(mat[i]); module != g_shaders[i].end())
 		  {
-		     VkPipelineShaderStageCreateInfo& stage_create_info = shader_create_infos[shader_count++];
-		     stage_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		     stage_create_info.stage = shaders::shaderbit_lut.find((shader::type)i)->second;
-		     stage_create_info.module = module->second;
-		     stage_create_info.pName = "main";
+
+		     VkPipelineShaderStageCreateInfo& stage_ci = shader_stage_ci[shader_count++];
+		     stage_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		     stage_ci.stage = shaders::shaderbit_lut.find((shader::type)i)->second;
+		     stage_ci.module = module->second;
+		     stage_ci.pName = "main";
+		     if((shader::type)i == shader::e_vertex) { vertex_shader = stage_ci.module; }
 		  }
 	       }
 	    }
@@ -1870,10 +1874,15 @@ namespace fwvulkan
 	    auto multisample_state_ci = GetDefaultMultisampleState();
 	    auto blend_state_ci = GetDefaultBlendState();
 
+	    // Setting any of these means parts of the associated create info is ignored.
+	    // The related parts must be recorded in commands, listing related commands below
 	    std::vector<VkDynamicState> dynamic_states = {
-	       VK_DYNAMIC_STATE_VIEWPORT,
-	       VK_DYNAMIC_STATE_SCISSOR
+	       VK_DYNAMIC_STATE_VIEWPORT, // vkCmdSetViewport
+	       VK_DYNAMIC_STATE_SCISSOR,  // vkCmdSetScissor
+	       // so we can set this to false if we don't want to write depth.
+	       // VK_DYNAMIC_STATE_STENCIL_WRITE_MASK // vkCmdSetStencilWriteMask()
 	    };
+
 	    VkPipelineDynamicStateCreateInfo dynamic_state_ci = {};
 	    dynamic_state_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 	    dynamic_state_ci.dynamicStateCount = dynamic_states.size();
@@ -1881,8 +1890,11 @@ namespace fwvulkan
 
 	    VkPipelineDepthStencilStateCreateInfo depth_stencil_ci = {};
 	    depth_stencil_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	    // todo: need a separate set of pipeline states without depth write, only depth test.
+	    // ----: or not, VkPileineDynamicState lets us change VK_DYNAMIC_STATE_STENCIL_WRITE_MASK
 	    depth_stencil_ci.depthTestEnable = VK_TRUE;
-	    depth_stencil_ci.depthWriteEnable = VK_TRUE;
+	    depth_stencil_ci.depthWriteEnable = VK_FALSE;
+	    //
 	    depth_stencil_ci.depthCompareOp = VK_COMPARE_OP_LESS;
 	    depth_stencil_ci.depthBoundsTestEnable = VK_FALSE;
 	    depth_stencil_ci.minDepthBounds = 0.0f; // Optional
@@ -1894,7 +1906,7 @@ namespace fwvulkan
 	    VkGraphicsPipelineCreateInfo pipeline_ci = {};
 	    pipeline_ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	    pipeline_ci.stageCount = shader_count;
-	    pipeline_ci.pStages = shader_create_infos;
+	    pipeline_ci.pStages = shader_stage_ci.data();
 	    pipeline_ci.pVertexInputState = &vertex_input_ci;
 	    pipeline_ci.pInputAssemblyState = &input_assembly_ci;
 	    pipeline_ci.pViewportState = &viewport_state_ci;
@@ -1917,7 +1929,31 @@ namespace fwvulkan
 	    {
 	       throw std::runtime_error("failed to create graphics pipeline!");
 	    }
-	    g_pipe_map[hash] = {graphics_pipeline, pipeline_layout};
+	    VkPipeline depth_pipeline = {};
+	    if(vertex_shader)
+	    {
+	       depth_stencil_ci.depthWriteEnable = VK_TRUE;
+	       // pipeline_ci.pDepthStencilState = &depth_stencil_ci;
+	       // todo: see if this matters? should this be reset.
+	       // pipeline_ci.pRasterizationState = nullptr;
+	       // pipeline_ci.pMultisampleState = nullptr;
+	       // pipeline_ci.pColorBlendState = nullptr;
+	       // pipeline_ci.pDynamicState = nullptr;
+	       pipeline_ci.stageCount = 1;
+	       VkPipelineShaderStageCreateInfo stage_ci = {
+		  .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+		  .stage = VK_SHADER_STAGE_VERTEX_BIT,
+		  .module = vertex_shader,
+		  .pName = "main"
+	       };
+	       pipeline_ci.pStages = &stage_ci;
+	       if (vkCreateGraphicsPipelines(g_logical_device, VK_NULL_HANDLE, 1, &pipeline_ci, nullptr,
+					     &depth_pipeline) != VK_SUCCESS)
+	       {
+		  throw std::runtime_error("failed to create graphics pipeline!");
+	       }
+	    }
+	    g_pipe_map[hash] = {graphics_pipeline, depth_pipeline, pipeline_layout};
 	    log::debug("pipeline created id: {}", hash);
 	 }
 	 else
@@ -1944,26 +1980,29 @@ namespace fwvulkan
 	    throw std::runtime_error("failed to begin recording command buffer!");
 	 }
 
+	 VkViewport vp[] = {pipeline::GetDefaultViewport()};
+	 vkCmdSetViewport(pass.cmd_buffer, 0, 1, vp);
+	 VkRect2D scissor[] = {pipeline::GetDefaultScissor()};
+	 vkCmdSetScissor(pass.cmd_buffer, 0, 1, scissor);
+	 
+
 	 VkRenderPassBeginInfo render_pass_begin_info = {};
 	 render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	 render_pass_begin_info.renderPass = pass.pass;
-	 // log::debug("pass {} fb {} extent {}, {}", passname.m_literal, (size_t)pass.CurrentFrame(), pass.extent.width, pass.extent.height);
          render_pass_begin_info.framebuffer = pass.CurrentFrame();
 	 render_pass_begin_info.renderArea.offset = {0, 0};
 	 render_pass_begin_info.renderArea.extent = pass.extent;
 
-	 // log::debug("bound fb: {}", g_current_frame);
 	 std::array<VkClearValue, 2> clear_values{};
 	 clear_values[0].color = {{0.0f, 1.0f, 1.0f, 1.0f}};
-	 // clear_values[0].depthStencil = {1.0f, 0};
-	 // clear_values[1].color = {{0.0f, 1.0f, 1.0f, 1.0f}};
 	 clear_values[1].depthStencil = {1.0f, 0};
 
 	 render_pass_begin_info.clearValueCount = clear_values.size();
 	 render_pass_begin_info.pClearValues = clear_values.data();
-	 	 
+	 
 	 // log::debug("begin renderpass");
 	 vkCmdBeginRenderPass(pass.cmd_buffer, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+	 
 	 uint32_t pipeline_hash = 0;
 	 uint32_t id = 0;
 	 for(auto dh : pass.draws)
@@ -1972,35 +2011,31 @@ namespace fwvulkan
 	    assert(id < 16);
 	    // log::debug("Recording Draw vb: {} pi: {} nverts: {}", dh.vb_handle, dh.pi_handle, dh.num_verts);
 	    // log::debug("bind pipeline");
+
 	    if(uint32_t hash = dh.pi_handle; hash != pipeline_hash)
 	    {
-
-	       vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[hash].pipeline);
-
 	       // note: setting viewport and scissor when we bind pipeline incase it's changed
 	       // todo: it would be nicer to have this sort of thing covered as a init frame pass or something.
-	       VkViewport vp[] = {pipeline::GetDefaultViewport()};
-	       vkCmdSetViewport(pass.cmd_buffer, 0, 1, vp);
-	       VkRect2D scissor[] = {pipeline::GetDefaultScissor()};
-	       vkCmdSetScissor(pass.cmd_buffer, 0, 1, scissor);
 	       pipeline_hash = hash;
 	    }
 	    
 	    VkBuffer vertex_buffers[] = {g_vb_map[dh.vb_handle].vb};
 	    VkDeviceSize offsets[] = {0};
 	    DefaultPushConstants constants = {id};
+	    // todo: make this happen once per draw before depth when recording depth
 	    memcpy(&ubo.model[id], &dh.owner->transform, sizeof(mat4x4f));
-	    vkCmdPushConstants(pass.cmd_buffer, g_pipe_map[pipeline_hash].layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(DefaultPushConstants), &constants);
-
-	    // log::debug("bind vertext buffer");
-	    vkCmdBindVertexBuffers(pass.cmd_buffer, 0, 1, vertex_buffers, offsets);
-	 
-	    vkCmdBindIndexBuffer(pass.cmd_buffer, g_ib_map[dh.ib_handle].ib, 0, VK_INDEX_TYPE_UINT16);
+	    // this needs to happen every time we setup a draw.
 	    
+	    vkCmdPushConstants(pass.cmd_buffer, g_pipe_map[pipeline_hash].layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(DefaultPushConstants), &constants);
+	    vkCmdBindVertexBuffers(pass.cmd_buffer, 0, 1, vertex_buffers, offsets);
+	    vkCmdBindIndexBuffer(pass.cmd_buffer, g_ib_map[dh.ib_handle].ib, 0, VK_INDEX_TYPE_UINT16);
             vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 0, 1, &g_descriptor_sets[g_flight_frame], 0, nullptr);
-	    // log::debug("record draw");
-	    // vkCmdDraw(pass.cmd_buffer, dh.num_verts, 1, 0, 0);
+	    
+	    vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].pipeline);
 	    vkCmdDrawIndexed(pass.cmd_buffer, dh.num_indices, 1, 0, 0, 0);
+	    vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].depth_pipeline);
+	    vkCmdDrawIndexed(pass.cmd_buffer, dh.num_indices, 1, 0, 0, 0);
+	    
 	    id++;
 	 }
 
@@ -2135,8 +2170,10 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
 	 (int)_mesh->vbo_len,
 	 buffers::CreateIndexBufferHandle(_mesh->ibo, _mesh->ibo_len),
 	 (int)_mesh->ibo_len,
-	 buffers::CreateImageHandle(_mesh->image, _mesh->image_width, _mesh->image_height),
-	 (int)_mesh->image_width, (int)_mesh->image_height,
+	 buffers::CreateImageHandle(_mesh->image.data, _mesh->image.width, _mesh->image.height),
+	 (int)_mesh->image.width, (int)_mesh->image.height,
+	 // todo: this should be "create all pipeline variants"
+	 // ----: then we store draws against pipelines / passes, or something. :)
 	 pipeline::CreateDefaultPipeline(_mesh->mat)
       };
       
