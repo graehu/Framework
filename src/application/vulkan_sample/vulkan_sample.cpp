@@ -5,6 +5,7 @@
 #include "../../graphics/graphics.h"
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <thread>
 #include <vector>
@@ -32,27 +33,8 @@ void vulkan_sample::init()
    m_graphics = graphics::graphicsFactory();
    m_graphics->init();
 }
-const std::array<unsigned int, 16> test_image =
-{
-   0xff00ffff, 0xff00ffff, 0xff00ffff, 0xff00ffff,
-   0xff00ffff, 0xff00ffff, 0xff00ffff, 0xff00ffff,
-   0xff00ffff, 0xff00ffff, 0xff00ffff, 0xff00ffff,
-   0xff00ffff, 0xff00ffff, 0xff00ffff, 0xff00ffff,
-};
 
-const std::vector<Vertex> triangle_1 = {
-   {{ 0.0f,-0.5f}, {1.0f, 0.0f, 0.0f}, {1, 1}},
-   {{ 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}, {0, 0}},
-   {{-0.5f, 0.5f}, {1.0f, 0.0f, 1.0f}, {0, 0}}
-};
-
-const std::vector<Vertex> triangle_2 = {
-   {{( 0.0f+1.0f)*.5f, (-0.5f)*.5f}, {1.0f, 0.0f, 0.0f}, {1, 1} }, 
-   {{( 0.5f+1.0f)*.5f, ( 0.5f)*.5f}, {0.0f, 1.0f, 0.0f}, {0, 0} }, 
-   {{(-0.5f+1.0f)*.5f, ( 0.5f)*.5f}, {1.0f, 0.0f, 1.0f}, {0, 0} }, 
-};
-
-std::vector<Vertex> quad_verts = {
+const std::vector<Vertex> quad_verts = {
    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0, 0}},
    {{ 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1, 0}},
    {{ 0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}, {1, 1}},
@@ -61,14 +43,10 @@ std::vector<Vertex> quad_verts = {
 
 const std::array<uint16_t, 6> quad_indices = {0, 1, 2, 2, 3, 0};
 
-void loadmodel(const char* modelpath, std::vector<Vertex>& verts, std::vector<uint16_t>& indices, Image& info);
-
-// todo: depth testing.
-// todo: per draw descriptors.
+void loadmodel(const char* modelpath, std::vector<Vertex>& verts, std::vector<uint16_t>& indices, std::vector<Image>& images);
 
 // todo: add pass dependencies.
 // todo: add pass framebuffer blending/compositing.
-// todo: add normal texture binds to the pipeline layout.
 // todo: add roughness textures to the pipeline layout.
 // todo: add basic pbr shaders.
 
@@ -82,45 +60,34 @@ void vulkan_sample::run()
    m_graphics->register_shader("triangle", "shaders/triangle.frag.spv", shader::e_fragment);
    m_graphics->register_shader("uv_triangle", "shaders/uv_triangle.frag.spv", shader::e_fragment);
    
-   std::array<uint16_t,3> ibo = {0, 1, 2};
-   Mesh mesh1 = {triangle_1.data(), triangle_1.size(), ibo.data(), ibo.size(), {},{},{"swapchain"}, {}};
-   mesh1.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
-   mesh1.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
-   
-   Mesh mesh2 = {triangle_2.data(), triangle_2.size(), ibo.data(), ibo.size(), {},{},{"swapchain"}, {}};
-   mesh2.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
-   mesh2.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
-
-   Mesh quad = {quad_verts.data(), quad_verts.size(), quad_indices.data(), quad_indices.size(), {}, {}, {"swapchain"}, {}};
-
-   quad.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
-   quad.mat[fw::shader::e_fragment] = fw::hash::string("uv_triangle");
+   Mesh quad = {{{quad_verts.data(), quad_verts.size()}, {quad_indices.data(), quad_indices.size()}}, {}, {}, {"swapchain"}, {}};
+   quad.material[fw::shader::e_vertex] = fw::hash::string("triangle");
+   quad.material[fw::shader::e_fragment] = fw::hash::string("uv_triangle");
 
    
-   std::vector<Vertex> model_verts;   std::vector<uint16_t> model_indices;
-   Image image;
-   loadmodel("../../../libs/tinygltf/models/Cube/Cube.gltf", model_verts, model_indices, image);
-   
+   std::vector<Vertex> model_verts;   std::vector<uint16_t> model_indices; std::vector<Image> images;
+   loadmodel("../../../libs/tinygltf/models/Cube/Cube.gltf", model_verts, model_indices, images);
    Mesh model = {
-      model_verts.data(),
-      model_verts.size(),
-      model_indices.data(),
-      model_indices.size(),
-      image, // todo: convert non image
-      {}, {"swapchain"}, {}};
+      {{model_verts.data(), model_verts.size()}, {model_indices.data(),model_indices.size()}},
+      {images[0], images[1]},
+      {}, {"swapchain"}, {}
+   };
 
-   model.mat[fw::shader::e_vertex] = fw::hash::string("triangle");
-   model.mat[fw::shader::e_fragment] = fw::hash::string("triangle");
+   // quad.images[0] = model.images[0];
+
+   model.material[fw::shader::e_vertex] = fw::hash::string("triangle");
+   model.material[fw::shader::e_fragment] = fw::hash::string("triangle");
    float time = 0;
+   // std::sin()
    while (m_window->update())
    {
-      // m_graphics->register_pass("zzzz");
       m_graphics->getRenderer()->visit(&model);
       m_graphics->getRenderer()->visit(&quad);
-      // m_graphics->getRenderer()->visit(&mesh1);
-      // m_graphics->getRenderer()->visit(&mesh2);
       m_graphics->render();
-      model.transform.translate(time, 0, 0);
+      mat4x4f rotmat; rotmat.rotateY(time);
+      mat4x4f transmat; transmat.translate(2, 0, 0);
+      model.transform = transmat*rotmat;
+      quad.transform = quad.transform;
       std::this_thread::sleep_for(std::chrono::milliseconds(16));
       time += 1.0f/60.0f;
    }
@@ -143,7 +110,7 @@ void vulkan_sample::shutdown()
 
 #include "tiny_gltf.h"
 
-void loadmodel(const char* modelpath, std::vector<Vertex>& verts, std::vector<uint16_t>& indices, Image& info)
+void loadmodel(const char* modelpath, std::vector<Vertex>& verts, std::vector<uint16_t>& indices, std::vector<Image>& images)
 {
    log::debug("loading model: {}", modelpath);
    using namespace tinygltf;
@@ -174,15 +141,12 @@ void loadmodel(const char* modelpath, std::vector<Vertex>& verts, std::vector<ui
       return;
    }
 
-   for(auto image : model.images)
+   log::debug("images: {}", model.images.size());
+   for(auto& image : model.images)
    {
       log::debug("image info: {}, {}, {}", image.name.c_str(), image.width, image.height);
+      images.push_back({(const unsigned int*)image.image.data(), image.width, image.height});
    }
-
-
-   info.data = (const unsigned int*)model.images[0].image.data();
-   info.width = model.images[0].width;
-   info.height = model.images[0].height;
    
    for (auto& primitive : model.meshes[0].primitives)
    {

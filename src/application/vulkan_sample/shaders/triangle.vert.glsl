@@ -3,9 +3,10 @@
 
 layout(binding = 0) uniform UniformBufferObject
 {
-    mat4 model[16];
-    mat4 view;
-    mat4 proj;
+   // limitation of 16 objects per pass / pipeline
+   mat4 model[16];
+   mat4 view;
+   mat4 proj;
 } ubo;
 
 layout( push_constant ) uniform constants
@@ -22,7 +23,7 @@ layout(location = 1) out vec2 out_uv;
 
 void main()
 {
- gl_Position = ubo.proj * ubo.view * ubo.model[perdraw.id] * vec4(in_position, 1.0);
- out_color = in_color;
- out_uv = in_uv;
+   gl_Position = ubo.proj * ubo.view * ubo.model[perdraw.id] * vec4(in_position, 1.0);
+   out_color = in_color;
+   out_uv = in_uv;
 }

@@ -110,6 +110,15 @@ namespace fwvulkan
 	    0xffff00ff, 0x00000000, 0xffff00ff, 0x00000000,
 	 };
       }
+      namespace geometry
+      {
+	 const std::vector<Vertex> quad = {
+	    {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+	    {{ 0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+	    {{ 0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+	    {{-0.5f,  0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
+	 };
+      }
    }
    
    ////
@@ -133,7 +142,7 @@ namespace fwvulkan
       std::vector<VkDeviceMemory> image_mems;
       std::vector<VkFramebuffer> frame_buffers;
       std::vector<DrawHandle> draws;
-
+      std::vector<fw::hash::string> wait_passes;
    };
    PassHandle g_swapchain_pass;
    std::map<fw::hash::string, PassHandle> g_pass_map;
@@ -1246,6 +1255,7 @@ namespace fwvulkan
 	 pass.frame_buffers.resize(pass.image_views.size());
 	 for (size_t i = 0; i < pass.image_views.size(); i++)
 	 {
+	    // todo: might need to add roughness here.
 	    std::array<VkImageView,2> attachments = {pass.image_views[i], g_rt_map["depth"].view};
 	    VkFramebufferCreateInfo framebuffer_create_info = {};
 	    framebuffer_create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -1489,7 +1499,7 @@ namespace fwvulkan
 	 {
 	    buffers::CreateImage(pass.extent.width, pass.extent.height, pass.image_format, usage, pass.images[i], pass.image_mems[i]);
 	    pass.image_views[i] = buffers::CreateImageView(pass.images[i], pass.image_format);
-	    
+	    // todo:  may need to add roughness.
 	    VkImageView attachments[] = { pass.image_views[i] };
 	    VkFramebufferCreateInfo framebuffer_create_info = {};
 	    framebuffer_create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -1553,6 +1563,8 @@ namespace fwvulkan
 	    depth_attachment_reference.attachment = 1;
 	    depth_attachment_reference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+	    // todo: may need roughness... not liking that I need to make a pipeline.
+	    // ....: ree.
 	    VkSubpassDescription subpass_description = {};
 	    subpass_description.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	    subpass_description.colorAttachmentCount = 1;
@@ -1591,7 +1603,7 @@ namespace fwvulkan
 	       throw std::runtime_error("failed to create render pass!");
 	    }
 	    VkCommandBuffer buffer = buffers::CreateCommandBuffer();
-	    g_pass_map[passname] = {pass, buffer, extent, format, {}, {}, {}, {}, {}};
+	    g_pass_map[passname] = {pass, buffer, extent, format, {}, {}, {}, {}, {}, {}};
 	    return true;
 	 }
 	 return false;
@@ -1866,6 +1878,7 @@ namespace fwvulkan
 		  }
 	       }
 	    }
+
 	    assert(shader_count != 0);
 	    auto vertex_input_ci = GetDefaultVertexInputState();
 	    auto input_assembly_ci = GetDefaultIAState();
@@ -2165,16 +2178,19 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
    auto handles_iter = g_drawhandles.find(_mesh);
    if(handles_iter == g_drawhandles.end())
    {
+      // log::debug("{}", (int)&_mesh->images[0].data);
       drawhandle = { _mesh,
-	 buffers::CreateVertexBufferHandle(_mesh->vbo, _mesh->vbo_len),
-	 (int)_mesh->vbo_len,
-	 buffers::CreateIndexBufferHandle(_mesh->ibo, _mesh->ibo_len),
-	 (int)_mesh->ibo_len,
-	 buffers::CreateImageHandle(_mesh->image.data, _mesh->image.width, _mesh->image.height),
-	 (int)_mesh->image.width, (int)_mesh->image.height,
+	 buffers::CreateVertexBufferHandle(_mesh->geometry.vbo.data, _mesh->geometry.vbo.len),
+	 (int)_mesh->geometry.vbo.len,
+	 buffers::CreateIndexBufferHandle(_mesh->geometry.ibo.data, _mesh->geometry.ibo.len),
+	 (int)_mesh->geometry.ibo.len,
+	 // todo: this needs to handle multiple images
+	 // todo: this needs to handle no images
+	 buffers::CreateImageHandle(_mesh->images[0].data, _mesh->images[0].width, _mesh->images[0].height),
+	 (int)_mesh->images[0].width, (int)_mesh->images[0].height,
 	 // todo: this should be "create all pipeline variants"
 	 // ----: then we store draws against pipelines / passes, or something. :)
-	 pipeline::CreateDefaultPipeline(_mesh->mat)
+	 pipeline::CreateDefaultPipeline(_mesh->material)
       };
       
       // todo: this sucks, the sampler is associated with the material, not the draw handler or the image.
@@ -2310,6 +2326,8 @@ int gGlfwVulkan::render()
       // ----: Ok, so the vkAcquireNextImageKHR triggers the image_available semaphore, which allows submission/execution.
       // todo: define better waits per pass.
       submit_info.waitSemaphoreCount = pass.first == hash::string("swapchain") ? 1 : 0;
+      // todo: this is probably where we want to add waits for pass dependencies
+      // ----: e.g. wait for depth pass to complete before we run colour
       submit_info.pWaitSemaphores = pass.first == hash::string("swapchain") ? wait_semaphores : nullptr;
       submit_info.pWaitDstStageMask = wait_stages;
       submit_info.commandBufferCount = 1;

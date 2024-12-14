@@ -20,28 +20,18 @@ namespace fw
    }
    typedef std::array<hash::string, shader::e_count> Material;
    typedef std::vector<hash::string> PassList;
-   struct Vertex
-   {
-      Vertex(vec3f p, vec3f c, vec2f u) : position(p), color(c), uv(u) {}
-      vec3f position;
-      vec3f color;
-      vec2f uv;
-      
-   };
-   struct Image
-   {
-      const unsigned int* data;
-      int width = 0;
-      int height = 0;
-   };
+   struct Vertex { vec3f position; vec3f color; vec2f uv; };
+   struct VertexArray { const Vertex* data; size_t len; };
+   struct IndexArray { const uint16_t* data; size_t len; };
+   struct Geometry { VertexArray vbo; IndexArray ibo; };
+   struct Image { const unsigned int* data; int width = 0; int height = 0; };
    struct Mesh
    {
-      const Vertex* vbo;
-      size_t vbo_len;
-      const uint16_t* ibo;
-      size_t ibo_len;
-      Image image;
-      Material mat;
+      // todo: arbitrary limit for ease of construction atm.
+      static const unsigned int max_images = 4;
+      Geometry geometry;
+      Image images[max_images];
+      Material material;
       PassList passes;
       mat4x4f transform;
    };
