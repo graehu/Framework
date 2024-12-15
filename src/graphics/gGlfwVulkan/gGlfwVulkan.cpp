@@ -173,18 +173,21 @@ namespace fwvulkan
    {
       VkBuffer vb;
       VkDeviceMemory vb_mem;
+      size_t len;
    };
    // index buffers
    struct IBHandle
    {
       VkBuffer ib;
       VkDeviceMemory ib_mem;
+      size_t len;
    };
    struct IMHandle
    {
       VkImage image;
       VkImageView view;
       VkDeviceMemory image_mem;
+      size_t width, height;
    };
    struct SamHandle
    {
@@ -199,14 +202,11 @@ namespace fwvulkan
    std::vector<Mesh*> g_meshes;
    struct DrawHandle
    {
+      
       Mesh* owner = nullptr;
       int vb_handle = -1;
-      int num_verts = 0;
       int ib_handle = -1;
-      int num_indices = 0;
-      int im_handle = -1;
-      int im_width = 0;
-      int im_height = 0;
+      int im_handles[Mesh::max_images] = {};
       int pi_handle = -1;
    };
    std::map<fw::Mesh *, DrawHandle> g_drawhandles;
@@ -566,15 +566,17 @@ namespace fwvulkan
       }
       VkDescriptorPool CreateDescriptorPool()
       {
-	 VkDescriptorPoolSize pool_sizes[2];
+	 VkDescriptorPoolSize pool_sizes[3];
 	 pool_sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	 pool_sizes[0].descriptorCount = g_max_frames_in_flight;
-	 pool_sizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	 pool_sizes[1].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	 pool_sizes[1].descriptorCount = g_max_frames_in_flight;
+	 pool_sizes[1].type = VK_DESCRIPTOR_TYPE_SAMPLER;
 	 pool_sizes[1].descriptorCount = g_max_frames_in_flight;
 
 	 VkDescriptorPoolCreateInfo pool_ci{};
 	 pool_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	 pool_ci.poolSizeCount = 2;
+	 pool_ci.poolSizeCount = 3;
 	 pool_ci.pPoolSizes = &pool_sizes[0];
 	 pool_ci.maxSets = g_max_frames_in_flight;
 
@@ -613,34 +615,43 @@ namespace fwvulkan
 	 log::debug("SetDescriptorImage: {}", size_t(image_view));
 	 for (size_t i = 0; i < g_descriptor_sets.size(); i++)
 	 {
-            VkDescriptorBufferInfo bufferInfo{};
-            bufferInfo.buffer = g_uniformBuffers[i];
-            bufferInfo.offset = 0;
-            bufferInfo.range = sizeof(DefaultUniforms);
+            VkDescriptorBufferInfo buffer_info{};
+            buffer_info.buffer = g_uniformBuffers[i];
+            buffer_info.offset = 0;
+            buffer_info.range = sizeof(DefaultUniforms);
 
-	    VkDescriptorImageInfo imageInfo{};
-	    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	    imageInfo.imageView = image_view;
-	    imageInfo.sampler = sampler;
+	    VkDescriptorImageInfo image_info{};
+	    image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	    image_info.imageView = image_view;
 
-            VkWriteDescriptorSet descriptorWrites[2] = {{}, {}};
+	    VkDescriptorImageInfo sampler_info{};
+	    image_info.sampler = sampler;
+
+            VkWriteDescriptorSet descriptorWrites[3] = {{}, {}, {}};
             descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             descriptorWrites[0].dstSet = g_descriptor_sets[i];
             descriptorWrites[0].dstBinding = 0;
             descriptorWrites[0].dstArrayElement = 0;
             descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             descriptorWrites[0].descriptorCount = 1;
-            descriptorWrites[0].pBufferInfo = &bufferInfo;
+            descriptorWrites[0].pBufferInfo = &buffer_info;
 
 	    descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	    descriptorWrites[1].dstSet = g_descriptor_sets[i];
 	    descriptorWrites[1].dstBinding = 1;
 	    descriptorWrites[1].dstArrayElement = 0;
-	    descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	    descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 	    descriptorWrites[1].descriptorCount = 1;
-	    descriptorWrites[1].pImageInfo = &imageInfo;
+	    descriptorWrites[1].pImageInfo = &image_info;
 
-            vkUpdateDescriptorSets(g_logical_device, 2, descriptorWrites, 0, nullptr);
+	    descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	    descriptorWrites[2].dstSet = g_descriptor_sets[i];
+	    descriptorWrites[2].dstBinding = 2;
+	    descriptorWrites[2].dstArrayElement = 0;
+	    descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+	    descriptorWrites[2].descriptorCount = 1;
+	    descriptorWrites[2].pImageInfo = &sampler_info;
+            vkUpdateDescriptorSets(g_logical_device, 3, descriptorWrites, 0, nullptr);
 	 }
       }
       int CreateImageHandle(const unsigned int* image, size_t width, size_t height);
@@ -779,7 +790,7 @@ namespace fwvulkan
 
 	    VkImageView view = CreateImageView(image, VK_FORMAT_R8G8B8A8_SRGB);
 	    
-	    g_im_map[hash] = {image, view, image_memory};
+	    g_im_map[hash] = {image, view, image_memory, width, height};
 	    log::debug("Created IMHandle: {}", hash);
 	 }
 	 else
@@ -797,7 +808,7 @@ namespace fwvulkan
 	    VkBuffer vertex_buffer;
 	    VkDeviceMemory vertex_buffer_memory;
 	    CreateBuffer((void*)vertices, sizeof(fw::Vertex) * num_vertices, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertex_buffer, vertex_buffer_memory);
-	    g_vb_map[hash] = {vertex_buffer, vertex_buffer_memory};
+	    g_vb_map[hash] = {vertex_buffer, vertex_buffer_memory, (size_t)num_vertices};
 	    log::debug("Created VBHandle: {}", hash);
 	 }
 	 else
@@ -814,7 +825,7 @@ namespace fwvulkan
 	    VkBuffer index_buffer;
 	    VkDeviceMemory index_buffer_memory;
 	    CreateBuffer((void*)indices, sizeof(uint16_t) * num_indices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, index_buffer, index_buffer_memory);
-	    g_ib_map[hash] = {index_buffer, index_buffer_memory};
+	    g_ib_map[hash] = {index_buffer, index_buffer_memory, (size_t)num_indices};
 	    log::debug("Created IBHandle: {}", hash);
 	 }
 	 else
@@ -1617,7 +1628,7 @@ namespace fwvulkan
 	 auto extent = g_pass_map["swapchain"].extent;
 	 buffers::CreateImage(extent.width, extent.height, format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depth_image, depth_memory);
 	 auto depth_view = buffers::CreateImageView(depth_image, format, VK_IMAGE_ASPECT_DEPTH_BIT);
-	 g_rt_map["depth"] = { depth_image, depth_view, depth_memory };
+	 g_rt_map["depth"] = { depth_image, depth_view, depth_memory, extent.width, extent.height };
 	 utils::TransitionImageLayout(depth_image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
       }
       
@@ -2041,13 +2052,14 @@ namespace fwvulkan
 	    
 	    vkCmdPushConstants(pass.cmd_buffer, g_pipe_map[pipeline_hash].layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(DefaultPushConstants), &constants);
 	    vkCmdBindVertexBuffers(pass.cmd_buffer, 0, 1, vertex_buffers, offsets);
-	    vkCmdBindIndexBuffer(pass.cmd_buffer, g_ib_map[dh.ib_handle].ib, 0, VK_INDEX_TYPE_UINT16);
+	    auto ibh = g_ib_map[dh.ib_handle];
+	    vkCmdBindIndexBuffer(pass.cmd_buffer, ibh.ib, 0, VK_INDEX_TYPE_UINT16);
             vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 0, 1, &g_descriptor_sets[g_flight_frame], 0, nullptr);
 	    
 	    vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].pipeline);
-	    vkCmdDrawIndexed(pass.cmd_buffer, dh.num_indices, 1, 0, 0, 0);
+	    vkCmdDrawIndexed(pass.cmd_buffer, ibh.len, 1, 0, 0, 0);
 	    vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].depth_pipeline);
-	    vkCmdDrawIndexed(pass.cmd_buffer, dh.num_indices, 1, 0, 0, 0);
+	    vkCmdDrawIndexed(pass.cmd_buffer, ibh.len, 1, 0, 0, 0);
 	    
 	    id++;
 	 }
@@ -2148,11 +2160,10 @@ int gGlfwVulkan::init()
    // todo: this sucks
    {
       buffers::CreateDefaultUniformBuffers();
-      VkDescriptorType types[] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER };
-      VkShaderStageFlags stages[] = { VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
-      g_descriptor_set_layout = buffers::CreateDescriptorSetLayout(types, stages, 2);
+      VkDescriptorType types[] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_DESCRIPTOR_TYPE_SAMPLER };
+      VkShaderStageFlags stages[] = { VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
+      g_descriptor_set_layout = buffers::CreateDescriptorSetLayout(types, stages, 3);
       g_descriptor_pool = buffers::CreateDescriptorPool();
-      
       buffers::CreateDescriptorSets();
    }
 
@@ -2181,23 +2192,22 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
       // log::debug("{}", (int)&_mesh->images[0].data);
       drawhandle = { _mesh,
 	 buffers::CreateVertexBufferHandle(_mesh->geometry.vbo.data, _mesh->geometry.vbo.len),
-	 (int)_mesh->geometry.vbo.len,
 	 buffers::CreateIndexBufferHandle(_mesh->geometry.ibo.data, _mesh->geometry.ibo.len),
-	 (int)_mesh->geometry.ibo.len,
 	 // todo: this needs to handle multiple images
 	 // todo: this needs to handle no images
-	 buffers::CreateImageHandle(_mesh->images[0].data, _mesh->images[0].width, _mesh->images[0].height),
-	 (int)_mesh->images[0].width, (int)_mesh->images[0].height,
+	 {},
 	 // todo: this should be "create all pipeline variants"
 	 // ----: then we store draws against pipelines / passes, or something. :)
 	 pipeline::CreateDefaultPipeline(_mesh->material)
       };
-      
-      // todo: this sucks, the sampler is associated with the material, not the draw handler or the image.
-      if(drawhandle.im_handle)
+      for(unsigned int i = 0; i < Mesh::max_images; i++)
       {
+	 if(_mesh->images[i].data == nullptr) break;
+	 drawhandle.im_handles[i] = buffers::CreateImageHandle(_mesh->images[i].data, _mesh->images[i].width, _mesh->images[i].height);
+	 // todo: this sucks, the sampler is associated with the material, not the draw handler or the image.
 	 auto sam_handle = buffers::CreateSamplerHandle(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, true);
-	 buffers::SetDescriptorImage(g_sam_map[sam_handle].sampler, g_im_map[drawhandle.im_handle].view);
+	 // todo: this sucks, constantly replacing the sampler image isn't going to work.
+	 buffers::SetDescriptorImage(g_sam_map[sam_handle].sampler, g_im_map[drawhandle.im_handles[0]].view);
       }
       g_drawhandles[_mesh] = drawhandle;
    }
