@@ -566,17 +566,19 @@ namespace fwvulkan
       }
       VkDescriptorPool CreateDescriptorPool()
       {
-	 VkDescriptorPoolSize pool_sizes[3];
+	 VkDescriptorPoolSize pool_sizes[4];
 	 pool_sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	 pool_sizes[0].descriptorCount = g_max_frames_in_flight;
 	 pool_sizes[1].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 	 pool_sizes[1].descriptorCount = g_max_frames_in_flight;
-	 pool_sizes[1].type = VK_DESCRIPTOR_TYPE_SAMPLER;
-	 pool_sizes[1].descriptorCount = g_max_frames_in_flight;
+	 pool_sizes[2].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	 pool_sizes[2].descriptorCount = g_max_frames_in_flight;
+         pool_sizes[3].type = VK_DESCRIPTOR_TYPE_SAMPLER;
+	 pool_sizes[3].descriptorCount = g_max_frames_in_flight;
 
 	 VkDescriptorPoolCreateInfo pool_ci{};
 	 pool_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	 pool_ci.poolSizeCount = 3;
+	 pool_ci.poolSizeCount = 4;
 	 pool_ci.pPoolSizes = &pool_sizes[0];
 	 pool_ci.maxSets = g_max_frames_in_flight;
 
@@ -610,9 +612,9 @@ namespace fwvulkan
       // ----: Global transforms/constants should probably be in a push constant, or bound to the pipeline differently.
       // ----: descriptor table or something.
       // todo: consider bindless descriptors: VK_EXT_descriptor_indexing
-      void SetDescriptorImage(VkSampler sampler, VkImageView image_view)
+      void SetDescriptors(VkSampler sampler, VkImageView albedo_view, VkImageView rough_view)
       {
-	 log::debug("SetDescriptorImage: {}", size_t(image_view));
+	 log::debug("SetDescriptors: a: {} r: {}", size_t(albedo_view), size_t(rough_view));
 	 for (size_t i = 0; i < g_descriptor_sets.size(); i++)
 	 {
             VkDescriptorBufferInfo buffer_info{};
@@ -620,14 +622,18 @@ namespace fwvulkan
             buffer_info.offset = 0;
             buffer_info.range = sizeof(DefaultUniforms);
 
-	    VkDescriptorImageInfo image_info{};
-	    image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	    image_info.imageView = image_view;
+	    VkDescriptorImageInfo albedo_info{};
+	    albedo_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	    albedo_info.imageView = albedo_view;
+
+	    VkDescriptorImageInfo rough_info{};
+	    rough_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	    rough_info.imageView = rough_view;
 
 	    VkDescriptorImageInfo sampler_info{};
-	    image_info.sampler = sampler;
+	    sampler_info.sampler = sampler;
 
-            VkWriteDescriptorSet descriptorWrites[3] = {{}, {}, {}};
+            VkWriteDescriptorSet descriptorWrites[4] = {{}, {}, {}, {}};
             descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             descriptorWrites[0].dstSet = g_descriptor_sets[i];
             descriptorWrites[0].dstBinding = 0;
@@ -642,21 +648,113 @@ namespace fwvulkan
 	    descriptorWrites[1].dstArrayElement = 0;
 	    descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 	    descriptorWrites[1].descriptorCount = 1;
-	    descriptorWrites[1].pImageInfo = &image_info;
+	    descriptorWrites[1].pImageInfo = &albedo_info;
+
+	    descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	    descriptorWrites[1].dstSet = g_descriptor_sets[i];
+	    descriptorWrites[1].dstBinding = 2;
+	    descriptorWrites[1].dstArrayElement = 0;
+	    descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	    descriptorWrites[1].descriptorCount = 1;
+	    descriptorWrites[1].pImageInfo = &rough_info;
 
 	    descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	    descriptorWrites[2].dstSet = g_descriptor_sets[i];
-	    descriptorWrites[2].dstBinding = 2;
+	    descriptorWrites[2].dstBinding = 3;
 	    descriptorWrites[2].dstArrayElement = 0;
 	    descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
 	    descriptorWrites[2].descriptorCount = 1;
 	    descriptorWrites[2].pImageInfo = &sampler_info;
-            vkUpdateDescriptorSets(g_logical_device, 3, descriptorWrites, 0, nullptr);
+            vkUpdateDescriptorSets(g_logical_device, 4, descriptorWrites, 0, nullptr);
+	 }
+      }
+      void SetDescriptorUniformBuffer()
+      {
+	 log::debug("SetDescriptorUniformmBuffer");
+	 for (size_t i = 0; i < g_descriptor_sets.size(); i++)
+	 {
+            VkDescriptorBufferInfo buffer_info{};
+            buffer_info.buffer = g_uniformBuffers[i];
+            buffer_info.offset = 0;
+            buffer_info.range = sizeof(DefaultUniforms);
+
+            VkWriteDescriptorSet descriptorWrites[1] = {{}};
+            descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrites[0].dstSet = g_descriptor_sets[i];
+            descriptorWrites[0].dstBinding = 0;
+            descriptorWrites[0].dstArrayElement = 0;
+            descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            descriptorWrites[0].descriptorCount = 1;
+            descriptorWrites[0].pBufferInfo = &buffer_info;
+
+            vkUpdateDescriptorSets(g_logical_device, 1, descriptorWrites, 0, nullptr);
+	 }
+      }
+      void SetDescriptorAlbedo(VkImageView image_view)
+      {
+	 log::debug("SetDescriptorAlbedo: {}", size_t(image_view));
+	 for (size_t i = 0; i < g_descriptor_sets.size(); i++)
+	 {
+	    VkDescriptorImageInfo image_info{};
+	    image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	    image_info.imageView = image_view;
+
+            VkWriteDescriptorSet descriptorWrites[1] = {{}};
+	    descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	    descriptorWrites[0].dstSet = g_descriptor_sets[i];
+	    descriptorWrites[0].dstBinding = 1;
+	    descriptorWrites[0].dstArrayElement = 0;
+	    descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	    descriptorWrites[0].descriptorCount = 1;
+	    descriptorWrites[0].pImageInfo = &image_info;
+
+            vkUpdateDescriptorSets(g_logical_device, 1, descriptorWrites, 0, nullptr);
+	 }
+      }
+      void SetDescriptorRoughness(VkImageView image_view)
+      {
+	 log::debug("SetDescriptoRoughness: {}", size_t(image_view));
+	 for (size_t i = 0; i < g_descriptor_sets.size(); i++)
+	 {
+	    VkDescriptorImageInfo image_info{};
+	    image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	    image_info.imageView = image_view;
+
+            VkWriteDescriptorSet descriptorWrites[1] = {{}};
+	    descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	    descriptorWrites[0].dstSet = g_descriptor_sets[i];
+	    descriptorWrites[0].dstBinding = 2;
+	    descriptorWrites[0].dstArrayElement = 0;
+	    descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	    descriptorWrites[0].descriptorCount = 1;
+	    descriptorWrites[0].pImageInfo = &image_info;
+
+            vkUpdateDescriptorSets(g_logical_device, 1, descriptorWrites, 0, nullptr);
+	 }
+      }
+      void SetDescriptorSampler(VkSampler sampler)
+      {
+	 log::debug("SetDescriptorSampler: {}", size_t(sampler));
+	 for (size_t i = 0; i < g_descriptor_sets.size(); i++)
+	 {
+	    VkDescriptorImageInfo sampler_info{};
+	    sampler_info.sampler = sampler;
+
+            VkWriteDescriptorSet descriptorWrites[1] = {{}};
+	    descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	    descriptorWrites[0].dstSet = g_descriptor_sets[i];
+	    descriptorWrites[0].dstBinding = 3;
+	    descriptorWrites[0].dstArrayElement = 0;
+	    descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+	    descriptorWrites[0].descriptorCount = 1;
+	    descriptorWrites[0].pImageInfo = &sampler_info;
+            vkUpdateDescriptorSets(g_logical_device, 1, descriptorWrites, 0, nullptr);
 	 }
       }
       int CreateImageHandle(const unsigned int* image, size_t width, size_t height);
       int CreateSamplerHandle(VkFilter filtering, VkSamplerAddressMode uv_mode, bool enable_aniso);
       // these are bound to descriptor pool and descriptor_set_layout
+      // todo: we'll want a set of descriptors per entity probably.
       void CreateDescriptorSets()
       {
 	 std::vector<VkDescriptorSetLayout> layouts(g_max_frames_in_flight, g_descriptor_set_layout);
@@ -673,7 +771,7 @@ namespace fwvulkan
 	 }
 	 auto im_handle = CreateImageHandle(initdata::images::argb.data(), 4, 4);
 	 auto sam_handle = CreateSamplerHandle(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, true);
-	 SetDescriptorImage(g_sam_map[sam_handle].sampler, g_im_map[im_handle].view);
+	 buffers::SetDescriptors(g_sam_map[sam_handle].sampler, g_im_map[im_handle].view, g_im_map[im_handle].view);
       }
       VkCommandBuffer CreateCommandBuffer()
       {
@@ -2160,9 +2258,16 @@ int gGlfwVulkan::init()
    // todo: this sucks
    {
       buffers::CreateDefaultUniformBuffers();
-      VkDescriptorType types[] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_DESCRIPTOR_TYPE_SAMPLER };
-      VkShaderStageFlags stages[] = { VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
-      g_descriptor_set_layout = buffers::CreateDescriptorSetLayout(types, stages, 3);
+      VkDescriptorType types[] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+	 VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+	 VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+	 VK_DESCRIPTOR_TYPE_SAMPLER };
+      VkShaderStageFlags stages[] = { VK_SHADER_STAGE_VERTEX_BIT,
+	 VK_SHADER_STAGE_FRAGMENT_BIT,
+	 VK_SHADER_STAGE_FRAGMENT_BIT,
+	 VK_SHADER_STAGE_FRAGMENT_BIT
+      };
+      g_descriptor_set_layout = buffers::CreateDescriptorSetLayout(types, stages, 4);
       g_descriptor_pool = buffers::CreateDescriptorPool();
       buffers::CreateDescriptorSets();
    }
@@ -2204,10 +2309,9 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
       {
 	 if(_mesh->images[i].data == nullptr) break;
 	 drawhandle.im_handles[i] = buffers::CreateImageHandle(_mesh->images[i].data, _mesh->images[i].width, _mesh->images[i].height);
-	 // todo: this sucks, the sampler is associated with the material, not the draw handler or the image.
-	 auto sam_handle = buffers::CreateSamplerHandle(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, true);
 	 // todo: this sucks, constantly replacing the sampler image isn't going to work.
-	 buffers::SetDescriptorImage(g_sam_map[sam_handle].sampler, g_im_map[drawhandle.im_handles[0]].view);
+	 if(i == 0) buffers::SetDescriptorAlbedo(g_im_map[drawhandle.im_handles[0]].view);
+	 else if(i == 1) buffers::SetDescriptorRoughness(g_im_map[drawhandle.im_handles[1]].view);
       }
       g_drawhandles[_mesh] = drawhandle;
    }
