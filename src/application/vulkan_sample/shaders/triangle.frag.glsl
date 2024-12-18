@@ -1,9 +1,10 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-layout(binding = 1) uniform texture2D albedo;
-layout(binding = 2) uniform texture2D roughness;
-layout(binding = 3) uniform sampler tex_sampler;
+layout(set=0, binding = 1) uniform sampler tex_sampler;
+layout(set=1, binding = 0) uniform texture2D albedo;
+layout(set=1, binding = 1) uniform texture2D roughness;
+
 
 layout(location = 0) in vec4 in_color;
 layout(location = 1) in vec2 in_uv;

@@ -78,8 +78,12 @@ namespace fwvulkan
    /////
    // todo: this sucks
    VkDescriptorPool g_descriptor_pool;
+   VkDescriptorPool g_drawdescriptor_pool;
    
    std::vector<VkDescriptorSet> g_descriptor_sets;
+   std::vector<VkDescriptorSet> g_drawdescriptor_sets;
+   int g_used_descriptors = 0;
+   
    struct DefaultUniforms
    {
       mat4x4f model[16];
@@ -92,6 +96,7 @@ namespace fwvulkan
       uint32_t id;
    };
    VkDescriptorSetLayout g_descriptor_set_layout;
+   VkDescriptorSetLayout g_drawdescriptor_set_layout;
    std::vector<VkBuffer> g_uniformBuffers;
    std::vector<VkDeviceMemory> g_uniformBuffersMemory;
    std::vector<void *> g_uniformBuffersMapped;
@@ -202,12 +207,13 @@ namespace fwvulkan
    std::vector<Mesh*> g_meshes;
    struct DrawHandle
    {
-      
+      static const int max_draws = 16;
       Mesh* owner = nullptr;
       int vb_handle = -1;
       int ib_handle = -1;
       int im_handles[Mesh::max_images] = {};
       int pi_handle = -1;
+      int ds_handle = -1;
    };
    std::map<fw::Mesh *, DrawHandle> g_drawhandles;
    //
@@ -566,21 +572,37 @@ namespace fwvulkan
       }
       VkDescriptorPool CreateDescriptorPool()
       {
-	 VkDescriptorPoolSize pool_sizes[4];
+	 VkDescriptorPoolSize pool_sizes[2];
 	 pool_sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	 pool_sizes[0].descriptorCount = g_max_frames_in_flight;
-	 pool_sizes[1].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	 pool_sizes[1].type = VK_DESCRIPTOR_TYPE_SAMPLER;
 	 pool_sizes[1].descriptorCount = g_max_frames_in_flight;
-	 pool_sizes[2].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	 pool_sizes[2].descriptorCount = g_max_frames_in_flight;
-         pool_sizes[3].type = VK_DESCRIPTOR_TYPE_SAMPLER;
-	 pool_sizes[3].descriptorCount = g_max_frames_in_flight;
 
 	 VkDescriptorPoolCreateInfo pool_ci{};
 	 pool_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	 pool_ci.poolSizeCount = 4;
+	 pool_ci.poolSizeCount = 2;
 	 pool_ci.pPoolSizes = &pool_sizes[0];
 	 pool_ci.maxSets = g_max_frames_in_flight;
+
+	 VkDescriptorPool pool;
+	 if (vkCreateDescriptorPool(g_logical_device, &pool_ci, nullptr, &pool) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create descriptor pool!");
+	 }
+	 return pool;
+      }
+      VkDescriptorPool CreatePerDrawDescriptorPool()
+      {
+	 VkDescriptorPoolSize pool_sizes[2];
+	 pool_sizes[0].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	 pool_sizes[0].descriptorCount = DrawHandle::max_draws;
+         pool_sizes[1].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	 pool_sizes[1].descriptorCount = DrawHandle::max_draws;
+
+	 VkDescriptorPoolCreateInfo pool_ci{};
+	 pool_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	 pool_ci.poolSizeCount = 2;
+	 pool_ci.pPoolSizes = &pool_sizes[0];
+	 pool_ci.maxSets = DrawHandle::max_draws;
 
 	 VkDescriptorPool pool;
 	 if (vkCreateDescriptorPool(g_logical_device, &pool_ci, nullptr, &pool) != VK_SUCCESS) {
@@ -606,68 +628,7 @@ namespace fwvulkan
 	    CreateUniformBuffer(buffer_size, g_uniformBuffers[i], g_uniformBuffersMemory[i], g_uniformBuffersMapped[i]);
 	 }
       }
-      // todo: this does more than set the image, it also sets the uniform buffer.
-      // ----: That's not ideal, I think more correctly you would create descriptors and rebind them when recording a pass.
-      // ----: so probably you need descriptor sets per draw handle, which can change the images and transforms.
-      // ----: Global transforms/constants should probably be in a push constant, or bound to the pipeline differently.
-      // ----: descriptor table or something.
-      // todo: consider bindless descriptors: VK_EXT_descriptor_indexing
-      void SetDescriptors(VkSampler sampler, VkImageView albedo_view, VkImageView rough_view)
-      {
-	 log::debug("SetDescriptors: a: {} r: {}", size_t(albedo_view), size_t(rough_view));
-	 for (size_t i = 0; i < g_descriptor_sets.size(); i++)
-	 {
-            VkDescriptorBufferInfo buffer_info{};
-            buffer_info.buffer = g_uniformBuffers[i];
-            buffer_info.offset = 0;
-            buffer_info.range = sizeof(DefaultUniforms);
 
-	    VkDescriptorImageInfo albedo_info{};
-	    albedo_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	    albedo_info.imageView = albedo_view;
-
-	    VkDescriptorImageInfo rough_info{};
-	    rough_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	    rough_info.imageView = rough_view;
-
-	    VkDescriptorImageInfo sampler_info{};
-	    sampler_info.sampler = sampler;
-
-            VkWriteDescriptorSet descriptorWrites[4] = {{}, {}, {}, {}};
-            descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrites[0].dstSet = g_descriptor_sets[i];
-            descriptorWrites[0].dstBinding = 0;
-            descriptorWrites[0].dstArrayElement = 0;
-            descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            descriptorWrites[0].descriptorCount = 1;
-            descriptorWrites[0].pBufferInfo = &buffer_info;
-
-	    descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	    descriptorWrites[1].dstSet = g_descriptor_sets[i];
-	    descriptorWrites[1].dstBinding = 1;
-	    descriptorWrites[1].dstArrayElement = 0;
-	    descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	    descriptorWrites[1].descriptorCount = 1;
-	    descriptorWrites[1].pImageInfo = &albedo_info;
-
-	    descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	    descriptorWrites[1].dstSet = g_descriptor_sets[i];
-	    descriptorWrites[1].dstBinding = 2;
-	    descriptorWrites[1].dstArrayElement = 0;
-	    descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	    descriptorWrites[1].descriptorCount = 1;
-	    descriptorWrites[1].pImageInfo = &rough_info;
-
-	    descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	    descriptorWrites[2].dstSet = g_descriptor_sets[i];
-	    descriptorWrites[2].dstBinding = 3;
-	    descriptorWrites[2].dstArrayElement = 0;
-	    descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-	    descriptorWrites[2].descriptorCount = 1;
-	    descriptorWrites[2].pImageInfo = &sampler_info;
-            vkUpdateDescriptorSets(g_logical_device, 4, descriptorWrites, 0, nullptr);
-	 }
-      }
       void SetDescriptorUniformBuffer()
       {
 	 log::debug("SetDescriptorUniformmBuffer");
@@ -690,48 +651,6 @@ namespace fwvulkan
             vkUpdateDescriptorSets(g_logical_device, 1, descriptorWrites, 0, nullptr);
 	 }
       }
-      void SetDescriptorAlbedo(VkImageView image_view)
-      {
-	 log::debug("SetDescriptorAlbedo: {}", size_t(image_view));
-	 for (size_t i = 0; i < g_descriptor_sets.size(); i++)
-	 {
-	    VkDescriptorImageInfo image_info{};
-	    image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	    image_info.imageView = image_view;
-
-            VkWriteDescriptorSet descriptorWrites[1] = {{}};
-	    descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	    descriptorWrites[0].dstSet = g_descriptor_sets[i];
-	    descriptorWrites[0].dstBinding = 1;
-	    descriptorWrites[0].dstArrayElement = 0;
-	    descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	    descriptorWrites[0].descriptorCount = 1;
-	    descriptorWrites[0].pImageInfo = &image_info;
-
-            vkUpdateDescriptorSets(g_logical_device, 1, descriptorWrites, 0, nullptr);
-	 }
-      }
-      void SetDescriptorRoughness(VkImageView image_view)
-      {
-	 log::debug("SetDescriptoRoughness: {}", size_t(image_view));
-	 for (size_t i = 0; i < g_descriptor_sets.size(); i++)
-	 {
-	    VkDescriptorImageInfo image_info{};
-	    image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	    image_info.imageView = image_view;
-
-            VkWriteDescriptorSet descriptorWrites[1] = {{}};
-	    descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	    descriptorWrites[0].dstSet = g_descriptor_sets[i];
-	    descriptorWrites[0].dstBinding = 2;
-	    descriptorWrites[0].dstArrayElement = 0;
-	    descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	    descriptorWrites[0].descriptorCount = 1;
-	    descriptorWrites[0].pImageInfo = &image_info;
-
-            vkUpdateDescriptorSets(g_logical_device, 1, descriptorWrites, 0, nullptr);
-	 }
-      }
       void SetDescriptorSampler(VkSampler sampler)
       {
 	 log::debug("SetDescriptorSampler: {}", size_t(sampler));
@@ -743,7 +662,7 @@ namespace fwvulkan
             VkWriteDescriptorSet descriptorWrites[1] = {{}};
 	    descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	    descriptorWrites[0].dstSet = g_descriptor_sets[i];
-	    descriptorWrites[0].dstBinding = 3;
+	    descriptorWrites[0].dstBinding = 1;
 	    descriptorWrites[0].dstArrayElement = 0;
 	    descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
 	    descriptorWrites[0].descriptorCount = 1;
@@ -751,12 +670,93 @@ namespace fwvulkan
             vkUpdateDescriptorSets(g_logical_device, 1, descriptorWrites, 0, nullptr);
 	 }
       }
+      void SetDescriptorAlbedo(VkImageView image_view, std::vector<VkDescriptorSet> albedo_sets)
+      {
+	 log::debug("SetDescriptorAlbedo: {}", size_t(image_view));
+	 for (size_t i = 0; i < albedo_sets.size(); i++)
+	 {
+	    VkDescriptorImageInfo image_info{};
+	    image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	    image_info.imageView = image_view;
+
+            VkWriteDescriptorSet descriptorWrites[1] = {{}};
+	    descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	    descriptorWrites[0].dstSet = albedo_sets[i];
+	    descriptorWrites[0].dstBinding = 0;
+	    descriptorWrites[0].dstArrayElement = 0;
+	    descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	    descriptorWrites[0].descriptorCount = 1;
+	    descriptorWrites[0].pImageInfo = &image_info;
+
+            vkUpdateDescriptorSets(g_logical_device, 1, descriptorWrites, 0, nullptr);
+	 }
+      }
+      void SetDescriptorRoughness(VkImageView image_view, std::vector<VkDescriptorSet> rough_sets)
+      {
+	 log::debug("SetDescriptoRoughness: {}", size_t(image_view));
+	 for (size_t i = 0; i < rough_sets.size(); i++)
+	 {
+	    VkDescriptorImageInfo image_info{};
+	    image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	    image_info.imageView = image_view;
+
+            VkWriteDescriptorSet descriptorWrites[1] = {{}};
+	    descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	    descriptorWrites[0].dstSet = rough_sets[i];
+	    descriptorWrites[0].dstBinding = 1;
+	    descriptorWrites[0].dstArrayElement = 0;
+	    descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	    descriptorWrites[0].descriptorCount = 1;
+	    descriptorWrites[0].pImageInfo = &image_info;
+
+            vkUpdateDescriptorSets(g_logical_device, 1, descriptorWrites, 0, nullptr);
+	 }
+      }
+      // todo: this does more than set the image, it also sets the uniform buffer.
+      // ----: That's not ideal, I think more correctly you would create descriptors and rebind them when recording a pass.
+      // ----: so probably you need descriptor sets per draw handle, which can change the images and transforms.
+      // ----: Global transforms/constants should probably be in a push constant, or bound to the pipeline differently.
+      // ----: descriptor table or something.
+      // todo: consider bindless descriptors: VK_EXT_descriptor_indexing
+      void SetDescriptors(VkSampler sampler)
+      {
+	 log::debug("SetDescriptors: a: {} r: {}", "doot", "toot");
+	 for (size_t i = 0; i < g_descriptor_sets.size(); i++)
+	 {
+            VkDescriptorBufferInfo buffer_info{};
+            buffer_info.buffer = g_uniformBuffers[i];
+            buffer_info.offset = 0;
+            buffer_info.range = sizeof(DefaultUniforms);
+
+	    VkDescriptorImageInfo sampler_info{};
+	    sampler_info.sampler = sampler;
+
+            VkWriteDescriptorSet descriptorWrites[2] = {{}, {}};
+            descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrites[0].dstSet = g_descriptor_sets[i];
+            descriptorWrites[0].dstBinding = 0;
+            descriptorWrites[0].dstArrayElement = 0;
+            descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            descriptorWrites[0].descriptorCount = 1;
+            descriptorWrites[0].pBufferInfo = &buffer_info;
+
+	    descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	    descriptorWrites[1].dstSet = g_descriptor_sets[i];
+	    descriptorWrites[1].dstBinding = 1;
+	    descriptorWrites[1].dstArrayElement = 0;
+	    descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+	    descriptorWrites[1].descriptorCount = 1;
+	    descriptorWrites[1].pImageInfo = &sampler_info;
+            vkUpdateDescriptorSets(g_logical_device, 2, descriptorWrites, 0, nullptr);
+	 }
+      }
+      
       int CreateImageHandle(const unsigned int* image, size_t width, size_t height);
       int CreateSamplerHandle(VkFilter filtering, VkSamplerAddressMode uv_mode, bool enable_aniso);
       // these are bound to descriptor pool and descriptor_set_layout
-      // todo: we'll want a set of descriptors per entity probably.
       void CreateDescriptorSets()
       {
+	 log::debug("CreateDescriptorSets");
 	 std::vector<VkDescriptorSetLayout> layouts(g_max_frames_in_flight, g_descriptor_set_layout);
 	 VkDescriptorSetAllocateInfo alloc_info{};
 	 alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -769,9 +769,28 @@ namespace fwvulkan
 	 {
             throw std::runtime_error("failed to allocate descriptor sets!");
 	 }
-	 auto im_handle = CreateImageHandle(initdata::images::argb.data(), 4, 4);
 	 auto sam_handle = CreateSamplerHandle(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, true);
-	 buffers::SetDescriptors(g_sam_map[sam_handle].sampler, g_im_map[im_handle].view, g_im_map[im_handle].view);
+	 buffers::SetDescriptors(g_sam_map[sam_handle].sampler);
+      }
+      void CreatePerDrawDescriptorSets()
+      {
+	 log::debug("CreatePerDrawDescriptorSets");
+	 std::vector<VkDescriptorSetLayout> layouts(DrawHandle::max_draws, g_drawdescriptor_set_layout);
+	 VkDescriptorSetAllocateInfo alloc_info{};
+	 alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	 alloc_info.descriptorPool = g_drawdescriptor_pool;
+	 alloc_info.descriptorSetCount = DrawHandle::max_draws;
+	 alloc_info.pSetLayouts = layouts.data();
+	 g_drawdescriptor_sets.resize(DrawHandle::max_draws);
+	 
+	 if (vkAllocateDescriptorSets(g_logical_device, &alloc_info, g_drawdescriptor_sets.data()) != VK_SUCCESS)
+	 {
+            throw std::runtime_error("failed to allocate descriptor sets!");
+	 }
+	 
+	 auto im_handle = CreateImageHandle(initdata::images::argb.data(), 4, 4);
+	 buffers::SetDescriptorAlbedo(g_im_map[im_handle].view, g_drawdescriptor_sets);
+	 buffers::SetDescriptorRoughness(g_im_map[im_handle].view, g_drawdescriptor_sets);
       }
       VkCommandBuffer CreateCommandBuffer()
       {
@@ -1941,10 +1960,12 @@ namespace fwvulkan
       }
       VkPipelineLayoutCreateInfo GetDefaultPipelineLayout()
       {
+	 static std::array<VkDescriptorSetLayout, 2> layouts;
+	 layouts = {g_descriptor_set_layout, g_drawdescriptor_set_layout};
 	 VkPipelineLayoutCreateInfo pipeline_layout_ci = {};
 	 pipeline_layout_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	 pipeline_layout_ci.setLayoutCount = 1;
-	 pipeline_layout_ci.pSetLayouts = &g_descriptor_set_layout;
+	 pipeline_layout_ci.setLayoutCount = layouts.size();
+	 pipeline_layout_ci.pSetLayouts = layouts.data();
 	 
 	 VkPushConstantRange push_constant;
 	 push_constant.offset = 0;
@@ -2044,7 +2065,8 @@ namespace fwvulkan
 	    pipeline_ci.subpass = 0;
 	    pipeline_ci.basePipelineHandle = VK_NULL_HANDLE;
 	    pipeline_ci.basePipelineIndex = -1;
-	 
+
+	    log::debug("CreateRaster");
 	    VkPipeline graphics_pipeline;
 	    if (vkCreateGraphicsPipelines(g_logical_device, VK_NULL_HANDLE, 1, &pipeline_ci, nullptr,
 					  &graphics_pipeline) != VK_SUCCESS)
@@ -2062,12 +2084,12 @@ namespace fwvulkan
 	       // pipeline_ci.pColorBlendState = nullptr;
 	       // pipeline_ci.pDynamicState = nullptr;
 	       pipeline_ci.stageCount = 1;
-	       VkPipelineShaderStageCreateInfo stage_ci = {
-		  .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-		  .stage = VK_SHADER_STAGE_VERTEX_BIT,
-		  .module = vertex_shader,
-		  .pName = "main"
-	       };
+	       VkPipelineShaderStageCreateInfo stage_ci = {};
+	       stage_ci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	       stage_ci.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	       stage_ci.module = vertex_shader;
+	       stage_ci.pName = "main";
+	       log::debug("CreateDepth");
 	       pipeline_ci.pStages = &stage_ci;
 	       if (vkCreateGraphicsPipelines(g_logical_device, VK_NULL_HANDLE, 1, &pipeline_ci, nullptr,
 					     &depth_pipeline) != VK_SUCCESS)
@@ -2139,6 +2161,8 @@ namespace fwvulkan
 	       // note: setting viewport and scissor when we bind pipeline incase it's changed
 	       // todo: it would be nicer to have this sort of thing covered as a init frame pass or something.
 	       pipeline_hash = hash;
+	       // todo: this works because we only really have 1 pipeline layout.
+	       vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 0, 1, &g_descriptor_sets[g_flight_frame], 0, nullptr);
 	    }
 	    
 	    VkBuffer vertex_buffers[] = {g_vb_map[dh.vb_handle].vb};
@@ -2152,13 +2176,19 @@ namespace fwvulkan
 	    vkCmdBindVertexBuffers(pass.cmd_buffer, 0, 1, vertex_buffers, offsets);
 	    auto ibh = g_ib_map[dh.ib_handle];
 	    vkCmdBindIndexBuffer(pass.cmd_buffer, ibh.ib, 0, VK_INDEX_TYPE_UINT16);
-            vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 0, 1, &g_descriptor_sets[g_flight_frame], 0, nullptr);
+
+	    assert(dh.ds_handle != -1);
+	    
+	    // std::array<VkDescriptorSet, 2> desc_sets = {g_descriptor_sets[g_flight_frame], g_drawdescriptor_sets[dh.ds_handle] };
+
+	    // note: the firstSet value is 1, because we're binding from that set number. I.e. we're binding set 1, which has our per-draw descriptor layout. (image, image)
+	    // ----: vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 0, 2, desc_sets.data(), 0, nullptr);
+	    vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 1, 1, &g_drawdescriptor_sets[dh.ds_handle], 0, nullptr);
 	    
 	    vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].pipeline);
 	    vkCmdDrawIndexed(pass.cmd_buffer, ibh.len, 1, 0, 0, 0);
 	    vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].depth_pipeline);
 	    vkCmdDrawIndexed(pass.cmd_buffer, ibh.len, 1, 0, 0, 0);
-	    
 	    id++;
 	 }
 
@@ -2256,23 +2286,27 @@ int gGlfwVulkan::init()
    swapchain::CreateCommandPool();
 
    // todo: this sucks
+   // ----: better would be to do all of this at the point of shader/material registration
+   // ----: register the material, it lists the shaders, which list the sets / binds.
+   // ----: store descriptor sets / layouts / pools with the pipelines
+   // ----: have them in a hashed map for reuse.
    {
       buffers::CreateDefaultUniformBuffers();
-      VkDescriptorType types[] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-	 VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-	 VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-	 VK_DESCRIPTOR_TYPE_SAMPLER };
-      VkShaderStageFlags stages[] = { VK_SHADER_STAGE_VERTEX_BIT,
-	 VK_SHADER_STAGE_FRAGMENT_BIT,
-	 VK_SHADER_STAGE_FRAGMENT_BIT,
-	 VK_SHADER_STAGE_FRAGMENT_BIT
-      };
-      g_descriptor_set_layout = buffers::CreateDescriptorSetLayout(types, stages, 4);
-      g_descriptor_pool = buffers::CreateDescriptorPool();
-      buffers::CreateDescriptorSets();
+      {
+	 VkDescriptorType types[] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_SAMPLER };
+	 VkShaderStageFlags stages[] = { VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
+	 g_descriptor_set_layout = buffers::CreateDescriptorSetLayout(types, stages, 2);
+	 g_descriptor_pool = buffers::CreateDescriptorPool();
+	 buffers::CreateDescriptorSets();
+      }
+      {
+	 VkDescriptorType types[] = { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE };
+	 VkShaderStageFlags stages[] = { VK_SHADER_STAGE_FRAGMENT_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
+	 g_drawdescriptor_set_layout = buffers::CreateDescriptorSetLayout(types, stages, 2);
+	 g_drawdescriptor_pool = buffers::CreatePerDrawDescriptorPool();
+	 buffers::CreatePerDrawDescriptorSets();
+      }
    }
-
-
    // todo: swapchain pass extent is set here, kinda gross.
    swapchain::CreateSwapChain();
    // todo: this sucks. :) 
@@ -2294,24 +2328,26 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
    auto handles_iter = g_drawhandles.find(_mesh);
    if(handles_iter == g_drawhandles.end())
    {
-      // log::debug("{}", (int)&_mesh->images[0].data);
+      log::debug("Visitor Mesh: {}", (void*)_mesh);
       drawhandle = { _mesh,
 	 buffers::CreateVertexBufferHandle(_mesh->geometry.vbo.data, _mesh->geometry.vbo.len),
 	 buffers::CreateIndexBufferHandle(_mesh->geometry.ibo.data, _mesh->geometry.ibo.len),
-	 // todo: this needs to handle multiple images
 	 // todo: this needs to handle no images
+	 // ----: kindof done. draw descriptors default to safe image views.
 	 {},
 	 // todo: this should be "create all pipeline variants"
 	 // ----: then we store draws against pipelines / passes, or something. :)
-	 pipeline::CreateDefaultPipeline(_mesh->material)
+	 pipeline::CreateDefaultPipeline(_mesh->material),
+	 g_used_descriptors++
       };
+      log::debug("draw descriptors: {}/{}", g_used_descriptors, g_drawdescriptor_sets.size());
+      std::vector<VkDescriptorSet> set(1, {g_drawdescriptor_sets[drawhandle.ds_handle]});
       for(unsigned int i = 0; i < Mesh::max_images; i++)
       {
 	 if(_mesh->images[i].data == nullptr) break;
 	 drawhandle.im_handles[i] = buffers::CreateImageHandle(_mesh->images[i].data, _mesh->images[i].width, _mesh->images[i].height);
-	 // todo: this sucks, constantly replacing the sampler image isn't going to work.
-	 if(i == 0) buffers::SetDescriptorAlbedo(g_im_map[drawhandle.im_handles[0]].view);
-	 else if(i == 1) buffers::SetDescriptorRoughness(g_im_map[drawhandle.im_handles[1]].view);
+	 if(i == 0) buffers::SetDescriptorAlbedo(g_im_map[drawhandle.im_handles[0]].view, set);
+	 else if(i == 1) buffers::SetDescriptorRoughness(g_im_map[drawhandle.im_handles[1]].view, set);
       }
       g_drawhandles[_mesh] = drawhandle;
    }
@@ -2381,7 +2417,9 @@ int gGlfwVulkan::shutdown()
    g_sam_map.clear();
    
    vkDestroyDescriptorPool(g_logical_device, g_descriptor_pool, nullptr);
+   vkDestroyDescriptorPool(g_logical_device, g_drawdescriptor_pool, nullptr);
    vkDestroyDescriptorSetLayout(g_logical_device, g_descriptor_set_layout, nullptr);
+   vkDestroyDescriptorSetLayout(g_logical_device, g_drawdescriptor_set_layout, nullptr);
    
    vkDestroyDevice(g_logical_device, nullptr);
    if (g_enable_validation_layers)
