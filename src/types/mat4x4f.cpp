@@ -78,15 +78,9 @@ vec3f operator * ( const mat4x4f &M,
     return ret;
 }
 
-float radians(float const degrees)
-{
-        const float pi = float(3.1415926535897932384626433832795);
-		return degrees * (pi / float(180));
-}
-
 void mat4x4f::perspective(float fovy, float aspect, float zNear, float zFar)
 {
-	float range = tan(radians(fovy / float(2))) * zNear;	
+	float range = tan(deg2rag(fovy / float(2))) * zNear;
 	float left = -range * aspect;
 	float right = range * aspect;
 	float bottom = -range;
@@ -151,6 +145,29 @@ void mat4x4f::rotateZ(float fAngle)
 	elem[1][0] = -s;
 	elem[1][1] = c;
 }
+
+void mat4x4f::rotate(float x, float y, float z)
+{
+   mat4x4f rx; rx.rotateX(x);
+   mat4x4f ry; ry.rotateY(y);
+   mat4x4f rz; rz.rotateZ(z);
+   mat4x4f ret = rx*ry*rz;
+   memcpy(elem, ret.elem, sizeof(float) * 16);
+}
+
+mat4x4f mat4x4f::rotated(float x, float y, float z)
+{
+   mat4x4f ret; ret.rotate(x, y, z); return ret;
+}
+mat4x4f mat4x4f::translated(float x, float y, float z)
+{
+   mat4x4f ret; ret.translate(x, y, z); return ret;
+}
+mat4x4f mat4x4f::scaled(float x, float y, float z)
+{
+   mat4x4f ret; ret.scale(x, y, z); return ret;
+}
+
 
 void mat4x4f::lookAt(const vec3f & vFrom, const vec3f & vTo, const vec3f & vUp)
 {

@@ -28,6 +28,10 @@ public:
 	void rotateY(float fAngle);
 	void rotateZ(float fAngle);
 
+   static mat4x4f rotated(float x, float y, float z);
+   static mat4x4f translated(float x, float y, float z);
+   static mat4x4f scaled(float x, float y, float z);
+
 	void dumpMat4x4f(char * s = NULL);
 
 	void lookAt(const vec3f & vFrom,
@@ -44,6 +48,8 @@ public:
 	static const mat4x4f IDENTITY;
 	static const mat4x4f NULLMATRIX;
 };
+
+
 
 mat4x4f operator * ( const mat4x4f & M1,
 					   const mat4x4f & M2 );
@@ -93,6 +99,12 @@ inline mat4x4f operator * ( const float & s,
 					 M(1,0) * s,M(1,1) * s,M(1,2) * s,M(1,3) * s,
 					 M(2,0) * s,M(2,1) * s,M(2,2) * s,M(2,3) * s,
 					 M(3,0) * s,M(3,1) * s,M(3,2) * s,M(3,3) * s);
+}
+
+inline float deg2rag(float const degrees)
+{
+        const float pi = float(3.1415926535897932384626433832795);
+		return degrees * (pi / float(180));
 }
 
 inline mat4x4f Transpose( mat4x4f const & M )

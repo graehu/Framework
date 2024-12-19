@@ -41,13 +41,20 @@ const std::vector<Vertex> quad_verts = {
    {{-0.5f,  0.5f}, {1.0f, 1.0f, 1.0f}, {0, 1}}
 };
 
+const std::array<unsigned int, 16> white_image =
+{
+   0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+   0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+   0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+   0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+};
+
 const std::array<uint16_t, 6> quad_indices = {0, 1, 2, 2, 3, 0};
 
 void loadmodel(const char* modelpath, std::vector<Vertex>& verts, std::vector<uint16_t>& indices, std::vector<Image>& images);
 
 // todo: add pass dependencies.
 // todo: add pass framebuffer blending/compositing.
-// todo: add roughness textures to the pipeline layout.
 // todo: add basic pbr shaders.
 
 void vulkan_sample::run()
@@ -64,6 +71,10 @@ void vulkan_sample::run()
    quad.material[fw::shader::e_vertex] = fw::hash::string("triangle");
    quad.material[fw::shader::e_fragment] = fw::hash::string("uv_triangle");
 
+   Mesh quad2 = {{{quad_verts.data(), quad_verts.size()}, {quad_indices.data(), quad_indices.size()}}, {{white_image.data(), 4, 4}}, {}, {"swapchain"}, {}};
+   quad2.material[fw::shader::e_vertex] = fw::hash::string("triangle");
+   quad2.material[fw::shader::e_fragment] = fw::hash::string("uv_triangle");
+   quad2.transform = mat4x4f::scaled(10, 10, 10) * mat4x4f::rotated(deg2rag(90), 0, 0) * mat4x4f::translated(0, 1, 0);
    
    std::vector<Vertex> model_verts;   std::vector<uint16_t> model_indices; std::vector<Image> images;
    loadmodel("../../../libs/tinygltf/models/Cube/Cube.gltf", model_verts, model_indices, images);
@@ -73,21 +84,17 @@ void vulkan_sample::run()
       {}, {"swapchain"}, {}
    };
 
-   // quad.images[0] = model.images[0];
-
    model.material[fw::shader::e_vertex] = fw::hash::string("triangle");
    model.material[fw::shader::e_fragment] = fw::hash::string("triangle");
    float time = 0;
-   // std::sin()
+
    while (m_window->update())
    {
       m_graphics->getRenderer()->visit(&model);
       m_graphics->getRenderer()->visit(&quad);
+      m_graphics->getRenderer()->visit(&quad2);
       m_graphics->render();
-      mat4x4f rotmat; rotmat.rotateY(time);
-      mat4x4f transmat; transmat.translate(2, 0, 0);
-      model.transform = transmat*rotmat;
-      quad.transform = quad.transform;
+      model.transform =  mat4x4f::translated(2, 0, 0)*mat4x4f::rotated(0, time, 0);
       std::this_thread::sleep_for(std::chrono::milliseconds(16));
       time += 1.0f/60.0f;
    }
