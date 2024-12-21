@@ -34,11 +34,21 @@ void vulkan_sample::init()
    m_graphics->init();
 }
 
+// todo: these normals are wrong, but they're consistent with what comes from
+// ----: gltfs. workout what's up with my messed up coordinate system.
+
 const std::vector<Vertex> quad_verts = {
-   {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0, 0}},
-   {{ 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1, 0}},
-   {{ 0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}, {1, 1}},
-   {{-0.5f,  0.5f}, {1.0f, 1.0f, 1.0f}, {0, 1}}
+   {{-0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {0, 0}},
+   {{ 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1, 0}},
+   {{ 0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1, 1}},
+   {{-0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0, 1}}
+};
+
+const std::vector<Vertex> quad_verts2 = {
+   {{-0.5f, 0, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0, 0}},
+   {{ 0.5f, 0, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1, 0}},
+   {{ 0.5f, 0,  0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1, 1}},
+   {{-0.5f, 0,  0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0, 1}}
 };
 
 const std::array<unsigned int, 16> white_image =
@@ -67,34 +77,36 @@ void vulkan_sample::run()
    m_graphics->register_shader("triangle", "shaders/triangle.frag.spv", shader::e_fragment);
    m_graphics->register_shader("uv_triangle", "shaders/uv_triangle.frag.spv", shader::e_fragment);
    
-   Mesh quad = {{{quad_verts.data(), quad_verts.size()}, {quad_indices.data(), quad_indices.size()}}, {}, {}, {"swapchain"}, {}};
+   Mesh quad = {{{quad_verts2.data(), quad_verts2.size()}, {quad_indices.data(), quad_indices.size()}}, {}, {}, {"swapchain"}, {}};
    quad.material[fw::shader::e_vertex] = fw::hash::string("triangle");
    quad.material[fw::shader::e_fragment] = fw::hash::string("uv_triangle");
 
    Mesh quad2 = {{{quad_verts.data(), quad_verts.size()}, {quad_indices.data(), quad_indices.size()}}, {{white_image.data(), 4, 4}}, {}, {"swapchain"}, {}};
    quad2.material[fw::shader::e_vertex] = fw::hash::string("triangle");
-   quad2.material[fw::shader::e_fragment] = fw::hash::string("uv_triangle");
-   quad2.transform = mat4x4f::scaled(10, 10, 10) * mat4x4f::rotated(deg2rag(90), 0, 0) * mat4x4f::translated(0, 1, 0);
+   quad2.material[fw::shader::e_fragment] = fw::hash::string("triangle");
+   quad2.transform = mat4x4f::scaled(10, 10, 10) * mat4x4f::rotated(deg2rag(90), 0, deg2rag(10)) * mat4x4f::translated(-10, 1, 0);
    
    std::vector<Vertex> model_verts;   std::vector<uint16_t> model_indices; std::vector<Image> images;
    loadmodel("../../../libs/tinygltf/models/Cube/Cube.gltf", model_verts, model_indices, images);
+
    Mesh model = {
       {{model_verts.data(), model_verts.size()}, {model_indices.data(),model_indices.size()}},
+      // todo: make this less of a hack.
       {images[0], images[1]},
       {}, {"swapchain"}, {}
    };
-
    model.material[fw::shader::e_vertex] = fw::hash::string("triangle");
    model.material[fw::shader::e_fragment] = fw::hash::string("triangle");
+   
    float time = 0;
-
+   quad.transform = mat4x4f::translated(-10, 0, 2);
    while (m_window->update())
    {
+      model.transform = mat4x4f::scaled(.25,.25,.25)*mat4x4f::rotated(deg2rag(-90), deg2rag(-90), 0)*mat4x4f::translated(1, 0, 0)*mat4x4f::rotated(0, time, 0)*mat4x4f::translated(-10, 0, 2);
       m_graphics->getRenderer()->visit(&model);
       m_graphics->getRenderer()->visit(&quad);
       m_graphics->getRenderer()->visit(&quad2);
       m_graphics->render();
-      model.transform =  mat4x4f::translated(2, 0, 0)*mat4x4f::rotated(0, time, 0);
       std::this_thread::sleep_for(std::chrono::milliseconds(16));
       time += 1.0f/60.0f;
    }
@@ -161,11 +173,16 @@ void loadmodel(const char* modelpath, std::vector<Vertex>& verts, std::vector<ui
       const tinygltf::BufferView& pos_bufferView = model.bufferViews[pos_accessor.bufferView];
       const tinygltf::Buffer& pos_buffer = model.buffers[pos_bufferView.buffer];
 
+      const tinygltf::Accessor& norm_accessor = model.accessors[primitive.attributes["NORMAL"]];
+      const tinygltf::BufferView& norm_bufferView = model.bufferViews[norm_accessor.bufferView];
+      const tinygltf::Buffer& norm_buffer = model.buffers[norm_bufferView.buffer];
+
       const tinygltf::Accessor& uv_accessor = model.accessors[primitive.attributes["TEXCOORD_0"]];
       const tinygltf::BufferView& uv_bufferView = model.bufferViews[uv_accessor.bufferView];
       const tinygltf::Buffer& uv_buffer = model.buffers[pos_bufferView.buffer];
 
       const float* positions = reinterpret_cast<const float*>(&pos_buffer.data[pos_bufferView.byteOffset + pos_accessor.byteOffset]);
+      const float* normals = reinterpret_cast<const float*>(&norm_buffer.data[norm_bufferView.byteOffset + norm_accessor.byteOffset]);
       const float* uvs = reinterpret_cast<const float*>(&uv_buffer.data[uv_bufferView.byteOffset + uv_accessor.byteOffset]);
       // switch(uv_accessor.type)
       // {
@@ -194,7 +211,8 @@ void loadmodel(const char* modelpath, std::vector<Vertex>& verts, std::vector<ui
 
       for (size_t i = 0; i < pos_accessor.count; ++i) {
 	 verts.push_back({
-	       { positions[i * 3 + 0]*scale,  positions[i * 3 + 1]*scale,  positions[i * 3 + 2]*scale },
+	       { positions[i * 3 + 0],  positions[i * 3 + 1],  positions[i * 3 + 2] },
+	       { normals[i * 3 + 0],  normals[i * 3 + 1],  normals[i * 3 + 2] },
 	       // note: debug colours
 	       // {float((i+0)%3), float((i+1)%3), float((1+2)%3)} 
 	       {1.0f, 1.0f, 1.0f}, { uvs[i * 2 + 0], uvs[i * 2 + 1] }

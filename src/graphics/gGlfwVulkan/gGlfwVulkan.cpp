@@ -27,23 +27,28 @@ struct vkVertex : public fw::Vertex
       binding_description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
       return binding_description;
    }
-   static std::array<VkVertexInputAttributeDescription, 3> GetAttributeDescriptions()
+   static std::array<VkVertexInputAttributeDescription, 4> GetAttributeDescriptions()
    {
-      std::array<VkVertexInputAttributeDescription, 3> attribute_description = {};
+      std::array<VkVertexInputAttributeDescription, 4> attribute_description = {};
       attribute_description[0].binding = 0;
       attribute_description[0].location = 0;
       attribute_description[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-      attribute_description[0].offset = offsetof(Vertex, position);
+      attribute_description[0].offset = offsetof(Vertex, position); // position
 
       attribute_description[1].binding = 0;
       attribute_description[1].location = 1;
       attribute_description[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-      attribute_description[1].offset = offsetof(Vertex, color);
+      attribute_description[1].offset = offsetof(Vertex, normal); // normal
       
       attribute_description[2].binding = 0;
       attribute_description[2].location = 2;
-      attribute_description[2].format = VK_FORMAT_R32G32_SFLOAT;
-      attribute_description[2].offset = offsetof(Vertex, uv);
+      attribute_description[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+      attribute_description[2].offset = offsetof(Vertex, color); // colour
+      
+      attribute_description[3].binding = 0;
+      attribute_description[3].location = 3;
+      attribute_description[3].format = VK_FORMAT_R32G32_SFLOAT;
+      attribute_description[3].offset = offsetof(Vertex, uv); // uvs
 
       return attribute_description;
    }
@@ -118,10 +123,10 @@ namespace fwvulkan
       namespace geometry
       {
 	 const std::vector<Vertex> quad = {
-	    {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-	    {{ 0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-	    {{ 0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-	    {{-0.5f,  0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
+	    {{-0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, {0, 0}},
+	    {{ 0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1, 0}},
+	    {{ 0.5f,  0.5f}, {0.0f, 0.0f, -1.0f}, {0.0f, 0.0f, 1.0f}, {1, 1}},
+	    {{-0.5f,  0.5f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f, 1.0f}, {0, 1}}
 	 };
       }
    }
@@ -926,7 +931,7 @@ namespace fwvulkan
 	    VkDeviceMemory vertex_buffer_memory;
 	    CreateBuffer((void*)vertices, sizeof(fw::Vertex) * num_vertices, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertex_buffer, vertex_buffer_memory);
 	    g_vb_map[hash] = {vertex_buffer, vertex_buffer_memory, (size_t)num_vertices};
-	    log::debug("Created VBHandle: {}", hash);
+	    log::debug("Created VBHandle: {}, verts: {}, size: {}", hash, num_vertices, sizeof(fw::Vertex) * num_vertices);
 	 }
 	 else
 	 {
@@ -1844,7 +1849,7 @@ namespace fwvulkan
 	 // note: these are static because they're passed by ref below.
 	 // ----: similar should be done if a non default vertex input state func is made.
 	 static VkVertexInputBindingDescription vert_binding_description = vkVertex::GetBindingDescription();
-	 static std::array<VkVertexInputAttributeDescription, 3> vert_attribute_description = vkVertex::GetAttributeDescriptions();
+	 static std::array<VkVertexInputAttributeDescription, 4> vert_attribute_description = vkVertex::GetAttributeDescriptions();
 	 
 	 VkPipelineVertexInputStateCreateInfo vertex_input_ci = {};
 	 vertex_input_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -1977,7 +1982,7 @@ namespace fwvulkan
 	 
 	 return pipeline_layout_ci;
       }
-      int CreateDefaultPipeline(Material mat)
+      int CreateAllPipelineVariants(Material mat)
       {
 	 log::debug("CreateGraphicsPipeline");
 	 auto hash = hash::i32((const char*)&mat, sizeof(Material));
@@ -2253,7 +2258,7 @@ void UpdateUniformBuffer(uint32_t currentImage)
    using namespace fwvulkan;
    auto extent = g_pass_map["swapchain"].extent;
    ubo.proj.perspective(60.0f, (float)extent.width / extent.height, 0.1f, 100.f);
-   ubo.view.translate(0, 0, -5);
+   ubo.view = mat4x4f::translated(10, 1, -5);
    memcpy(g_uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }
 
@@ -2337,7 +2342,7 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
 	 {},
 	 // todo: this should be "create all pipeline variants"
 	 // ----: then we store draws against pipelines / passes, or something. :)
-	 pipeline::CreateDefaultPipeline(_mesh->material),
+	 pipeline::CreateAllPipelineVariants(_mesh->material),
 	 g_used_descriptors++
       };
       log::debug("draw descriptors: {}/{}", g_used_descriptors, g_drawdescriptor_sets.size());
