@@ -7,6 +7,8 @@ layout(set=0, binding = 0) uniform UniformBufferObject
    mat4 model[16];
    mat4 view;
    mat4 proj;
+   vec3 light;
+   float light_intensity;
 } ubo;
 
 layout( push_constant ) uniform constants
@@ -23,11 +25,11 @@ layout(location = 0) out vec3 out_position;
 layout(location = 1) out vec3 out_normal;
 layout(location = 2) out vec3 out_color;
 layout(location = 3) out vec2 out_uv;
-layout(location = 4) out vec3 out_light;
+layout(location = 4) out vec4 out_light;
 
 void main()
 {
-   mat4 lmvp = ubo.proj * ubo.view * ubo.model[1];
+
    mat4 mvp = ubo.proj * ubo.view * ubo.model[perdraw.id];
    mat4 modelrot = ubo.model[perdraw.id];
    modelrot[3] = vec4(0,0,0,1);
@@ -43,6 +45,6 @@ void main()
    out_normal = vec3(projrot * viewrot * modelrot * vec4(in_normal, 1.0));
    out_color = in_color;
    out_uv = in_uv;
-   // note: hack to give me control over a light position in the scene
-   out_light = vec3(lmvp*vec4(0,0,0,1));
+   out_light = ubo.proj * ubo.view * vec4(ubo.light, 1.0);
+   out_light.w = ubo.light_intensity;
 }

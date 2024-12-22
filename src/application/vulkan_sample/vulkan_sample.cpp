@@ -35,7 +35,11 @@ void vulkan_sample::init()
 }
 
 // todo: these normals are wrong, but they're consistent with what comes from
-// ----: gltfs. workout what's up with my messed up coordinate system.
+// ----: gltfs.
+// ----: workout what's up with my messed up coordinate system.
+// ----: x is right: +x ->
+// ----: y is wrong: -y ^
+// ----: z is wrong: -z ^
 
 const std::vector<Vertex> quad_verts = {
    {{-0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {0, 0}},

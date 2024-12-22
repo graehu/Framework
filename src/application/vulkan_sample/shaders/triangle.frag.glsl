@@ -9,15 +9,16 @@ layout(location = 0) in vec3 in_position;
 layout(location = 1) in vec3 in_normal;
 layout(location = 2) in vec3 in_color;
 layout(location = 3) in vec2 in_uv;
-layout(location = 4) flat in vec3 light_pos;
+layout(location = 4) flat in vec4 light_pos;
 
 layout(location = 0) out vec4 out_color;
 
 
 struct Lights
 {
-  vec3 position;
-  vec3 diffuse;
+   vec3 position;
+   vec3 diffuse;
+   float intensity;
 };
 
 float lambert(vec3 norm, vec3 lightdir)
@@ -30,10 +31,12 @@ float lambert(vec3 norm, vec3 lightdir)
 void main()
 {
    Lights light;
-   light.position = light_pos;
+   light.position = light_pos.xyz;
    light.diffuse = vec3(1.0, 1.0, 1.0);
+   light.intensity = light_pos.w;
+   
    vec3 lightdir = light.position-in_position;
-   vec3 result = light.diffuse * lambert(in_normal, lightdir);
+   vec3 result = light.diffuse * light.intensity * lambert(in_normal, lightdir);
    
    // out_color = vec4(in_normal, 1.0); // show normals
    // out_color = vec4(lightdir, 1.0); // show lightdir

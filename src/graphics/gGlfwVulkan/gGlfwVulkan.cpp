@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <math.h>
 #include <optional>
 #include <functional>
 #include <array>
@@ -94,6 +95,8 @@ namespace fwvulkan
       mat4x4f model[16];
       mat4x4f view;
       mat4x4f proj;
+      vec3f light;
+      float light_intensity;
    };
    DefaultUniforms ubo = {};
    struct DefaultPushConstants
@@ -2252,13 +2255,16 @@ namespace fwvulkan
       }
    }
 } // namespace fwvulkan
-
+float dt = 0;
 void UpdateUniformBuffer(uint32_t currentImage)
 {
    using namespace fwvulkan;
+   dt += (1.0f/30.0f)*0.5f;
    auto extent = g_pass_map["swapchain"].extent;
    ubo.proj.perspective(60.0f, (float)extent.width / extent.height, 0.1f, 100.f);
-   ubo.view = mat4x4f::translated(10, 1, -5);
+   ubo.view = mat4x4f::translated(10.0f, 1.0f, -5.0f);
+   ubo.light = vec3f(-10.0f, -0.5f, 1.75f);
+   ubo.light_intensity = (((sin(dt)+1)*0.5)*0.9)+0.1f;
    memcpy(g_uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }
 
