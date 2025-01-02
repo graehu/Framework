@@ -7,7 +7,7 @@
 class mat4x4f
 {
 public:
-   mat4x4f(const mat4x4f & rhs = IDENTITY);
+   mat4x4f();
    mat4x4f(float _elem[][4]);
    mat4x4f(float _11, float _12, float _13, float _14,
 	   float _21, float _22, float _23, float _24,

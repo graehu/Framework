@@ -40,19 +40,21 @@ void vulkan_sample::init()
 // ----: x is right: +x ->
 // ----: y is wrong: -y ^
 // ----: z is wrong: -z ^
+// ----: fixed by setting lookat up -1y, not ideal.
+// ----: probably ought to be fixed from user camera.
 
 const std::vector<Vertex> quad_verts = {
-   {{-0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {0, 0}},
-   {{ 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1, 0}},
-   {{ 0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1, 1}},
-   {{-0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0, 1}}
+   {{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {0, 0}},
+   {{ 0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1, 0}},
+   {{ 0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1, 1}},
+   {{-0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0, 1}}
 };
 
 const std::vector<Vertex> quad_verts2 = {
-   {{-0.5f, 0, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0, 0}},
-   {{ 0.5f, 0, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1, 0}},
-   {{ 0.5f, 0,  0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1, 1}},
-   {{-0.5f, 0,  0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0, 1}}
+   {{-0.5f,  0.0f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0, 0}},
+   {{ 0.5f,  0.0f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1, 0}},
+   {{ 0.5f,  0.0f,  0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1, 1}},
+   {{-0.5f,  0.0f,  0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0, 1}}
 };
 
 const std::array<unsigned int, 16> white_image =
@@ -88,7 +90,7 @@ void vulkan_sample::run()
    Mesh quad2 = {{{quad_verts.data(), quad_verts.size()}, {quad_indices.data(), quad_indices.size()}}, {{white_image.data(), 4, 4}}, {}, {"swapchain"}, {}};
    quad2.material[fw::shader::e_vertex] = fw::hash::string("triangle");
    quad2.material[fw::shader::e_fragment] = fw::hash::string("triangle");
-   quad2.transform = mat4x4f::scaled(10, 10, 10) * mat4x4f::rotated(deg2rag(90), 0, deg2rag(10)) * mat4x4f::translated(-10, 1, 0);
+
    
    std::vector<Vertex> model_verts;   std::vector<uint16_t> model_indices; std::vector<Image> images;
    loadmodel("../../../libs/tinygltf/models/Cube/Cube.gltf", model_verts, model_indices, images);
@@ -101,15 +103,20 @@ void vulkan_sample::run()
    };
    model.material[fw::shader::e_vertex] = fw::hash::string("triangle");
    model.material[fw::shader::e_fragment] = fw::hash::string("triangle");
-   
+
+   Mesh model2 = model;
    float time = 0;
-   quad.transform = mat4x4f::translated(-10, 0, 2);
+   quad.transform = mat4x4f::translated(0, 0, 0);
+   model2.transform = mat4x4f::translated(4, 2, 4);
+   quad2.transform = mat4x4f::scaled(10, 10, 10) * mat4x4f::rotated(deg2rag(-90), 0, deg2rag(10)) * mat4x4f::translated(0, -1, 0);
+   
    while (m_window->update())
    {
-      model.transform = mat4x4f::scaled(.25,.25,.25)*mat4x4f::rotated(deg2rag(-90), deg2rag(-90), 0)*mat4x4f::translated(1, 0, 0)*mat4x4f::rotated(0, time, 0)*mat4x4f::translated(-10, 0, 2);
+      model.transform = mat4x4f::scaled(.25,.25,.25)*mat4x4f::rotated(deg2rag(-90), deg2rag(-90), 0)*mat4x4f::translated(1, 0, 0)*mat4x4f::rotated(0, time, 0)*mat4x4f::translated(0, 0, 0);
       m_graphics->getRenderer()->visit(&model);
       m_graphics->getRenderer()->visit(&quad);
       m_graphics->getRenderer()->visit(&quad2);
+      m_graphics->getRenderer()->visit(&model2);
       m_graphics->render();
       std::this_thread::sleep_for(std::chrono::milliseconds(16));
       time += 1.0f/60.0f;

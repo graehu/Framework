@@ -34,6 +34,7 @@ config.rebuild_on_change = True
 config.link_libraries = ["fwcore", "stdc++", "glfwstatic", "vulkan"]
 config.standard = "c++17"
 config.output_file = "vulkan_sample.bin"
+config.compile_commands = True
 
 def build_shaders():
     import os

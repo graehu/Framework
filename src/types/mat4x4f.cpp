@@ -13,10 +13,14 @@ const mat4x4f mat4x4f::NULLMATRIX(0.0f,0.0f,0.0f,0.0f,
 				  0.0f,0.0f,0.0f,0.0f);
 
 
+// mat4x4f::mat4x4f(const mat4x4f & rhs)
+// {
+//    memcpy(elem, rhs.elem, sizeof(float) * 16);
+// }
 
-mat4x4f::mat4x4f(const mat4x4f & rhs)
+mat4x4f::mat4x4f()
 {
-   memcpy(elem, rhs.elem, sizeof(float) * 16);
+   memcpy(elem, &IDENTITY, sizeof(float) * 16);
 }
 
 mat4x4f::mat4x4f(float _11, float _12, float _13, float _14,
@@ -76,6 +80,8 @@ vec3f operator * (const mat4x4f &M, const vec3f &V)
 
 void mat4x4f::perspective(float fovy, float aspect, float zNear, float zFar)
 {
+   memcpy(elem, IDENTITY.elem, sizeof(float) * 16);
+
    float range = tan(deg2rag(fovy / float(2))) * zNear;
    float left = -range * aspect;
    float right = range * aspect;

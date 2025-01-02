@@ -2262,8 +2262,15 @@ void UpdateUniformBuffer(uint32_t currentImage)
    dt += (1.0f/30.0f)*0.5f;
    auto extent = g_pass_map["swapchain"].extent;
    ubo.proj.perspective(60.0f, (float)extent.width / extent.height, 0.1f, 100.f);
-   ubo.view = mat4x4f::translated(10.0f, 1.0f, -5.0f);
-   ubo.light = vec3f(-10.0f, -0.5f, 1.75f);
+
+   vec3f up(0.0, 1.0, 0.0);
+   vec3f from(0.0, 0.0, -1.0);
+   vec3f to(0.0, 0.0, 0.0);
+   mat4x4f view; view.lookAt(from, to, -up);
+   view = view*mat4x4f::translated(0, 1, -4);
+   ubo.view = view;
+   
+   ubo.light = vec3f(0.0f, -0.5f);
    ubo.light_intensity = (((sin(dt)+1)*0.5)*0.9)+0.1f;
    memcpy(g_uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }
