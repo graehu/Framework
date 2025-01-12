@@ -82,7 +82,7 @@ void mat4x4f::perspective(float fovy, float aspect, float zNear, float zFar)
 {
    memcpy(elem, IDENTITY.elem, sizeof(float) * 16);
 
-   float range = tan(deg2rag(fovy / float(2))) * zNear;
+   float range = tan(deg2rad(fovy / float(2))) * zNear;
    float left = -range * aspect;
    float right = range * aspect;
    float bottom = -range;
@@ -95,7 +95,7 @@ void mat4x4f::perspective(float fovy, float aspect, float zNear, float zFar)
    elem[3][2] = - (float(2) * zFar * zNear) / (zFar - zNear);
 }
 
-void mat4x4f::transpose()
+mat4x4f mat4x4f::transpose()
 {
    mat4x4f temp = *this;
    for(int i = 0; i < 4; i++)
@@ -105,6 +105,7 @@ void mat4x4f::transpose()
 	 elem[i][ii] = temp.elem[ii][i];
       }
    }
+   return *this;
 }
 
 void mat4x4f::translate(float X, float Y, float Z)

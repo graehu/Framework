@@ -16,7 +16,7 @@ public:
    mat4x4f(float newElem[16]); // OpenGL - glGetMatrix
  
    void perspective(float fovy, float aspect, float zNear, float zFar);
-   void transpose();
+   mat4x4f transpose();
 
    void translate(float X, float Y, float Z);
    void scale(float X, float Y, float Z);
@@ -87,7 +87,7 @@ inline mat4x4f operator * ( const float & s, const mat4x4f & M )
 		  M(3,0) * s,M(3,1) * s,M(3,2) * s,M(3,3) * s);
 }
 
-inline float deg2rag(float const degrees)
+inline float deg2rad(float const degrees)
 {
    const float pi = float(3.1415926535897932384626433832795);
    return degrees * (pi / float(180));

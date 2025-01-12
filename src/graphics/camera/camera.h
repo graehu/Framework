@@ -28,7 +28,6 @@ public:
 
 	void update(void);
 	camera();
-	virtual ~camera();
 	
 	float m_maxPitchRate;
 	float m_maxHeadingRate;

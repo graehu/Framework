@@ -16,6 +16,8 @@ config.source_files = [
     "../../types/vec2f.cpp",
     "../../types/vec3f.cpp",
     "../../types/mat4x4f.cpp",
+    "../../graphics/camera/camera.cpp",
+    "../../types/quaternion.cpp",
     "../../window/wGlfwVulkan/wGlfwVulkan.cpp",
     "../../graphics/gGlfwVulkan/gGlfwVulkan.cpp",
 ]
