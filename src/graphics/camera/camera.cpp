@@ -1,5 +1,6 @@
 #include "camera.h"
 #include <math.h>
+#include "stdio.h"
 
 template <typename T> int sgn(T val)
 {
@@ -16,6 +17,9 @@ camera::camera()
    m_maxPitchRate = 2.5f;
    m_maxHeadingRate = 2.5f;
    m_headingDegrees = 0.0f;
+   // todo: this is wrong
+   // ----: 0 pitch + heading should result in:
+   // ----: z(0, 0, 1) and y(0, 1, 0)
    m_pitchDegrees = 180.0f;
    m_forwardVelocity = 0.0f;
    m_strafeVelocity = 0.0f;
@@ -23,45 +27,52 @@ camera::camera()
 
 void camera::update()
 {
-   mat4x4f Matrix;
-   quaternion q;
-
    // Make the Quaternions that will represent our rotations
+   
    m_qPitch.create_from_axis_angle(1.0f, 0.0f, 0.0f, m_pitchDegrees);
    m_qHeading.create_from_axis_angle(0.0f, 1.0f, 0.0f, m_headingDegrees);
-	
+
    // Combine the pitch and heading rotations and store the results in q
-   q = m_qPitch * m_qHeading;
+   quaternion q = m_qPitch * m_qHeading;
+   
+   mat4x4f Matrix;
    q.create_matrix(&Matrix);
-	
+   Matrix.transpose();
    m_view = Matrix;
+   
+   // printf("normal: \n");
+   // m_view.dumpMat4x4f();
+   // printf("transpose: \n");
+   // m_view.transpose().dumpMat4x4f();
 	
    // Create a matrix from the pitch Quaternion and get the j vector 
    // for our direction.
-
-   //transposed all maths from opengl
-
    m_qPitch.create_matrix(&Matrix);
-   m_DirectionVector.j = Matrix.elem[2][1];//[9];
+   m_DirectionVector.j = Matrix.elem[2][1];
 
    // Combine the heading and pitch rotations and make a matrix to get
    // the i and k vectors for our direction.
-
    q = m_qHeading * m_qPitch;
    q.create_matrix(&Matrix);
-   m_DirectionVector.i = Matrix.elem[2][0];//[8]
-   m_DirectionVector.k = Matrix.elem[2][2];//[10];
+   
+   m_DirectionVector.i = Matrix.elem[2][0];
+   m_DirectionVector.k = Matrix.elem[2][2];
 
    m_DirectionVector.normalise_self();
+   
    // Scale the direction by our speed.
-   vec3f up(0,1,0); 
-   vec3f strafeDirection;
-
-   strafeDirection = cross_product(m_DirectionVector, up);
-   // #TODO: Find out why normalising here isn't going well.
+   vec3f up(0, 1, 0);
+   // todo: not using / tested this yet, but this cross product looks like it's the wrong way around.
+   vec3f strafeDirection = cross_product(m_DirectionVector, up);
+   
+   // todo: Find out why normalising here isn't going well.
+   // ----: future:
+   // ----: I'm not sure what previous me meant, but cross products
+   // ----: aren't typically unit vectors.
    strafeDirection.normalise_self();
 
    m_strafeVector = strafeDirection;
+   
    m_up.i = m_view.elem[0][1];
    m_up.j = m_view.elem[1][1];
    m_up.k = m_view.elem[2][1];
@@ -71,25 +82,19 @@ void camera::update()
    m_position.j += (m_DirectionVector.j*m_forwardVelocity) + (strafeDirection.j*m_strafeVelocity);
    m_position.k += (m_DirectionVector.k*m_forwardVelocity) + (strafeDirection.k*m_strafeVelocity);
 
-   mat4x4f temp; //= Matrix;
-   temp.elem[0][3] = -m_position.i;
-   temp.elem[1][3] = -m_position.j;
-   temp.elem[2][3] = -m_position.k;
+   // note: The camera should move the world inversely to it's coordinates.
+   // ----: This isn't a hack or incorrect.
+   m_view = mat4x4f::translated(-m_position.i, -m_position.j, -m_position.k)*m_view;
 
-   temp = transposed(temp);
-   m_view = temp*m_view;
+   if(m_strafeVelocity > 0) { m_strafeVelocity -= 0.0005f; }
+   else if(m_strafeVelocity < 0) { m_strafeVelocity += 0.0005f; }
 
-   if(m_strafeVelocity > 0) m_strafeVelocity -= 0.0005f;
-   else if(m_strafeVelocity < 0) m_strafeVelocity += 0.0005f;
-	
-   if(m_strafeVelocity < 0.0005 && m_strafeVelocity > -0.0005)
-      m_strafeVelocity = 0;
+   if(m_strafeVelocity < 0.0005 && m_strafeVelocity > -0.0005) { m_strafeVelocity = 0; }
 
-   if(m_forwardVelocity > 0)  m_forwardVelocity -= 0.0005f;
-   else if(m_forwardVelocity < 0) m_forwardVelocity += 0.0005f;
+   if(m_forwardVelocity > 0)  { m_forwardVelocity -= 0.0005f; }
+   else if(m_forwardVelocity < 0) { m_forwardVelocity += 0.0005f; }
 
-   if(m_forwardVelocity < 0.0005 && m_forwardVelocity > -0.0005)
-      m_forwardVelocity = 0;
+   if(m_forwardVelocity < 0.0005 && m_forwardVelocity > -0.0005) {m_forwardVelocity = 0;}
 
 }
 

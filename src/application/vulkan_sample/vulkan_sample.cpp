@@ -110,13 +110,21 @@ void vulkan_sample::run()
    quad.transform = mat4x4f::translated(1, 0, -2);
    model2.transform = mat4x4f::translated(4, 1, 4);
    quad2.transform = mat4x4f::scaled(10, 10, 10)  * mat4x4f::rotated(deg2rad(90), 0, 0)*mat4x4f::translated(0, -1, 0);
-   // quad2.transform.transpose();
-   camera cam; cam.setPosition({0, 1, -4});
-   cam.update();
+   camera cam; 
+
    
    while (m_window->update())
    {
       model.transform = mat4x4f::scaled(.25,.25,.25)*mat4x4f::rotated(deg2rad(-90), deg2rad(-90), 0)*mat4x4f::translated(1, 0, 0)*mat4x4f::rotated(0, time, 0)*mat4x4f::translated(0, 0, 0);
+      // This is correct, it moves clockwise.
+      cam.setPosition({sin(time), 1, -5+cos(time)});
+      // This is incorrect, it rotates anticlockwise for positive y axis.
+      cam.m_headingDegrees = 15;
+      // This is correct, (except we don't want the 180), it rotates clockwise for positive x axis. (down)
+      cam.m_pitchDegrees = 180 + 15;
+      // cam.m_headingDegrees = 15*sin(time);
+      // cam.m_pitchDegrees = 15*sin(time);
+      cam.update();
       m_graphics->getRenderer()->visit(&model);
       m_graphics->getRenderer()->visit(&quad);
       m_graphics->getRenderer()->visit(&quad2);
