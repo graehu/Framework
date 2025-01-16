@@ -119,11 +119,11 @@ void vulkan_sample::run()
       // This is correct, it moves clockwise.
       cam.setPosition({sin(time), 1, -5+cos(time)});
       // This is incorrect, it rotates anticlockwise for positive y axis.
-      cam.m_headingDegrees = 15;
+      // cam.m_headingDegrees = 15;
       // This is correct, (except we don't want the 180), it rotates clockwise for positive x axis. (down)
-      cam.m_pitchDegrees = 180 + 15;
-      // cam.m_headingDegrees = 15*sin(time);
-      // cam.m_pitchDegrees = 15*sin(time);
+      // cam.m_pitchDegrees = 180+20;
+      cam.m_headingDegrees = 45*sin(time);
+      cam.m_pitchDegrees = 45*sin(time);
       cam.update();
       m_graphics->getRenderer()->visit(&model);
       m_graphics->getRenderer()->visit(&quad);

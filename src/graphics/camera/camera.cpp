@@ -17,10 +17,7 @@ camera::camera()
    m_maxPitchRate = 2.5f;
    m_maxHeadingRate = 2.5f;
    m_headingDegrees = 0.0f;
-   // todo: this is wrong
-   // ----: 0 pitch + heading should result in:
-   // ----: z(0, 0, 1) and y(0, 1, 0)
-   m_pitchDegrees = 180.0f;
+   m_pitchDegrees = 0.0f;
    m_forwardVelocity = 0.0f;
    m_strafeVelocity = 0.0f;
 }
@@ -28,23 +25,19 @@ camera::camera()
 void camera::update()
 {
    // Make the Quaternions that will represent our rotations
-   
-   m_qPitch.create_from_axis_angle(1.0f, 0.0f, 0.0f, m_pitchDegrees);
-   m_qHeading.create_from_axis_angle(0.0f, 1.0f, 0.0f, m_headingDegrees);
+   // todo: this - heading and 180 pitch are strange / wrong.
+   // ----: but I want to program camera controls now, so... :D
+   m_qPitch.create_from_axis_angle(1.0f, 0.0f, 0.0f, (180+m_pitchDegrees));
+   m_qHeading.create_from_axis_angle(0.0f, 1.0f, 0.0f, -m_headingDegrees);
 
    // Combine the pitch and heading rotations and store the results in q
-   quaternion q = m_qPitch * m_qHeading;
+   quaternion q =  m_qPitch * m_qHeading;
    
    mat4x4f Matrix;
    q.create_matrix(&Matrix);
    Matrix.transpose();
    m_view = Matrix;
    
-   // printf("normal: \n");
-   // m_view.dumpMat4x4f();
-   // printf("transpose: \n");
-   // m_view.transpose().dumpMat4x4f();
-	
    // Create a matrix from the pitch Quaternion and get the j vector 
    // for our direction.
    m_qPitch.create_matrix(&Matrix);

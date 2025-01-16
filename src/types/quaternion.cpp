@@ -96,31 +96,68 @@ void quaternion::create_matrix(mat4x4f *pMatrix)
 {
    // Make sure the matrix has allocated memory to store the rotation data
    if(!pMatrix) return;
-
-   //transposed from opengl
+   normalise();
 
    // First row
-   pMatrix->elem[0][0] = 1.0f - 2.0f * ( j * j + k * k ); 
+   pMatrix->elem[0][0] = 1.0f - 2.0f * (j * j + k * k );
    pMatrix->elem[0][1] = 2.0f * (i * j + k * w);
    pMatrix->elem[0][2] = 2.0f * (i * k - j * w);
-   pMatrix->elem[0][3] = 0.0f;  
+   pMatrix->elem[0][3] = 0.0f;
 
    // Second row
    pMatrix->elem[1][0] = 2.0f * ( i * j - k * w );  
    pMatrix->elem[1][1] = 1.0f - 2.0f * ( i * i + k * k ); 
    pMatrix->elem[1][2] = 2.0f * (k * j + i * w );  
-   pMatrix->elem[1][3] = 0.0f;  
+   pMatrix->elem[1][3] = 0.0f;
 
    // Third row
    pMatrix->elem[2][0] = 2.0f * ( i * k + j * w );
    pMatrix->elem[2][1] = 2.0f * ( j * k - i * w );
-   pMatrix->elem[2][2] = 1.0f - 2.0f * ( i * i + j * j );  
-   pMatrix->elem[2][3] = 0.0f;  
+   pMatrix->elem[2][2] = 1.0 - 2.0f * ( i * i + j * j );
+   pMatrix->elem[2][3] = 0.0f;
+
+   // This is the transposed version
+   // // First row
+   // pMatrix->elem[0][0] = 1.0f - 2.0f*j*j - 2.0f*k*k;
+   // pMatrix->elem[0][1] = 2.0f*i*j - 2.0f*k*w;
+   // pMatrix->elem[0][2] = 2.0f*i*k + 2.0f*j*w;
+   // pMatrix->elem[0][3] = 0.0f;
+   
+   // // Second row
+   // pMatrix->elem[1][0] = 2.0f*i*j + 2.0f*k*w;
+   // pMatrix->elem[1][1] = 1.0f - 2.0f*i*i - 2.0f*k*k;
+   // pMatrix->elem[1][2] = 2.0f*j*k - 2.0f*i*w;
+   // pMatrix->elem[1][3] = 0.0f;
+   
+   // // Third row
+   // pMatrix->elem[2][0] = 2.0f*i*k - 2.0f*j*w;
+   // pMatrix->elem[2][1] = 2.0f*j*k + 2.0f*i*w;
+   // pMatrix->elem[2][2] = 1.0f - 2.0f*i*i - 2.0f*j*j;
+   // pMatrix->elem[2][3] = 0.0f;
+
+   // This is maybe right handed? Haven't tested.
+   // First Row
+   // pMatrix->elem[0][0] = 2.0f * (i * i + j * j) - 1.0;
+   // pMatrix->elem[0][1] = 2.0f * (j * k - i * w);
+   // pMatrix->elem[0][2] = 2.0f * (j * w + i * k);
+   // pMatrix->elem[0][3] = 0.0f;
+   
+   // // Second Row  
+   // pMatrix->elem[1][0] = 2.0f * (j * k + i * w);
+   // pMatrix->elem[1][1] = 2.0f * (i * i + k * k) - 1.0;
+   // pMatrix->elem[1][2] = 2.0f * (k * w - i * j);
+   // pMatrix->elem[1][3] = 0.0f;
+   
+   // // Third Row
+   // pMatrix->elem[2][0] = 2.0f * (j * w - i * k);
+   // pMatrix->elem[2][1] = 2.0f * (k * w + i * j);
+   // pMatrix->elem[2][2] = 2.0f * (i * i + w * w) - 1.0;
+   // pMatrix->elem[2][3] = 0.0f;
 
    // Fourth row
-   pMatrix->elem[3][0] = 0;  
-   pMatrix->elem[3][1] = 0;  
-   pMatrix->elem[3][2] = 0;  
+   pMatrix->elem[3][0] = 0;
+   pMatrix->elem[3][1] = 0;
+   pMatrix->elem[3][2] = 0;
    pMatrix->elem[3][3] = 1.0f;
 
    // Now pMatrix[] is a 4x4 homogeneous matrix that can be applied to an OpenGL Matrix

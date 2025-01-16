@@ -35,11 +35,10 @@ void main()
    modelrot[3] = vec4(0,0,0,1);
    mat4 viewrot = ubo.view;
 
-   // this probably needs to be inverse.
    viewrot[3] = vec4(0,0,0,1);
    mat4 projrot = ubo.proj;
    projrot[3] = vec4(0,0,0,1);
-   //
+
    gl_Position =  mvp * vec4(in_position, 1.0);
    out_position = vec3(gl_Position);
    out_normal = vec3(projrot * viewrot * modelrot * vec4(in_normal, 1.0));
