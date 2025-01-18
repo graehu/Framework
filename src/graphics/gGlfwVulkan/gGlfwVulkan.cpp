@@ -2267,7 +2267,8 @@ void UpdateUniformBuffer(uint32_t currentImage)
    ubo.view = view;
    
    ubo.light = vec3f(0.0f, 0.5f);
-   ubo.light_intensity = (((sin(dt)+1)*0.5)*0.9)+0.1f;
+   // ubo.light_intensity = (((sin(dt)+1)*0.5)*0.9)+0.1f;
+   ubo.light_intensity = 1.0;
    memcpy(g_uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }
 

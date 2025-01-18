@@ -32,7 +32,7 @@ void main()
 {
    Lights light;
    light.position = light_pos.xyz;
-   light.diffuse = vec3(1.0, 1.0, 1.0);
+   light.diffuse = vec3(1.0);
    light.intensity = light_pos.w;
    
    vec3 lightdir = light.position-in_position;

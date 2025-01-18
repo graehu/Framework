@@ -3,7 +3,6 @@
 #include "../../utils/params.h"
 #include "../../window/window.h"
 #include "../../graphics/graphics.h"
-#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
@@ -111,19 +110,42 @@ void vulkan_sample::run()
    model2.transform = mat4x4f::translated(4, 1, 4);
    quad2.transform = mat4x4f::scaled(10, 10, 10)  * mat4x4f::rotated(deg2rad(90), 0, 0)*mat4x4f::translated(0, -1, 0);
    camera cam; 
-
-   
+   enum cam_mode {cam_linear, cam_swoop, cam_circle, cam_cycle} cmode = cam_cycle;
+   int cam_num = 0;
+   if(params::get_value("camera", cam_num, 0))
+   {
+      log::info("camera mode: {}", cam_num);
+      cmode = (cam_mode)cam_num;
+   }
    while (m_window->update())
    {
-      model.transform = mat4x4f::scaled(.25,.25,.25)*mat4x4f::rotated(deg2rad(-90), deg2rad(-90), 0)*mat4x4f::translated(1, 0, 0)*mat4x4f::rotated(0, time, 0)*mat4x4f::translated(0, 0, 0);
-      // This is correct, it moves clockwise.
-      cam.setPosition({sin(time), 1, -5+cos(time)});
-      // This is incorrect, it rotates anticlockwise for positive y axis.
-      // cam.m_headingDegrees = 15;
-      // This is correct, (except we don't want the 180), it rotates clockwise for positive x axis. (down)
-      // cam.m_pitchDegrees = 180+20;
-      cam.m_headingDegrees = 45*sin(time);
-      cam.m_pitchDegrees = 45*sin(time);
+      model.transform = mat4x4f::scaled(.25,.25,.25)*mat4x4f::rotated(deg2rad(-90), deg2rad(-90), 0)*mat4x4f::translated(1, 0, 0)*mat4x4f::rotated(0, time*2.0f, 0)*mat4x4f::translated(0, 0, 0);
+      model2.transform = mat4x4f::rotated(0, time*2.0f, 0)*mat4x4f::translated(4, 1, 4);
+      float alpha = 1.0-(cos(time*0.5f)+1.0f)*0.5f;
+      if (alpha == 0 && cmode == cam_cycle)
+      {
+	 cam_num = (cam_num+1)%cam_cycle;
+	 log::info("camera mode: {}", cam_num);
+	 cam.m_pitchDegrees = 0;
+	 cam.m_headingDegrees = 0;
+	 time = 0;
+      }
+      switch(cam_num)
+      {
+	 case cam_linear: // note: this is to verify fixing below doesn't break linear view normals.
+	    cam.setPosition({0, 1+50*(1.0f-alpha), 0});
+	    cam.m_pitchDegrees = 90;
+	    break;
+	 case cam_swoop: // note: this exposes incorrect normals across the ground quad at 45 degrees
+	    cam.setPosition({0, 1+15*(1.0f-alpha),-25*alpha});
+	    cam.m_pitchDegrees = 90*(1.0f-alpha);
+	    break;
+	 case cam_circle: // note: rotate around the scene.
+	    cam.setPosition({10*sin(time), 3, -10*cos(time)});
+	    cam.m_headingDegrees = -(360.0/(PI*2.0))*time;
+	    // cam.m_pitchDegrees = 15; // todo: this shows that the view matrix is wrong or something.
+	    break;
+      }
       cam.update();
       m_graphics->getRenderer()->visit(&model);
       m_graphics->getRenderer()->visit(&quad);
