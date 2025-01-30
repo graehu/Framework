@@ -2255,19 +2255,17 @@ namespace fwvulkan
       }
    }
 } // namespace fwvulkan
-float dt = 0;
 mat4x4f view;
 void UpdateUniformBuffer(uint32_t currentImage)
 {
    using namespace fwvulkan;
-   dt += (1.0f/30.0f)*0.5f;
    auto extent = g_pass_map["swapchain"].extent;
    // todo: move this matrix into the camera probably.
    ubo.proj.perspective(60.0f, (float)extent.width / extent.height, 0.1f, 100.f);
    ubo.view = view;
    
    ubo.light = vec3f(0.0f, 0.5f);
-   // ubo.light_intensity = (((sin(dt)+1)*0.5)*0.9)+0.1f;
+   // ubo.light = ubo.proj*ubo.view*vec3f(0.0f, 0.5f);
    ubo.light_intensity = 1.0;
    memcpy(g_uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }
