@@ -2,15 +2,15 @@
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(set=0, binding = 1) uniform sampler tex_sampler;
-layout(set=1, binding = 0) uniform texture2D albedo;
-layout(set=1, binding = 1) uniform texture2D roughness;
+layout(set=1, binding = 0) uniform texture2D albedo_tex;
+layout(set=1, binding = 1) uniform texture2D roughness_tex;
 
 layout(location = 0) in vec3 in_position;
 layout(location = 1) in vec3 in_normal;
 layout(location = 2) in vec3 in_color;
 layout(location = 3) in vec2 in_uv;
 layout(location = 4) flat in vec4 light_pos;
-// layout(location = 5) flat in vec3 view_pos;
+layout(location = 5) flat in vec3 in_view_pos;
 layout(location = 0) out vec4 out_color;
 
 struct Lights
@@ -20,12 +20,14 @@ struct Lights
    float intensity;
 };
 
-// #define PI			3.14159265358979323846
+#define PI			3.14159265358979323846
 
-// vec3 fresnelSchlick(float cosTheta, vec3 F0)
-// {
-//     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
-// }
+// k term is for image based versus direct lighting
+// ibl = (rougness*rougness)*0.5f
+// direct = ((roughness+1)^2)*0.125
+// below are the DGF terms of cook-torrance without
+// multiplying the k term. Roughness is multiplied
+// for direct lights in the used functions.
 
 // float GeometrySchlickGGX(float NdotV, float k)
 // {
@@ -34,8 +36,9 @@ struct Lights
 	
 //     return nom / denom;
 // }
-  
-// float GeometrySmith(vec3 N, vec3 V, vec3 L, float k)
+
+// Used for self shadowing.
+// float GeometrySmith(vec3 N, vec3 V, vec3 L, float k) 
 // {
 //     float NdotV = max(dot(N, V), 0.0);
 //     float NdotL = max(dot(N, L), 0.0);
@@ -45,6 +48,7 @@ struct Lights
 //     return ggx1 * ggx2;
 // }
 
+// used for the specular component
 // float DistributionGGX(vec3 N, vec3 H, float a)
 // {
 //     float a2     = a*a;
@@ -58,37 +62,138 @@ struct Lights
 //     return nom / denom;
 // }
 
-float lambert(vec3 norm, vec3 lightdir)
+// fersnel / surface refraction
+vec3 fresnelSchlick(float cosTheta, vec3 F0)
 {
-  norm = normalize(norm);
-  lightdir = normalize(lightdir);
-  return max(dot(norm, lightdir), 0);
+   return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
-void main()
+// diffuse reflectance / linear scatter
+float lambert(vec3 norm, vec3 lightdir)
 {
+   norm = normalize(norm);
+   lightdir = normalize(lightdir);
+   return max(dot(norm, lightdir), 0);
+}
+
+// specular reflectance / normal fall off function.
+float DistributionGGX(vec3 N, vec3 H, float roughness)
+{
+   float a      = roughness*roughness;
+   float a2     = a*a;
+   float NdotH  = max(dot(N, H), 0.0);
+   float NdotH2 = NdotH*NdotH;
+	
+   float num   = a2;
+   float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+   denom = PI * denom * denom;
+	
+   return num / denom;
+}
+
+// geometry self shadowing
+float GeometrySchlickGGX(float NdotV, float roughness)
+{
+   float r = (roughness + 1.0);
+   float k = (r*r) / 8.0;
+
+   float num   = NdotV;
+   float denom = NdotV * (1.0 - k) + k;
+	
+   return num / denom;
+}
+// geometry self shadowing
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
+{
+   float NdotV = max(dot(N, V), 0.0);
+   float NdotL = max(dot(N, L), 0.0);
+   float ggx2  = GeometrySchlickGGX(NdotV, roughness);
+   float ggx1  = GeometrySchlickGGX(NdotL, roughness);
+	
+   return ggx1 * ggx2;
+}
+
+// do I care about specular ibl and diffuse irradience.
+// not right now?
+void main()
+{		
+   vec3 world_normal = normalize(in_normal);
+   vec3 view_direction = normalize(in_view_pos - in_position);
+   
+   vec4 albedo = texture(sampler2D(albedo_tex, tex_sampler), in_uv);
+   // convert srgb to linear
+   albedo = pow(albedo, vec4(2.2));
+   float roughness = texture(sampler2D(roughness_tex, tex_sampler), in_uv).r;
+   // todo: add texture bind
+   float metallic = 0.5;
+   // todo: add texture bind
+   float ao = 1.0;
+   // todo: refractive index, probably ought to be on a uniform.
+   vec3 RI = vec3(0.04);
+   RI = mix(RI, albedo.rgb, metallic);
+    
    Lights light;
    light.position = light_pos.xyz;
+   // todo: this isn't bound
    light.diffuse = vec3(1.0);
    light.intensity = light_pos.w;
+	           
+   vec3 Lo = vec3(0.0);
+   // loop for however many lights you have, I have 1.
+   // for(int i = 0; i < 4; ++i) 
+   // {
+   // calculate per-light radiance
+   vec3 light_direction = normalize(light.position - in_position);
+   // todo: check the math here? original halfway vector is:
+   // vec3 halfway = in_view_pos + light.position; halfway = halfway / length(halfway);
+   vec3 halfway = normalize(view_direction + light_direction);
+   float dist    = length(light.position - in_position);
+   float attenuation = 1.0 / (dist * dist);
+   vec3 radiance     = (light.intensity * light.diffuse * attenuation);
+        
+   // cook-torrance brdf - Bidirectional Reflectance Distribution Function
+   float normal_distrib = DistributionGGX(world_normal, halfway, roughness);
+   float self_occlusion = GeometrySmith(world_normal, view_direction, light_direction, roughness);
+   vec3 fresnel = fresnelSchlick(max(dot(halfway, view_direction), 0.0), RI);
+	
+   vec3 kS = fresnel;
+   vec3 kD = vec3(1.0) - kS;
+   kD *= 1.0 - metallic;
+        
+   vec3 numerator    = normal_distrib * self_occlusion * fresnel;
+   float denominator = 4.0 * max(dot(world_normal, view_direction), 0.0);
+   // lambert / diffuse reflectance
+   denominator *= max(dot(world_normal, light_direction), 0.0) + 0.0001;
+   vec3 specular = numerator / denominator;
+            
+   // add to outgoing radiance Lo
+   float NdotL = max(dot(world_normal, light_direction), 0.0);
+   Lo += (kD * vec3(albedo) / PI + specular) * radiance * NdotL; 
+   // }
+   // todo: bind ambient intensity + diffuse.
+   vec3 am_light = vec3(0.0001);
+   vec3 ambient = am_light * vec3(albedo) * ao;
+   vec3 color = ambient + Lo;
+    
+   color = color / (color + vec3(1.0));
+   // convert from linear to srgb
+   color = pow(color, vec3(1.0/2.2));
+   out_color = vec4(color, 1.0);
 
-   // wip for ggx distribution
-   // vec3 halfway = view_pos + light.position;
-   // halfway = halfway / length(halfway);
-
-   vec3 lightdir = light.position-in_position;
-   vec3 result = light.diffuse * light.intensity * lambert(in_normal, lightdir);
-   
-   // vec3 result = light.diffuse * light.intensity * lambert(in_normal, halfway);
-   
-   // out_color = vec4(abs(in_normal), 1.0); // show normals
-   // out_color = vec4(lightdir, 1.0); // show lightdir
-   // out_color = vec4(light.position, 1.0); // show light.position
-   // out_color = vec4(result, 1.0); // show lambert
-   // out_color = vec4(in_position, 1.0); // show position
+   // debug
+   // out_color = vec4(abs(world_normal), 1.0); // show normals
+   // out_color = vec4(light_direction, 1.0); // show lightdir
+   // out_color = vec4(abs(light.position)*.1, 1.0); // show light.position
+   // out_color = vec4(vec3(lambert(world_normal, light_direction)), 1.0); // show lambert
+   // out_color = vec4(abs(in_view_pos)*0.1, 1.0); // show view_pos
+   // out_color = vec4(abs(halfway), 1.0); // show halway
+   // out_color = vec4(abs(in_position), 1.0); // show position
    // out_color = vec4(in_color, 1.0); // show colors
    // out_color = vec4(in_uv, 1.0, 1.0); // show uvs
+   // out_color = vec4(vec3(roughness), 1.0); // show roughness
+   // out_color = vec4(vec3(metallic), 1.0); // show metalic
+   // out_color = vec4(vec3(ao), 1.0); // show ao
+   // out_color = vec4(vec3(attenuation), 1.0); // show ao
+   // out_color = vec4(vec3(radiance), 1.0); // show radiance
 
-   out_color = texture(sampler2D(albedo, tex_sampler), in_uv);
-   out_color = out_color*vec4(result, 1.0);
 }

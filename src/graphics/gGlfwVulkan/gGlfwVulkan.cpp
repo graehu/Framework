@@ -97,6 +97,7 @@ namespace fwvulkan
       mat4x4f proj;
       vec3f light;
       float light_intensity;
+      vec3f cam_pos;
    };
    DefaultUniforms ubo = {};
    struct DefaultPushConstants
@@ -2256,6 +2257,7 @@ namespace fwvulkan
    }
 } // namespace fwvulkan
 mat4x4f view;
+vec3f cam_pos;
 void UpdateUniformBuffer(uint32_t currentImage)
 {
    using namespace fwvulkan;
@@ -2265,8 +2267,9 @@ void UpdateUniformBuffer(uint32_t currentImage)
    ubo.view = view;
    
    ubo.light = vec3f(0.0f, 0.5f);
-   // ubo.light = ubo.proj*ubo.view*vec3f(0.0f, 0.5f);
-   ubo.light_intensity = 1.0;
+   ubo.cam_pos = cam_pos;
+
+   ubo.light_intensity = 0.5f;
    memcpy(g_uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }
 
@@ -2335,6 +2338,7 @@ void gGlfwVulkan::visit(class physics::collider::polygon * /*_poly*/) {}
 void gGlfwVulkan::visit(camera* _camera)
 {
    view = _camera->getView();
+   cam_pos = _camera->getPosition();
 }
 
 void gGlfwVulkan::visit(fw::Mesh* _mesh)
