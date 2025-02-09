@@ -32,6 +32,11 @@ namespace fw
       PassList passes;
       mat4x4f transform;
    };
+   struct Light
+   {
+      vec3f position;
+      float intensity = 1.0f;
+   };
 }
 class graphics
 {

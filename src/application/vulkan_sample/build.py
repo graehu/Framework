@@ -21,6 +21,7 @@ config.source_files = [
     "../../types/quaternion.cpp",
     "../../window/wGlfwVulkan/wGlfwVulkan.cpp",
     "../../graphics/gGlfwVulkan/gGlfwVulkan.cpp",
+    "../../graphics/gGlfwVulkan/pbr_pipeline.cpp",
 ]
 libs = "../../../libs"
 config.include_paths = [

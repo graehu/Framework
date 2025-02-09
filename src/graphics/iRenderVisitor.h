@@ -1,6 +1,7 @@
 #pragma once
 
 class camera;
+
 namespace physics
 {
    namespace collider
@@ -14,7 +15,11 @@ namespace physics
 //class coasterRider;
 //class skybox;
 
-namespace fw {struct Mesh;}
+namespace fw
+{
+   struct Mesh;
+   struct Light;
+}
 
 class iRenderVisitor
 {
@@ -24,6 +29,7 @@ class iRenderVisitor
    virtual void visit(camera* _camera) = 0;
    virtual void visit(physics::collider::polygon* _poly) = 0;	 
    virtual void visit(fw::Mesh* _mesh) = 0;
+   virtual void visit(fw::Light* _light) = 0;
   //virtual void visit(Graph* _graph) = 0;
   //virtual void visit(object3D* _object3D) = 0;
   //virtual void visit(bezierCurve* _bezierCurve) = 0;

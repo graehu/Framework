@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <thread>
 #include <vector>
+#include <vulkan/vulkan_core.h>
 #include "iostream"
 #include "../../graphics/camera/camera.h"
 #include "tiny_gltf_loader.h"
@@ -102,7 +103,8 @@ void vulkan_sample::run()
    quad.transform = mat4x4f::translated(1, 0, -2);
    model2.transform = mat4x4f::translated(4, 1, 4);
    quad2.transform = mat4x4f::scaled(10, 10, 10)  * mat4x4f::rotated(deg2rad(90), 0, 0)*mat4x4f::translated(0, -1, 0);
-   camera cam; 
+   camera cam;
+   fw::Light light; light.position = vec3f(0.0f, 0.5f);
    enum cam_mode {cam_linear, cam_swoop, cam_circle, cam_cycle} cmode = cam_cycle;
    int cam_num = 0;
    if(params::get_value("camera", cam_num, 0))
@@ -139,12 +141,14 @@ void vulkan_sample::run()
 	    // cam.m_pitchDegrees = 15; // todo: this shows that the view matrix is wrong or something.
 	    break;
       }
+      light.intensity = 2.0f*alpha;
       cam.update();
       m_graphics->getRenderer()->visit(&model);
       m_graphics->getRenderer()->visit(&quad);
       m_graphics->getRenderer()->visit(&quad2);
       m_graphics->getRenderer()->visit(&model2);
       m_graphics->getRenderer()->visit(&cam);
+      m_graphics->getRenderer()->visit(&light);
       m_graphics->render();
       std::this_thread::sleep_for(std::chrono::milliseconds(16));
       time += 1.0f/60.0f;

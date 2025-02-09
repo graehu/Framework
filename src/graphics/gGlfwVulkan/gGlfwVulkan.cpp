@@ -15,6 +15,7 @@
 #include "../../utils/log/log.h"
 #include "../../utils/params.h"
 #include "../../types/mat4x4f.h"
+#include "vulkan_types.h"
 
 
 using namespace fw;
@@ -54,6 +55,9 @@ struct vkVertex : public fw::Vertex
       return attribute_description;
    }
 };
+
+#include "pbr_pipeline.h"
+
 namespace fwvulkan
 {
    // todo: I should make a header of forward declarations
@@ -84,28 +88,11 @@ namespace fwvulkan
    /////
    // todo: this sucks
    VkDescriptorPool g_descriptor_pool;
-   VkDescriptorPool g_drawdescriptor_pool;
    
    std::vector<VkDescriptorSet> g_descriptor_sets;
-   std::vector<VkDescriptorSet> g_drawdescriptor_sets;
    int g_used_descriptors = 0;
-   
-   struct DefaultUniforms
-   {
-      mat4x4f model[16];
-      mat4x4f view;
-      mat4x4f proj;
-      vec3f light;
-      float light_intensity;
-      vec3f cam_pos;
-   };
    DefaultUniforms ubo = {};
-   struct DefaultPushConstants
-   {
-      uint32_t id;
-   };
    VkDescriptorSetLayout g_descriptor_set_layout;
-   VkDescriptorSetLayout g_drawdescriptor_set_layout;
    std::vector<VkBuffer> g_uniformBuffers;
    std::vector<VkDeviceMemory> g_uniformBuffersMemory;
    std::vector<void *> g_uniformBuffersMapped;
@@ -183,30 +170,7 @@ namespace fwvulkan
    VkCommandPool g_command_pool = VK_NULL_HANDLE;
    // std::vector<VkCommandBuffer> g_command_buffers;
    // vertex buffers
-   struct VBHandle
-   {
-      VkBuffer vb;
-      VkDeviceMemory vb_mem;
-      size_t len;
-   };
-   // index buffers
-   struct IBHandle
-   {
-      VkBuffer ib;
-      VkDeviceMemory ib_mem;
-      size_t len;
-   };
-   struct IMHandle
-   {
-      VkImage image;
-      VkImageView view;
-      VkDeviceMemory image_mem;
-      size_t width, height;
-   };
-   struct SamHandle
-   {
-      VkSampler sampler;
-   };
+
    std::map<uint32_t, VBHandle> g_vb_map;
    std::map<uint32_t, IBHandle> g_ib_map;
    std::map<uint32_t, IMHandle> g_im_map;         // readonly/sampled.
@@ -214,16 +178,6 @@ namespace fwvulkan
    std::map<uint32_t, SamHandle> g_sam_map;
    // mesh
    std::vector<Mesh*> g_meshes;
-   struct DrawHandle
-   {
-      static const int max_draws = 16;
-      Mesh* owner = nullptr;
-      int vb_handle = -1;
-      int ib_handle = -1;
-      int im_handles[Mesh::max_images] = {};
-      int pi_handle = -1;
-      int ds_handle = -1;
-   };
    std::map<fw::Mesh *, DrawHandle> g_drawhandles;
    //
    bool g_enable_validation_layers = false;
@@ -539,6 +493,7 @@ namespace fwvulkan
 	 }
 	 return descriptor_set;
       }
+      
       void CreateBuffer(void* source, size_t size, VkBufferUsageFlags usage, VkBuffer& buffer, VkDeviceMemory& memory)
       {
 	 VkBufferCreateInfo buffer_ci = {};
@@ -579,6 +534,7 @@ namespace fwvulkan
 	    vkUnmapMemory(g_logical_device, memory);
 	 }
       }
+      
       VkDescriptorPool CreateDescriptorPool()
       {
 	 VkDescriptorPoolSize pool_sizes[2];
@@ -599,32 +555,14 @@ namespace fwvulkan
 	 }
 	 return pool;
       }
-      VkDescriptorPool CreatePerDrawDescriptorPool()
-      {
-	 VkDescriptorPoolSize pool_sizes[2];
-	 pool_sizes[0].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	 pool_sizes[0].descriptorCount = DrawHandle::max_draws;
-         pool_sizes[1].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	 pool_sizes[1].descriptorCount = DrawHandle::max_draws;
-
-	 VkDescriptorPoolCreateInfo pool_ci{};
-	 pool_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	 pool_ci.poolSizeCount = 2;
-	 pool_ci.pPoolSizes = &pool_sizes[0];
-	 pool_ci.maxSets = DrawHandle::max_draws;
-
-	 VkDescriptorPool pool;
-	 if (vkCreateDescriptorPool(g_logical_device, &pool_ci, nullptr, &pool) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create descriptor pool!");
-	 }
-	 return pool;
-      }
+      
       // todo: make a handle for these
       void CreateUniformBuffer(VkDeviceSize buffer_size, VkBuffer& buffer, VkDeviceMemory& mem, void*& mapping)
       {
 	 CreateBuffer(nullptr, buffer_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, buffer, mem);
 	 vkMapMemory(g_logical_device, mem, 0, buffer_size, 0, &mapping);
       }
+      
       void CreateDefaultUniformBuffers()
       {
 	 VkDeviceSize buffer_size = sizeof(DefaultUniforms);
@@ -660,6 +598,7 @@ namespace fwvulkan
             vkUpdateDescriptorSets(g_logical_device, 1, descriptorWrites, 0, nullptr);
 	 }
       }
+      
       void SetDescriptorSampler(VkSampler sampler)
       {
 	 log::debug("SetDescriptorSampler: {}", size_t(sampler));
@@ -679,10 +618,10 @@ namespace fwvulkan
             vkUpdateDescriptorSets(g_logical_device, 1, descriptorWrites, 0, nullptr);
 	 }
       }
-      void SetDescriptorAlbedo(VkImageView image_view, std::vector<VkDescriptorSet> albedo_sets)
+      void SetDescriptorImage(VkImageView image_view, std::vector<VkDescriptorSet> image_sets, unsigned int dst_binding)
       {
-	 log::debug("SetDescriptorAlbedo: {}", size_t(image_view));
-	 for (size_t i = 0; i < albedo_sets.size(); i++)
+	 log::debug("SetDescriptorImage: {}", size_t(image_view));
+	 for (size_t i = 0; i < image_sets.size(); i++)
 	 {
 	    VkDescriptorImageInfo image_info{};
 	    image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -690,8 +629,8 @@ namespace fwvulkan
 
             VkWriteDescriptorSet descriptorWrites[1] = {{}};
 	    descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	    descriptorWrites[0].dstSet = albedo_sets[i];
-	    descriptorWrites[0].dstBinding = 0;
+	    descriptorWrites[0].dstSet = image_sets[i];
+	    descriptorWrites[0].dstBinding = dst_binding;
 	    descriptorWrites[0].dstArrayElement = 0;
 	    descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 	    descriptorWrites[0].descriptorCount = 1;
@@ -700,27 +639,7 @@ namespace fwvulkan
             vkUpdateDescriptorSets(g_logical_device, 1, descriptorWrites, 0, nullptr);
 	 }
       }
-      void SetDescriptorRoughness(VkImageView image_view, std::vector<VkDescriptorSet> rough_sets)
-      {
-	 log::debug("SetDescriptoRoughness: {}", size_t(image_view));
-	 for (size_t i = 0; i < rough_sets.size(); i++)
-	 {
-	    VkDescriptorImageInfo image_info{};
-	    image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	    image_info.imageView = image_view;
 
-            VkWriteDescriptorSet descriptorWrites[1] = {{}};
-	    descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	    descriptorWrites[0].dstSet = rough_sets[i];
-	    descriptorWrites[0].dstBinding = 1;
-	    descriptorWrites[0].dstArrayElement = 0;
-	    descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	    descriptorWrites[0].descriptorCount = 1;
-	    descriptorWrites[0].pImageInfo = &image_info;
-
-            vkUpdateDescriptorSets(g_logical_device, 1, descriptorWrites, 0, nullptr);
-	 }
-      }
       // todo: this does more than set the image, it also sets the uniform buffer.
       // ----: That's not ideal, I think more correctly you would create descriptors and rebind them when recording a pass.
       // ----: so probably you need descriptor sets per draw handle, which can change the images and transforms.
@@ -780,26 +699,6 @@ namespace fwvulkan
 	 }
 	 auto sam_handle = CreateSamplerHandle(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, true);
 	 buffers::SetDescriptors(g_sam_map[sam_handle].sampler);
-      }
-      void CreatePerDrawDescriptorSets()
-      {
-	 log::debug("CreatePerDrawDescriptorSets");
-	 std::vector<VkDescriptorSetLayout> layouts(DrawHandle::max_draws, g_drawdescriptor_set_layout);
-	 VkDescriptorSetAllocateInfo alloc_info{};
-	 alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	 alloc_info.descriptorPool = g_drawdescriptor_pool;
-	 alloc_info.descriptorSetCount = DrawHandle::max_draws;
-	 alloc_info.pSetLayouts = layouts.data();
-	 g_drawdescriptor_sets.resize(DrawHandle::max_draws);
-	 
-	 if (vkAllocateDescriptorSets(g_logical_device, &alloc_info, g_drawdescriptor_sets.data()) != VK_SUCCESS)
-	 {
-            throw std::runtime_error("failed to allocate descriptor sets!");
-	 }
-	 
-	 auto im_handle = CreateImageHandle(initdata::images::argb.data(), 4, 4);
-	 buffers::SetDescriptorAlbedo(g_im_map[im_handle].view, g_drawdescriptor_sets);
-	 buffers::SetDescriptorRoughness(g_im_map[im_handle].view, g_drawdescriptor_sets);
       }
       VkCommandBuffer CreateCommandBuffer()
       {
@@ -1393,6 +1292,8 @@ namespace fwvulkan
 	 for (size_t i = 0; i < pass.image_views.size(); i++)
 	 {
 	    // todo: might need to add roughness here.
+	    // No. Maybe a Gbuffer. The rougness of a model is _not_ going to mutate between passes.
+	    // and it also will not need to be written as an attachement, we just record binds.
 	    std::array<VkImageView,2> attachments = {pass.image_views[i], g_rt_map["depth"].view};
 	    VkFramebufferCreateInfo framebuffer_create_info = {};
 	    framebuffer_create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -1637,6 +1538,7 @@ namespace fwvulkan
 	    buffers::CreateImage(pass.extent.width, pass.extent.height, pass.image_format, usage, pass.images[i], pass.image_mems[i]);
 	    pass.image_views[i] = buffers::CreateImageView(pass.images[i], pass.image_format);
 	    // todo:  may need to add roughness.
+	    // Once again, no. for same reason as before, roughness belongs to models.
 	    VkImageView attachments[] = { pass.image_views[i] };
 	    VkFramebufferCreateInfo framebuffer_create_info = {};
 	    framebuffer_create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -1701,7 +1603,8 @@ namespace fwvulkan
 	    depth_attachment_reference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	    // todo: may need roughness... not liking that I need to make a pipeline.
-	    // ....: ree.
+	    // ....: ree. Nope, see above.
+	    // It does need a slot for binding however, which is in our descriptor set layout.
 	    VkSubpassDescription subpass_description = {};
 	    subpass_description.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	    subpass_description.colorAttachmentCount = 1;
@@ -1967,33 +1870,15 @@ namespace fwvulkan
 	 color_blend_state_ci.blendConstants[3] = 0.0f;
 	 return color_blend_state_ci;
       }
-      VkPipelineLayoutCreateInfo GetDefaultPipelineLayout()
+      
+      int CreatePBRPipelineVariants(Material mat)
       {
-	 static std::array<VkDescriptorSetLayout, 2> layouts;
-	 layouts = {g_descriptor_set_layout, g_drawdescriptor_set_layout};
-	 VkPipelineLayoutCreateInfo pipeline_layout_ci = {};
-	 pipeline_layout_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	 pipeline_layout_ci.setLayoutCount = layouts.size();
-	 pipeline_layout_ci.pSetLayouts = layouts.data();
-	 
-	 VkPushConstantRange push_constant;
-	 push_constant.offset = 0;
-	 push_constant.size = sizeof(DefaultPushConstants);
-	 push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
-	 pipeline_layout_ci.pPushConstantRanges = &push_constant;
-	 pipeline_layout_ci.pushConstantRangeCount = 1;
-	 
-	 return pipeline_layout_ci;
-      }
-      int CreateAllPipelineVariants(Material mat)
-      {
-	 log::debug("CreateGraphicsPipeline");
+	 log::debug("CreatePBRGraphicsPipeline");
 	 auto hash = hash::i32((const char*)&mat, sizeof(Material));
 	 if(g_pipe_map.find(hash) == g_pipe_map.end())
 	 {
 	    VkPipelineLayout pipeline_layout;
-	    auto pipeline_layout_ci = GetDefaultPipelineLayout();
+	    auto pipeline_layout_ci = GetPBRPipelineLayout();
 	    if (vkCreatePipelineLayout(g_logical_device, &pipeline_layout_ci, nullptr, &pipeline_layout) != VK_SUCCESS)
 	    {
 	       throw std::runtime_error("failed to create pipeline layout!");
@@ -2147,7 +2032,8 @@ namespace fwvulkan
 	 render_pass_begin_info.renderArea.extent = pass.extent;
 
 	 std::array<VkClearValue, 2> clear_values{};
-	 clear_values[0].color = {{0.0f, 1.0f, 1.0f, 1.0f}};
+	 // clear_colour - comment because I keep failing to find this.
+	 clear_values[0].color = {{0.1f, 0.1f, 0.1f, 1.0f}};
 	 clear_values[1].depthStencil = {1.0f, 0};
 
 	 render_pass_begin_info.clearValueCount = clear_values.size();
@@ -2192,7 +2078,7 @@ namespace fwvulkan
 
 	    // note: the firstSet value is 1, because we're binding from that set number. I.e. we're binding set 1, which has our per-draw descriptor layout. (image, image)
 	    // ----: vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 0, 2, desc_sets.data(), 0, nullptr);
-	    vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 1, 1, &g_drawdescriptor_sets[dh.ds_handle], 0, nullptr);
+	    vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 1, 1, &g_pbr_descriptor_sets[dh.ds_handle], 0, nullptr);
 	    
 	    vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].pipeline);
 	    vkCmdDrawIndexed(pass.cmd_buffer, ibh.len, 1, 0, 0, 0);
@@ -2256,20 +2142,21 @@ namespace fwvulkan
       }
    }
 } // namespace fwvulkan
-mat4x4f view;
-vec3f cam_pos;
+mat4x4f g_view;
+vec3f g_cam_pos;
+fw::Light g_light;
 void UpdateUniformBuffer(uint32_t currentImage)
 {
    using namespace fwvulkan;
    auto extent = g_pass_map["swapchain"].extent;
    // todo: move this matrix into the camera probably.
    ubo.proj.perspective(60.0f, (float)extent.width / extent.height, 0.1f, 100.f);
-   ubo.view = view;
+   ubo.view = g_view;
    
-   ubo.light = vec3f(0.0f, 0.5f);
-   ubo.cam_pos = cam_pos;
+   ubo.light = g_light.position;
+   ubo.cam_pos = g_cam_pos;
 
-   ubo.light_intensity = 0.5f;
+   ubo.light_intensity = g_light.intensity;
    memcpy(g_uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }
 
@@ -2315,13 +2202,7 @@ int gGlfwVulkan::init()
 	 g_descriptor_pool = buffers::CreateDescriptorPool();
 	 buffers::CreateDescriptorSets();
       }
-      {
-	 VkDescriptorType types[] = { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE };
-	 VkShaderStageFlags stages[] = { VK_SHADER_STAGE_FRAGMENT_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
-	 g_drawdescriptor_set_layout = buffers::CreateDescriptorSetLayout(types, stages, 2);
-	 g_drawdescriptor_pool = buffers::CreatePerDrawDescriptorPool();
-	 buffers::CreatePerDrawDescriptorSets();
-      }
+      buffers::InitPBRDescriptors();
    }
    // todo: swapchain pass extent is set here, kinda gross.
    swapchain::CreateSwapChain();
@@ -2337,8 +2218,8 @@ void gGlfwVulkan::visit(class physics::collider::polygon * /*_poly*/) {}
 #include "../camera/camera.h"
 void gGlfwVulkan::visit(camera* _camera)
 {
-   view = _camera->getView();
-   cam_pos = _camera->getPosition();
+   g_view = _camera->getView();
+   g_cam_pos = _camera->getPosition();
 }
 
 void gGlfwVulkan::visit(fw::Mesh* _mesh)
@@ -2358,11 +2239,11 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
 	 {},
 	 // todo: this should be "create all pipeline variants"
 	 // ----: then we store draws against pipelines / passes, or something. :)
-	 pipeline::CreateAllPipelineVariants(_mesh->material),
+	 pipeline::CreatePBRPipelineVariants(_mesh->material),
 	 g_used_descriptors++
       };
-      log::debug("draw descriptors: {}/{}", g_used_descriptors, g_drawdescriptor_sets.size());
-      std::vector<VkDescriptorSet> set(1, {g_drawdescriptor_sets[drawhandle.ds_handle]});
+      log::debug("draw descriptors: {}/{}", g_used_descriptors, g_pbr_descriptor_sets.size());
+      std::vector<VkDescriptorSet> set(1, {g_pbr_descriptor_sets[drawhandle.ds_handle]});
       for(unsigned int i = 0; i < Mesh::max_images; i++)
       {
 	 if(_mesh->images[i].data == nullptr) break;
@@ -2378,6 +2259,12 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
       g_pass_map[pass].draws.push_back(drawhandle);
    }
 }
+
+void gGlfwVulkan::visit(fw::Light* _light)
+{
+   g_light = *_light;
+}
+
 int gGlfwVulkan::shutdown()
 {
    using namespace fwvulkan;
@@ -2438,9 +2325,9 @@ int gGlfwVulkan::shutdown()
    g_sam_map.clear();
    
    vkDestroyDescriptorPool(g_logical_device, g_descriptor_pool, nullptr);
-   vkDestroyDescriptorPool(g_logical_device, g_drawdescriptor_pool, nullptr);
+   vkDestroyDescriptorPool(g_logical_device, g_pbr_descriptor_pool, nullptr);
    vkDestroyDescriptorSetLayout(g_logical_device, g_descriptor_set_layout, nullptr);
-   vkDestroyDescriptorSetLayout(g_logical_device, g_drawdescriptor_set_layout, nullptr);
+   vkDestroyDescriptorSetLayout(g_logical_device, g_pbr_descriptor_set_layout, nullptr);
    
    vkDestroyDevice(g_logical_device, nullptr);
    if (g_enable_validation_layers)
