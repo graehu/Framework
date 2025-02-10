@@ -36,31 +36,6 @@ void vulkan_sample::init()
    m_graphics->init();
 }
 
-const std::vector<Vertex> quad_verts = {
-   {{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, {0, 0}},
-   {{-0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f, 1.0f}, {0, 1}},
-   {{ 0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 0.0f, 1.0f}, {1, 1}},
-   {{ 0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1, 0}},
-};
-
-const std::vector<Vertex> quad_verts2 = {
-   {{-0.5f,  0.0f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0, 0}},
-   {{-0.5f,  0.0f,  0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0, 1}},
-   {{ 0.5f,  0.0f,  0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1, 1}},
-   {{ 0.5f,  0.0f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1, 0}},
-};
-
-const std::array<unsigned int, 16> white_image =
-{
-   0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-   0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-   0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-   0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-};
-
-const std::array<uint16_t, 6> quad_indices = {0, 1, 2, 2, 3, 0};
-
-
 // todo: add pass dependencies.
 // todo: add pass framebuffer blending/compositing.
 // todo: add basic pbr shaders.
@@ -76,12 +51,20 @@ void vulkan_sample::run()
    m_graphics->register_shader("shared", "shaders/shared.vert.spv", shader::e_vertex);
    m_graphics->register_shader("pbr", "shaders/pbr.frag.spv", shader::e_fragment);
    m_graphics->register_shader("unlit", "shaders/unlit.frag.spv", shader::e_fragment);
+
+   auto* white_image = initdata::images::white.data();
    
-   Mesh quad = {{{quad_verts2.data(), quad_verts2.size()}, {quad_indices.data(), quad_indices.size()}}, {}, {}, {"swapchain"}, {}};
+   auto* quad_verts = initdata::geometry::quad_verts.data();
+   unsigned int quad_verts_count = initdata::geometry::quad_verts.size();
+   
+   auto* quad_indices = initdata::geometry::quad_indices.data();
+   unsigned int quad_indices_count = initdata::geometry::quad_indices.size();
+   
+   Mesh quad = {{{quad_verts, quad_verts_count}, {quad_indices, quad_indices_count}}, {}, {}, {"swapchain"}, {}};
    quad.material[fw::shader::e_vertex] = fw::hash::string("shared");
    quad.material[fw::shader::e_fragment] = fw::hash::string("unlit");
 
-   Mesh quad2 = {{{quad_verts.data(), quad_verts.size()}, {quad_indices.data(), quad_indices.size()}}, {{white_image.data(), 4, 4}}, {}, {"swapchain"}, {}};
+   Mesh quad2 = {{{quad_verts, quad_verts_count}, {quad_indices, quad_indices_count}}, {{white_image, 4, 4}}, {}, {"swapchain"}, {}};
    quad2.material[fw::shader::e_vertex] = fw::hash::string("shared");
    quad2.material[fw::shader::e_fragment] = fw::hash::string("pbr");
 
@@ -100,7 +83,7 @@ void vulkan_sample::run()
 
    Mesh model2 = model;
    float time = 0;
-   quad.transform = mat4x4f::translated(1, 0, -2);
+   quad.transform =  mat4x4f::rotated(deg2rad(75), 0, 0)*mat4x4f::translated(1, 0, -2);
    model2.transform = mat4x4f::translated(4, 1, 4);
    quad2.transform = mat4x4f::scaled(10, 10, 10)  * mat4x4f::rotated(deg2rad(90), 0, 0)*mat4x4f::translated(0, -1, 0);
    camera cam;
