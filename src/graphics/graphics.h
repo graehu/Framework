@@ -25,6 +25,7 @@ namespace fw
    struct Mesh
    {
       // todo: arbitrary limit for ease of construction atm.
+      // note: this awkwardly ties into how many images we allow on the drawhandler atm.
       static const unsigned int max_images = 4;
       Geometry geometry;
       Image images[max_images];
@@ -51,3 +52,44 @@ public:
    virtual iRenderVisitor* getRenderer(void) = 0; //passes back the renderer
    static graphics* graphicsFactory(void);
 };
+namespace fw
+{
+   namespace initdata
+   {
+      namespace images
+      {
+	 // magenta checkcard
+	 const std::array<unsigned int, 16> missing =
+	 {
+	    0x00000000, 0xffff00ff, 0x00000000, 0xffff00ff,
+	    0xffff00ff, 0x00000000, 0xffff00ff, 0x00000000,
+	    0x00000000, 0xffff00ff, 0x00000000, 0xffff00ff,
+	    0xffff00ff, 0x00000000, 0xffff00ff, 0x00000000,
+	 };
+	 // magenta checkcard
+	 const std::array<unsigned int, 16> white =
+	 {
+	    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+	    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+	    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+	    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+	 };
+	 const std::array<unsigned int, 16> black =
+	 {
+	    0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	    0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	    0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	    0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	 };
+      }
+      namespace geometry
+      {
+	 const std::vector<Vertex> quad = {
+	    {{-0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, {0, 0}},
+	    {{ 0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1, 0}},
+	    {{ 0.5f,  0.5f}, {0.0f, 0.0f, -1.0f}, {0.0f, 0.0f, 1.0f}, {1, 1}},
+	    {{-0.5f,  0.5f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f, 1.0f}, {0, 1}}
+	 };
+      }
+   }
+}    

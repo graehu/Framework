@@ -1,8 +1,9 @@
 #include "vulkan/vulkan.hpp"
 #include "pbr_pipeline.h"
 #include "../graphics.h"
-#include "../../utils/log/log.h"
 #include "vulkan_types.h"
+#include "../../utils/log/log.h"
+
 using namespace fw;
 
 namespace fwvulkan
@@ -10,19 +11,22 @@ namespace fwvulkan
    VkDescriptorPool g_pbr_descriptor_pool;
    std::vector<VkDescriptorSet> g_pbr_descriptor_sets;
    VkDescriptorSetLayout g_pbr_descriptor_set_layout;
-   extern VkDescriptorSetLayout g_descriptor_set_layout;
+   int g_used_pbr_descriptors = 0;
+   // put these in vulkan_types.h?
+   extern VkDescriptorSetLayout g_shared_descriptor_set_layout;
+   extern std::map<uint32_t, struct IMHandle> g_im_map;
    
    namespace buffers
    {
       // fwd dec
       void SetDescriptorImage(VkImageView image_view, std::vector<VkDescriptorSet> image_sets, unsigned int dst_binding);
       VkDescriptorSetLayout CreateDescriptorSetLayout(VkDescriptorType* types, VkShaderStageFlags* stage_flags, int num);
-      void SetDescriptorAlbedo(VkImageView image_view, std::vector<VkDescriptorSet> albedo_sets)
+      void SetPBRDescriptorAlbedo(VkImageView image_view, std::vector<VkDescriptorSet> albedo_sets)
       {
 	  log::debug("SetDescriptorAlbedo: {}", size_t(image_view));
 	 SetDescriptorImage(image_view, albedo_sets, descriptor_binds::albedo);
       }
-      void SetDescriptorRoughness(VkImageView image_view, std::vector<VkDescriptorSet> rough_sets)
+      void SetPBRDescriptorRoughness(VkImageView image_view, std::vector<VkDescriptorSet> rough_sets)
       {
 	 log::debug("SetDescriptoRoughness: {}", size_t(image_view));
 	 SetDescriptorImage(image_view, rough_sets, descriptor_binds::roughness);
@@ -43,9 +47,9 @@ namespace fwvulkan
             throw std::runtime_error("failed to allocate descriptor sets!");
 	 }
 	 
-	 auto im_handle = CreateImageHandle(initdata::images::argb.data(), 4, 4);
-	 buffers::SetDescriptorAlbedo(g_im_map[im_handle].view, g_pbr_descriptor_sets);
-	 buffers::SetDescriptorRoughness(g_im_map[im_handle].view, g_pbr_descriptor_sets);
+	 auto im_handle = CreateImageHandle(initdata::images::missing.data(), 4, 4);
+	 buffers::SetPBRDescriptorAlbedo(g_im_map[im_handle].view, g_pbr_descriptor_sets);
+	 buffers::SetPBRDescriptorRoughness(g_im_map[im_handle].view, g_pbr_descriptor_sets);
       }
       VkDescriptorPool CreatePBRDescriptorPool()
       {
@@ -81,7 +85,7 @@ namespace fwvulkan
       VkPipelineLayoutCreateInfo GetPBRPipelineLayout()
       {
 	 static std::array<VkDescriptorSetLayout, 2> layouts;
-	 layouts = {g_descriptor_set_layout, g_pbr_descriptor_set_layout};
+	 layouts = {g_shared_descriptor_set_layout, g_pbr_descriptor_set_layout};
 	 VkPipelineLayoutCreateInfo pipeline_layout_ci = {};
 	 pipeline_layout_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	 pipeline_layout_ci.setLayoutCount = layouts.size();

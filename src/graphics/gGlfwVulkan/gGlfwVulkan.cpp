@@ -87,43 +87,17 @@ namespace fwvulkan
    unsigned int g_flight_frame = 0;
    /////
    // todo: this sucks
-   VkDescriptorPool g_descriptor_pool;
+   VkDescriptorPool g_shared_descriptor_pool;
+   std::vector<VkDescriptorSet> g_shared_descriptor_sets;
    
-   std::vector<VkDescriptorSet> g_descriptor_sets;
-   int g_used_descriptors = 0;
+
+   
    DefaultUniforms ubo = {};
-   VkDescriptorSetLayout g_descriptor_set_layout;
+   VkDescriptorSetLayout g_shared_descriptor_set_layout;
    std::vector<VkBuffer> g_uniformBuffers;
    std::vector<VkDeviceMemory> g_uniformBuffersMemory;
    std::vector<void *> g_uniformBuffersMapped;
-   // For anything where it's safer to have sane data at initialisation.
-   //
-   
-   namespace initdata
-   {
-      namespace images
-      {
-	 const std::array<unsigned int, 16> argb =
-	 {
-	    0x00000000, 0xffff00ff, 0x00000000, 0xffff00ff,
-	    0xffff00ff, 0x00000000, 0xffff00ff, 0x00000000,
-	    0x00000000, 0xffff00ff, 0x00000000, 0xffff00ff,
-	    0xffff00ff, 0x00000000, 0xffff00ff, 0x00000000,
-	 };
-      }
-      namespace geometry
-      {
-	 const std::vector<Vertex> quad = {
-	    {{-0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, {0, 0}},
-	    {{ 0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1, 0}},
-	    {{ 0.5f,  0.5f}, {0.0f, 0.0f, -1.0f}, {0.0f, 0.0f, 1.0f}, {1, 1}},
-	    {{-0.5f,  0.5f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f, 1.0f}, {0, 1}}
-	 };
-      }
-   }
-   
-   ////
-   
+
    // renderpass
    // the default one used for the swapchain
    struct DrawHandle;
@@ -579,7 +553,7 @@ namespace fwvulkan
       void SetDescriptorUniformBuffer()
       {
 	 log::debug("SetDescriptorUniformmBuffer");
-	 for (size_t i = 0; i < g_descriptor_sets.size(); i++)
+	 for (size_t i = 0; i < g_shared_descriptor_sets.size(); i++)
 	 {
             VkDescriptorBufferInfo buffer_info{};
             buffer_info.buffer = g_uniformBuffers[i];
@@ -588,7 +562,7 @@ namespace fwvulkan
 
             VkWriteDescriptorSet descriptorWrites[1] = {{}};
             descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrites[0].dstSet = g_descriptor_sets[i];
+            descriptorWrites[0].dstSet = g_shared_descriptor_sets[i];
             descriptorWrites[0].dstBinding = 0;
             descriptorWrites[0].dstArrayElement = 0;
             descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -602,14 +576,14 @@ namespace fwvulkan
       void SetDescriptorSampler(VkSampler sampler)
       {
 	 log::debug("SetDescriptorSampler: {}", size_t(sampler));
-	 for (size_t i = 0; i < g_descriptor_sets.size(); i++)
+	 for (size_t i = 0; i < g_shared_descriptor_sets.size(); i++)
 	 {
 	    VkDescriptorImageInfo sampler_info{};
 	    sampler_info.sampler = sampler;
 
             VkWriteDescriptorSet descriptorWrites[1] = {{}};
 	    descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	    descriptorWrites[0].dstSet = g_descriptor_sets[i];
+	    descriptorWrites[0].dstSet = g_shared_descriptor_sets[i];
 	    descriptorWrites[0].dstBinding = 1;
 	    descriptorWrites[0].dstArrayElement = 0;
 	    descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
@@ -649,7 +623,7 @@ namespace fwvulkan
       void SetDescriptors(VkSampler sampler)
       {
 	 log::debug("SetDescriptors: a: {} r: {}", "doot", "toot");
-	 for (size_t i = 0; i < g_descriptor_sets.size(); i++)
+	 for (size_t i = 0; i < g_shared_descriptor_sets.size(); i++)
 	 {
             VkDescriptorBufferInfo buffer_info{};
             buffer_info.buffer = g_uniformBuffers[i];
@@ -661,7 +635,7 @@ namespace fwvulkan
 
             VkWriteDescriptorSet descriptorWrites[2] = {{}, {}};
             descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrites[0].dstSet = g_descriptor_sets[i];
+            descriptorWrites[0].dstSet = g_shared_descriptor_sets[i];
             descriptorWrites[0].dstBinding = 0;
             descriptorWrites[0].dstArrayElement = 0;
             descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -669,7 +643,7 @@ namespace fwvulkan
             descriptorWrites[0].pBufferInfo = &buffer_info;
 
 	    descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	    descriptorWrites[1].dstSet = g_descriptor_sets[i];
+	    descriptorWrites[1].dstSet = g_shared_descriptor_sets[i];
 	    descriptorWrites[1].dstBinding = 1;
 	    descriptorWrites[1].dstArrayElement = 0;
 	    descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
@@ -685,15 +659,15 @@ namespace fwvulkan
       void CreateDescriptorSets()
       {
 	 log::debug("CreateDescriptorSets");
-	 std::vector<VkDescriptorSetLayout> layouts(g_max_frames_in_flight, g_descriptor_set_layout);
+	 std::vector<VkDescriptorSetLayout> layouts(g_max_frames_in_flight, g_shared_descriptor_set_layout);
 	 VkDescriptorSetAllocateInfo alloc_info{};
 	 alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	 alloc_info.descriptorPool = g_descriptor_pool;
+	 alloc_info.descriptorPool = g_shared_descriptor_pool;
 	 alloc_info.descriptorSetCount = g_max_frames_in_flight;
 	 alloc_info.pSetLayouts = layouts.data();
-	 g_descriptor_sets.resize(g_max_frames_in_flight);
+	 g_shared_descriptor_sets.resize(g_max_frames_in_flight);
 	 
-	 if (vkAllocateDescriptorSets(g_logical_device, &alloc_info, g_descriptor_sets.data()) != VK_SUCCESS)
+	 if (vkAllocateDescriptorSets(g_logical_device, &alloc_info, g_shared_descriptor_sets.data()) != VK_SUCCESS)
 	 {
             throw std::runtime_error("failed to allocate descriptor sets!");
 	 }
@@ -2057,7 +2031,7 @@ namespace fwvulkan
 	       // todo: it would be nicer to have this sort of thing covered as a init frame pass or something.
 	       pipeline_hash = hash;
 	       // todo: this works because we only really have 1 pipeline layout.
-	       vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 0, 1, &g_descriptor_sets[g_flight_frame], 0, nullptr);
+	       vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 0, 1, &g_shared_descriptor_sets[g_flight_frame], 0, nullptr);
 	    }
 	    
 	    VkBuffer vertex_buffers[] = {g_vb_map[dh.vb_handle].vb};
@@ -2198,8 +2172,8 @@ int gGlfwVulkan::init()
       {
 	 VkDescriptorType types[] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_SAMPLER };
 	 VkShaderStageFlags stages[] = { VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
-	 g_descriptor_set_layout = buffers::CreateDescriptorSetLayout(types, stages, 2);
-	 g_descriptor_pool = buffers::CreateDescriptorPool();
+	 g_shared_descriptor_set_layout = buffers::CreateDescriptorSetLayout(types, stages, 2);
+	 g_shared_descriptor_pool = buffers::CreateDescriptorPool();
 	 buffers::CreateDescriptorSets();
       }
       buffers::InitPBRDescriptors();
@@ -2240,16 +2214,18 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
 	 // todo: this should be "create all pipeline variants"
 	 // ----: then we store draws against pipelines / passes, or something. :)
 	 pipeline::CreatePBRPipelineVariants(_mesh->material),
-	 g_used_descriptors++
+	 g_used_pbr_descriptors++
       };
-      log::debug("draw descriptors: {}/{}", g_used_descriptors, g_pbr_descriptor_sets.size());
+      log::debug("draw descriptors: {}/{}", g_used_pbr_descriptors, g_pbr_descriptor_sets.size());
+      assert(size_t(g_used_pbr_descriptors) <  g_pbr_descriptor_sets.size());
       std::vector<VkDescriptorSet> set(1, {g_pbr_descriptor_sets[drawhandle.ds_handle]});
+      
       for(unsigned int i = 0; i < Mesh::max_images; i++)
       {
 	 if(_mesh->images[i].data == nullptr) break;
 	 drawhandle.im_handles[i] = buffers::CreateImageHandle(_mesh->images[i].data, _mesh->images[i].width, _mesh->images[i].height);
-	 if(i == 0) buffers::SetDescriptorAlbedo(g_im_map[drawhandle.im_handles[0]].view, set);
-	 else if(i == 1) buffers::SetDescriptorRoughness(g_im_map[drawhandle.im_handles[1]].view, set);
+	 if(i == 0) buffers::SetPBRDescriptorAlbedo(g_im_map[drawhandle.im_handles[0]].view, set);
+	 else if(i == 1) buffers::SetPBRDescriptorRoughness(g_im_map[drawhandle.im_handles[1]].view, set);
       }
       g_drawhandles[_mesh] = drawhandle;
    }
@@ -2324,9 +2300,9 @@ int gGlfwVulkan::shutdown()
    }
    g_sam_map.clear();
    
-   vkDestroyDescriptorPool(g_logical_device, g_descriptor_pool, nullptr);
+   vkDestroyDescriptorPool(g_logical_device, g_shared_descriptor_pool, nullptr);
    vkDestroyDescriptorPool(g_logical_device, g_pbr_descriptor_pool, nullptr);
-   vkDestroyDescriptorSetLayout(g_logical_device, g_descriptor_set_layout, nullptr);
+   vkDestroyDescriptorSetLayout(g_logical_device, g_shared_descriptor_set_layout, nullptr);
    vkDestroyDescriptorSetLayout(g_logical_device, g_pbr_descriptor_set_layout, nullptr);
    
    vkDestroyDevice(g_logical_device, nullptr);

@@ -37,6 +37,7 @@ namespace fwvulkan
    {
       VkSampler sampler;
    };
+   // todo: consider renaming to shared.
    struct DefaultUniforms
    {
       mat4x4f model[16];
@@ -46,6 +47,7 @@ namespace fwvulkan
       float light_intensity;
       vec3f cam_pos;
    };
+   // todo: consider renaming to shared.
    struct DefaultPushConstants
    {
       uint32_t id;
