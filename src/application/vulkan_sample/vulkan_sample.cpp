@@ -73,17 +73,17 @@ void vulkan_sample::run()
 
    log::scope vulkan_sample("vulkan_sample", true);
 
-   m_graphics->register_shader("triangle", "shaders/triangle.vert.spv", shader::e_vertex);
-   m_graphics->register_shader("triangle", "shaders/triangle.frag.spv", shader::e_fragment);
-   m_graphics->register_shader("uv_triangle", "shaders/uv_triangle.frag.spv", shader::e_fragment);
+   m_graphics->register_shader("shared", "shaders/shared.vert.spv", shader::e_vertex);
+   m_graphics->register_shader("pbr", "shaders/pbr.frag.spv", shader::e_fragment);
+   m_graphics->register_shader("unlit", "shaders/unlit.frag.spv", shader::e_fragment);
    
    Mesh quad = {{{quad_verts2.data(), quad_verts2.size()}, {quad_indices.data(), quad_indices.size()}}, {}, {}, {"swapchain"}, {}};
-   quad.material[fw::shader::e_vertex] = fw::hash::string("triangle");
-   quad.material[fw::shader::e_fragment] = fw::hash::string("uv_triangle");
+   quad.material[fw::shader::e_vertex] = fw::hash::string("shared");
+   quad.material[fw::shader::e_fragment] = fw::hash::string("unlit");
 
    Mesh quad2 = {{{quad_verts.data(), quad_verts.size()}, {quad_indices.data(), quad_indices.size()}}, {{white_image.data(), 4, 4}}, {}, {"swapchain"}, {}};
-   quad2.material[fw::shader::e_vertex] = fw::hash::string("triangle");
-   quad2.material[fw::shader::e_fragment] = fw::hash::string("triangle");
+   quad2.material[fw::shader::e_vertex] = fw::hash::string("shared");
+   quad2.material[fw::shader::e_fragment] = fw::hash::string("pbr");
 
    
    std::vector<Vertex> model_verts;   std::vector<uint16_t> model_indices; std::vector<Image> images;
@@ -95,8 +95,8 @@ void vulkan_sample::run()
       {images[0], images[1]},
       {}, {"swapchain"}, {}
    };
-   model.material[fw::shader::e_vertex] = fw::hash::string("triangle");
-   model.material[fw::shader::e_fragment] = fw::hash::string("triangle");
+   model.material[fw::shader::e_vertex] = fw::hash::string("shared");
+   model.material[fw::shader::e_fragment] = fw::hash::string("pbr");
 
    Mesh model2 = model;
    float time = 0;
