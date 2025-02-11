@@ -46,8 +46,9 @@ def build_shaders():
     os.environ["PATH"] = os.environ["PATH"]+f":{tools}/bin/"
     for shader in os.listdir("shaders"):
         if not shader.endswith(".glsl"): continue
-        spv = "shaders/"+shader.replace(".glsl", ".spv")
+        spv = "shaders/spv/"+shader.replace(".glsl", ".spv")
         shader = "shaders/"+shader
+        os.makedirs("shaders/spv/", exist_ok=True)
         if not os.path.exists(spv) or os.path.getmtime(spv) < os.path.getmtime(shader):
             log.normal("building "+shader)
             os.system(f"glslang -V {shader} -o {spv}")

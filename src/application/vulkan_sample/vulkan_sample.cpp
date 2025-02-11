@@ -11,6 +11,8 @@
 #include <vulkan/vulkan_core.h>
 #include "iostream"
 #include "../../graphics/camera/camera.h"
+
+// todo: we don't want to have this as an explicit file like this I don't think.
 #include "tiny_gltf_loader.h"
 
 using namespace fw;
@@ -48,9 +50,9 @@ void vulkan_sample::run()
 
    log::scope vulkan_sample("vulkan_sample", true);
 
-   m_graphics->register_shader("shared", "shaders/shared.vert.spv", shader::e_vertex);
-   m_graphics->register_shader("pbr", "shaders/pbr.frag.spv", shader::e_fragment);
-   m_graphics->register_shader("unlit", "shaders/unlit.frag.spv", shader::e_fragment);
+   m_graphics->register_shader("shared", "shaders/spv/shared.vert.spv", shader::e_vertex);
+   m_graphics->register_shader("pbr", "shaders/spv/pbr.frag.spv", shader::e_fragment);
+   m_graphics->register_shader("unlit", "shaders/spv/unlit.frag.spv", shader::e_fragment);
 
    auto* white_image = initdata::images::white.data();
    
@@ -85,7 +87,7 @@ void vulkan_sample::run()
    float time = 0;
    quad.transform =  mat4x4f::rotated(deg2rad(75), 0, 0)*mat4x4f::translated(1, 0, -2);
    model2.transform = mat4x4f::translated(4, 1, 4);
-   quad2.transform = mat4x4f::scaled(10, 10, 10)  * mat4x4f::rotated(deg2rad(90), 0, 0)*mat4x4f::translated(0, -1, 0);
+   quad2.transform = mat4x4f::scaled(10, 10, 10)  * mat4x4f::rotated(deg2rad(90), 0, 0) * mat4x4f::translated(0, -1, 0);
    camera cam;
    fw::Light light; light.position = vec3f(0.0f, 0.5f);
    enum cam_mode {cam_linear, cam_swoop, cam_circle, cam_cycle} cmode = cam_cycle;

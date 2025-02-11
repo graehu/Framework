@@ -1845,14 +1845,13 @@ namespace fwvulkan
 	 return color_blend_state_ci;
       }
       
-      int CreatePBRPipelineVariants(Material mat)
+      int CreatePipelineVariants(Material mat, VkPipelineLayoutCreateInfo pipeline_layout_ci)
       {
-	 log::debug("CreatePBRGraphicsPipeline");
+	 log::debug("CreateGraphicsPipeline");
 	 auto hash = hash::i32((const char*)&mat, sizeof(Material));
 	 if(g_pipe_map.find(hash) == g_pipe_map.end())
 	 {
 	    VkPipelineLayout pipeline_layout;
-	    auto pipeline_layout_ci = GetPBRPipelineLayout();
 	    if (vkCreatePipelineLayout(g_logical_device, &pipeline_layout_ci, nullptr, &pipeline_layout) != VK_SUCCESS)
 	    {
 	       throw std::runtime_error("failed to create pipeline layout!");
@@ -2213,7 +2212,7 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
 	 {},
 	 // todo: this should be "create all pipeline variants"
 	 // ----: then we store draws against pipelines / passes, or something. :)
-	 pipeline::CreatePBRPipelineVariants(_mesh->material),
+	 pipeline::CreatePipelineVariants(_mesh->material, pipeline::GetPBRPipelineLayout()),
 	 g_used_pbr_descriptors++
       };
       log::debug("draw descriptors: {}/{}", g_used_pbr_descriptors, g_pbr_descriptor_sets.size());
