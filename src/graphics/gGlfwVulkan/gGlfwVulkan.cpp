@@ -158,10 +158,13 @@ namespace fwvulkan
    const std::vector<const char*> g_instance_extensions = {
       VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME
    };
+#define USE_DYNAMIC_RENDERING 0
    const std::vector<const char *> g_device_extensions = {
       VK_KHR_SWAPCHAIN_EXTENSION_NAME,
       VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
-      // VK_KHR_DYNAMIC_RENDERING_NAME,
+#if USE_DYNAMIC_RENDERING
+      VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+#endif
       // VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
 
    };
@@ -1926,9 +1929,22 @@ namespace fwvulkan
 	    pipeline_ci.pColorBlendState = &blend_state_ci;
 	    pipeline_ci.pDynamicState = &dynamic_state_ci;
 	    pipeline_ci.layout = pipeline_layout;
+	    #if USE_DYNAMIC_RENDERING
+	    VkPipelineRenderingCreateInfoKHR rendering_ci = {};
+	    rendering_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+	    rendering_ci.pNext                   = VK_NULL_HANDLE;
+	    rendering_ci.colorAttachmentCount    = 1;
+	    VkFormat depth_format = utils::FindDepthFormat();
+	    rendering_ci.pColorAttachmentFormats = &g_pass_map["swapchain"].image_format;
+	    rendering_ci.depthAttachmentFormat   = depth_format;
+	    rendering_ci.stencilAttachmentFormat = depth_format;
+	    pipeline_ci.pNext = &rendering_ci;
+	    pipeline_ci.renderPass = VK_NULL_HANDLE;
+	    #else
 	    // note: this pipeline isn't limited to this render pass.
 	    // ----: but we do require a render pass, so setup a default.
 	    pipeline_ci.renderPass = g_pass_map["swapchain"].pass;
+	    #endif
 	    pipeline_ci.subpass = 0;
 	    pipeline_ci.basePipelineHandle = VK_NULL_HANDLE;
 	    pipeline_ci.basePipelineIndex = -1;
@@ -1977,6 +1993,27 @@ namespace fwvulkan
    }
    namespace renderpass
    {
+      VkRenderingAttachmentInfoKHR GetColourAttachmentInfo()
+      {
+	 VkRenderingAttachmentInfoKHR color_attachment_info = {};
+	 color_attachment_info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+	 color_attachment_info.imageView = g_pass_map["swapchain"].image_views[g_flight_frame];
+	 color_attachment_info.clearValue = {{{0.1f, 0.1f, 0.1f, 1.0f}}};
+	 // note: if this wasn't the swap chain it would be VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+	 color_attachment_info.imageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	 color_attachment_info.resolveMode = VK_RESOLVE_MODE_NONE;
+	 return color_attachment_info;
+      }
+      VkRenderingAttachmentInfoKHR GetDepthAttachmentInfo()
+      {
+	 VkRenderingAttachmentInfoKHR depth_attachment_info = {};
+	 depth_attachment_info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+	 depth_attachment_info.imageView = g_rt_map["depth"].view;
+	 depth_attachment_info.clearValue = {{{1.0f, 0}}}; 
+	 depth_attachment_info.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	 depth_attachment_info.resolveMode = VK_RESOLVE_MODE_NONE;
+	 return depth_attachment_info;
+      }
       void RecordPass(hash::string passname)
       {
 	 PassHandle& pass = g_pass_map[passname];
@@ -1997,24 +2034,36 @@ namespace fwvulkan
 	 vkCmdSetScissor(pass.cmd_buffer, 0, 1, scissor);
 	 
 
+#if USE_DYNAMIC_RENDERING
+	 auto colour_info = GetColourAttachmentInfo();
+	 auto depth_info = GetDepthAttachmentInfo();
+	 VkRenderingInfo render_info;
+	 render_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+	 render_info.renderArea = pipeline::GetDefaultScissor();
+	 render_info.layerCount = 1;
+	 render_info.colorAttachmentCount = 1;
+	 render_info.pColorAttachments = &colour_info;
+	 render_info.pDepthAttachment = &depth_info;
+	 render_info.pStencilAttachment = &depth_info;
+	 
+	 vkCmdBeginRendering(pass.cmd_buffer, &render_info);
+#else
 	 VkRenderPassBeginInfo render_pass_begin_info = {};
 	 render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	 render_pass_begin_info.renderPass = pass.pass;
          render_pass_begin_info.framebuffer = pass.CurrentFrame();
 	 render_pass_begin_info.renderArea.offset = {0, 0};
 	 render_pass_begin_info.renderArea.extent = pass.extent;
-
 	 std::array<VkClearValue, 2> clear_values{};
-	 // clear_colour - comment because I keep failing to find this.
+	 // clear_colour clear color - comment because I keep failing to find this.
 	 clear_values[0].color = {{0.1f, 0.1f, 0.1f, 1.0f}};
 	 clear_values[1].depthStencil = {1.0f, 0};
 
 	 render_pass_begin_info.clearValueCount = clear_values.size();
 	 render_pass_begin_info.pClearValues = clear_values.data();
-	 
 	 // log::debug("begin renderpass");
 	 vkCmdBeginRenderPass(pass.cmd_buffer, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
-	 
+#endif
 	 uint32_t pipeline_hash = 0;
 	 uint32_t id = 0;
 	 for(auto dh : pass.draws)
@@ -2055,13 +2104,19 @@ namespace fwvulkan
 	    
 	    vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].pipeline);
 	    vkCmdDrawIndexed(pass.cmd_buffer, ibh.len, 1, 0, 0, 0);
+	    // note: separate depth draw here.
 	    vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].depth_pipeline);
 	    vkCmdDrawIndexed(pass.cmd_buffer, ibh.len, 1, 0, 0, 0);
 	    id++;
 	 }
 
 	 // log::debug("end renderpass");
+	 #if USE_DYNAMIC_RENDERING
+	 vkCmdEndRendering(pass.cmd_buffer);
+	 #else
 	 vkCmdEndRenderPass(pass.cmd_buffer);
+	 #endif
+	 
 	 
 	 // log::debug("end commandbuffer");
 	 if (vkEndCommandBuffer(pass.cmd_buffer) != VK_SUCCESS)

@@ -23,12 +23,12 @@ namespace fwvulkan
       VkDescriptorSetLayout CreateDescriptorSetLayout(VkDescriptorType* types, VkShaderStageFlags* stage_flags, int num);
       void SetPBRDescriptorAlbedo(VkImageView image_view, std::vector<VkDescriptorSet> albedo_sets)
       {
-	  log::debug("SetDescriptorAlbedo: {}", size_t(image_view));
+	  log::debug("SetPBRDescriptorAlbedo: {}", size_t(image_view));
 	 SetDescriptorImage(image_view, albedo_sets, descriptor_binds::albedo);
       }
       void SetPBRDescriptorRoughness(VkImageView image_view, std::vector<VkDescriptorSet> rough_sets)
       {
-	 log::debug("SetDescriptoRoughness: {}", size_t(image_view));
+	 log::debug("SetPBRDescriptoRoughness: {}", size_t(image_view));
 	 SetDescriptorImage(image_view, rough_sets, descriptor_binds::roughness);
       }
       void CreatePBRDescriptorSets()
