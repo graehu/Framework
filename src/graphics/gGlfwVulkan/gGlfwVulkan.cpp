@@ -10,8 +10,16 @@
 #include <optional>
 #include <functional>
 #include <array>
+#include <string>
 #include <vector>
 #include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan_to_string.hpp>
+
+// todo: this is hacked atm, I added it manually to my
+// ----: libs/vlukan/include/vulkan.
+// ----: that's not going to show up in git.
+// #include <vulkan/vk_enum_string_helper.h>
+
 #include "../../utils/log/log.h"
 #include "../../utils/params.h"
 #include "../../types/mat4x4f.h"
@@ -335,6 +343,14 @@ namespace fwvulkan
 	    {
 	       barrier.srcAccessMask = 0;
 	       barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+	       source = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+	       dest = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	    }
+	    else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+	    {
+	       barrier.srcAccessMask = 0;
+	       barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
 	       source = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 	       dest = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
@@ -873,14 +889,15 @@ namespace fwvulkan
 	 switch(messagetype)
 	 {
 	    case VkDebugUtilsMessageSeverityFlagBitsEXT::VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-	       log::error("error: {}", pCallbackData->pMessage);
+	       log::error("validation error: {}", pCallbackData->pMessage);
 	       break;
 	    case VkDebugUtilsMessageSeverityFlagBitsEXT::VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-	       log::warn("warn: {}", pCallbackData->pMessage);
+	       log::warn("validation warn: {}", pCallbackData->pMessage);
 	       break;
 	    default:
-	       log::debug("info: {}", pCallbackData->pMessage);
+	       log::debug("validation info: {}", pCallbackData->pMessage);
 	 }
+
 
 	 return VK_FALSE;
       }
@@ -1101,17 +1118,30 @@ namespace fwvulkan
 	 VkPhysicalDeviceProperties device_properties;
 	 vkGetPhysicalDeviceProperties(physical_device, &device_properties);
 
-	 VkPhysicalDeviceFeatures device_features;
-	 vkGetPhysicalDeviceFeatures(physical_device, &device_features);
+	 VkPhysicalDeviceFeatures2 device_features = {};
+	 device_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+#if USE_DYNAMIC_RENDERING
+	 VkPhysicalDeviceVulkan13Features features13 = {};	 
+	 features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+	 device_features.pNext = &features13;
+#else
+	 device_features.pNext = VK_NULL_HANDLE;
+#endif
+	 vkGetPhysicalDeviceFeatures2(physical_device, &device_features);
+	 
+	 
 
 	 QueueFamilyIndices indices = FindQueueFamilies(physical_device, surface);
 	 bool extensions_supported = CheckDeviceExtensionSupport(physical_device, device_extensions);
 	 bool suitable_device = indices.IsComplete();
 	 suitable_device = suitable_device && (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ||
 					       device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);
-	 suitable_device = suitable_device && device_features.geometryShader;
-	 suitable_device = suitable_device && device_features.samplerAnisotropy;
+	 suitable_device = suitable_device && device_features.features.geometryShader;
+	 suitable_device = suitable_device && device_features.features.samplerAnisotropy;
 	 suitable_device = suitable_device && extensions_supported;
+	 #if USE_DYNAMIC_RENDERING
+	 suitable_device = suitable_device && features13.dynamicRendering;
+	 #endif
 
 	 bool swap_chain_adequate = false;
 	 if (extensions_supported)
@@ -1217,6 +1247,14 @@ namespace fwvulkan
 	 
 	 VkDeviceCreateInfo create_info = {};
 	 create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+#if USE_DYNAMIC_RENDERING
+	 VkPhysicalDeviceDynamicRenderingFeatures dynamic_rendering = {};
+	 create_info.pNext = &dynamic_rendering;
+	 dynamic_rendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
+	 dynamic_rendering.dynamicRendering = VK_TRUE;
+#else
+	 create_info.pNext = nullptr;
+#endif
 	 create_info.pQueueCreateInfos = queue_create_infos.data();
 	 create_info.queueCreateInfoCount = static_cast<uint32_t>(queue_create_infos.size());
 	 create_info.pEnabledFeatures = &device_features;
@@ -1372,6 +1410,9 @@ namespace fwvulkan
 	 for (size_t i = 0; i < pass.images.size(); i++)
 	 {
 	    pass.image_views[i] = buffers::CreateImageView(pass.images[i], pass.image_format);
+	    #if USE_DYNAMIC_RENDERING
+	    utils::TransitionImageLayout(pass.images[i], pass.image_format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+	    #endif
 	 }
       }
       VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> available_formats)
@@ -1553,7 +1594,9 @@ namespace fwvulkan
 	 depth_attachment.format = utils::FindDepthFormat();
 	 depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	 depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	 depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	 // todo: why was this dont care.
+	 // depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	 depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	 depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	 depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	 depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -1930,12 +1973,16 @@ namespace fwvulkan
 	    pipeline_ci.pDynamicState = &dynamic_state_ci;
 	    pipeline_ci.layout = pipeline_layout;
 	    #if USE_DYNAMIC_RENDERING
-	    VkPipelineRenderingCreateInfoKHR rendering_ci = {};
-	    rendering_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
-	    rendering_ci.pNext                   = VK_NULL_HANDLE;
-	    rendering_ci.colorAttachmentCount    = 1;
+	    // VkPipelineRenderingCreateInfoKHR rendering_ci = {};
+	    VkPipelineRenderingCreateInfo rendering_ci = {};
+	    // VkPipelineRenderingCreateInfoKHR
+	    rendering_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+	    // rendering_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+	    rendering_ci.pNext = VK_NULL_HANDLE;
+	    rendering_ci.colorAttachmentCount = 1;
 	    VkFormat depth_format = utils::FindDepthFormat();
-	    rendering_ci.pColorAttachmentFormats = &g_pass_map["swapchain"].image_format;
+	    const VkFormat col_formats[1] = {g_pass_map["swapchain"].image_format};
+	    rendering_ci.pColorAttachmentFormats = col_formats;//&g_pass_map["swapchain"].image_format;
 	    rendering_ci.depthAttachmentFormat   = depth_format;
 	    rendering_ci.stencilAttachmentFormat = depth_format;
 	    pipeline_ci.pNext = &rendering_ci;
@@ -1951,9 +1998,13 @@ namespace fwvulkan
 
 	    log::debug("CreateRaster");
 	    VkPipeline graphics_pipeline;
-	    if (vkCreateGraphicsPipelines(g_logical_device, VK_NULL_HANDLE, 1, &pipeline_ci, nullptr,
-					  &graphics_pipeline) != VK_SUCCESS)
+	    VkResult result = vkCreateGraphicsPipelines(g_logical_device, VK_NULL_HANDLE, 1, &pipeline_ci, nullptr,
+							&graphics_pipeline);
+	    if (result != VK_SUCCESS)
 	    {
+	       // todo: make this work correctly without hacks.
+	       // ----: see include vulkan/vk_enum_string_helper.h comment.
+	       // log::error("{}", string_VkResult(result));
 	       throw std::runtime_error("failed to create graphics pipeline!");
 	    }
 	    VkPipeline depth_pipeline = {};
@@ -2000,7 +2051,8 @@ namespace fwvulkan
 	 color_attachment_info.imageView = g_pass_map["swapchain"].image_views[g_flight_frame];
 	 color_attachment_info.clearValue = {{{0.1f, 0.1f, 0.1f, 1.0f}}};
 	 // note: if this wasn't the swap chain it would be VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-	 color_attachment_info.imageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	 // color_attachment_info.imageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	 color_attachment_info.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	 color_attachment_info.resolveMode = VK_RESOLVE_MODE_NONE;
 	 return color_attachment_info;
       }
@@ -2012,6 +2064,7 @@ namespace fwvulkan
 	 depth_attachment_info.clearValue = {{{1.0f, 0}}}; 
 	 depth_attachment_info.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	 depth_attachment_info.resolveMode = VK_RESOLVE_MODE_NONE;
+	 // depth_attachment_info.
 	 return depth_attachment_info;
       }
       void RecordPass(hash::string passname)
@@ -2037,15 +2090,14 @@ namespace fwvulkan
 #if USE_DYNAMIC_RENDERING
 	 auto colour_info = GetColourAttachmentInfo();
 	 auto depth_info = GetDepthAttachmentInfo();
-	 VkRenderingInfo render_info;
+	 VkRenderingInfo render_info = {};
 	 render_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-	 render_info.renderArea = pipeline::GetDefaultScissor();
+	 render_info.renderArea = scissor[0];
 	 render_info.layerCount = 1;
 	 render_info.colorAttachmentCount = 1;
 	 render_info.pColorAttachments = &colour_info;
 	 render_info.pDepthAttachment = &depth_info;
-	 render_info.pStencilAttachment = &depth_info;
-	 
+	 render_info.pStencilAttachment = nullptr;
 	 vkCmdBeginRendering(pass.cmd_buffer, &render_info);
 #else
 	 VkRenderPassBeginInfo render_pass_begin_info = {};
@@ -2239,6 +2291,7 @@ int gGlfwVulkan::init()
    swapchain::CreateSwapchainImageViews();
    swapchain::CreateSwapchainFrameBuffers();
    barriers::CreatePassSemaphores("swapchain");
+
    return 0;
 }
 hash::string shaders[shader::e_count];
@@ -2375,7 +2428,6 @@ int gGlfwVulkan::update() { return 0; }
 int gGlfwVulkan::render()
 {
    using namespace fwvulkan;
-
    for(auto pass : g_pass_map)
    {
       vkWaitForFences(g_logical_device, 1, &g_semaphore_map[pass.first].in_flight_fences[g_flight_frame], VK_TRUE, std::numeric_limits<uint64_t>::max());
