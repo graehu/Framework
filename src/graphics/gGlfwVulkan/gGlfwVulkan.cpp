@@ -1575,7 +1575,7 @@ namespace fwvulkan
 	 }
       }
 
-      VkAttachmentDescription DefaultColourAttachment()
+      VkAttachmentDescription GetDefaultColourAttachment()
       {
 	 VkAttachmentDescription colour_attachment = {};
 	 colour_attachment.format = VK_FORMAT_R8G8B8A8_SRGB;
@@ -1588,7 +1588,7 @@ namespace fwvulkan
 	 colour_attachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	 return colour_attachment;
       }
-      VkAttachmentDescription DefaultDepthAttachment()
+      VkAttachmentDescription GetDefaultDepthAttachment()
       {
 	 VkAttachmentDescription depth_attachment = {};
 	 depth_attachment.format = utils::FindDepthFormat();
@@ -1609,8 +1609,8 @@ namespace fwvulkan
 	 {
 	    log::debug("Creating Default Renderpass: '{}'", passname.m_literal);
 	    
-	    auto colour_attachment = DefaultColourAttachment();
-	    auto depth_attachment = DefaultDepthAttachment();
+	    auto colour_attachment = GetDefaultColourAttachment();
+	    auto depth_attachment = GetDefaultDepthAttachment();
 	    
 	    colour_attachment.finalLayout = layout;
 
@@ -2044,27 +2044,35 @@ namespace fwvulkan
    }
    namespace renderpass
    {
-      VkRenderingAttachmentInfoKHR GetColourAttachmentInfo()
+      VkRenderingAttachmentInfo GetColourAttachmentInfo()
       {
-	 VkRenderingAttachmentInfoKHR color_attachment_info = {};
+	 VkRenderingAttachmentInfo color_attachment_info = {};
 	 color_attachment_info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+	 color_attachment_info.pNext = VK_NULL_HANDLE;
 	 color_attachment_info.imageView = g_pass_map["swapchain"].image_views[g_flight_frame];
 	 color_attachment_info.clearValue = {{{0.1f, 0.1f, 0.1f, 1.0f}}};
 	 // note: if this wasn't the swap chain it would be VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 	 // color_attachment_info.imageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	 color_attachment_info.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	 color_attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	 color_attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	 color_attachment_info.resolveMode = VK_RESOLVE_MODE_NONE;
+	 color_attachment_info.resolveImageView = VK_NULL_HANDLE;
+
 	 return color_attachment_info;
       }
-      VkRenderingAttachmentInfoKHR GetDepthAttachmentInfo()
+      VkRenderingAttachmentInfo GetDepthAttachmentInfo()
       {
-	 VkRenderingAttachmentInfoKHR depth_attachment_info = {};
+	 VkRenderingAttachmentInfo depth_attachment_info = {};
 	 depth_attachment_info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+	 depth_attachment_info.pNext = VK_NULL_HANDLE;
 	 depth_attachment_info.imageView = g_rt_map["depth"].view;
-	 depth_attachment_info.clearValue = {{{1.0f, 0}}}; 
+	 depth_attachment_info.clearValue = {{{1.0f, 0}}};
+	 depth_attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	 depth_attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	 depth_attachment_info.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	 depth_attachment_info.resolveMode = VK_RESOLVE_MODE_NONE;
-	 // depth_attachment_info.
+	 depth_attachment_info.resolveImageView = VK_NULL_HANDLE;
 	 return depth_attachment_info;
       }
       void RecordPass(hash::string passname)
@@ -2086,7 +2094,6 @@ namespace fwvulkan
 	 VkRect2D scissor[] = {pipeline::GetDefaultScissor()};
 	 vkCmdSetScissor(pass.cmd_buffer, 0, 1, scissor);
 	 
-
 #if USE_DYNAMIC_RENDERING
 	 auto colour_info = GetColourAttachmentInfo();
 	 auto depth_info = GetDepthAttachmentInfo();
@@ -2097,7 +2104,7 @@ namespace fwvulkan
 	 render_info.colorAttachmentCount = 1;
 	 render_info.pColorAttachments = &colour_info;
 	 render_info.pDepthAttachment = &depth_info;
-	 render_info.pStencilAttachment = nullptr;
+	 render_info.pStencilAttachment = VK_NULL_HANDLE;
 	 vkCmdBeginRendering(pass.cmd_buffer, &render_info);
 #else
 	 VkRenderPassBeginInfo render_pass_begin_info = {};
