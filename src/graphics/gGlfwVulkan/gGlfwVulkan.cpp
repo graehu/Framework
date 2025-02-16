@@ -86,6 +86,7 @@ namespace fwvulkan
    // swapchain 
    VkSwapchainKHR g_swap_chain = VK_NULL_HANDLE;
    VkSurfaceFormatKHR g_swapchain_surface_format = {};
+   unsigned int g_current_swapchain_image = 0;
    // semaphores
    std::vector<VkSemaphore> g_image_available_semaphores;
    std::vector<VkSemaphore> g_render_finished_semaphores;
@@ -166,7 +167,7 @@ namespace fwvulkan
    const std::vector<const char*> g_instance_extensions = {
       VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME
    };
-#define USE_DYNAMIC_RENDERING 0
+#define USE_DYNAMIC_RENDERING 1
    const std::vector<const char *> g_device_extensions = {
       VK_KHR_SWAPCHAIN_EXTENSION_NAME,
       VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
@@ -1331,6 +1332,7 @@ namespace fwvulkan
 	 log::debug("CleanupSwapChain");
 	 assert(g_swap_chain != VK_NULL_HANDLE);
 	 // todo: not all passes are going to want to be cleaned up when the swapchain is.
+	 // todo: with dynamic rendering, we're not going to need framebuffers.
 	 for (auto pass : g_pass_map)
 	 {
 	    for (auto framebuffer : pass.second.frame_buffers)
@@ -1359,7 +1361,9 @@ namespace fwvulkan
 	    pass.second.image_mems.clear();
 	    //
 	    vkFreeCommandBuffers(g_logical_device, g_command_pool, 1, &pass.second.cmd_buffer);
+	    #if !USE_DYNAMIC_RENDERING
 	    vkDestroyRenderPass(g_logical_device, pass.second.pass, nullptr);
+	    #endif
 	 }
 	 vkDestroySwapchainKHR(g_logical_device, g_swap_chain, nullptr);
 	 
@@ -1608,7 +1612,12 @@ namespace fwvulkan
 	 if(g_pass_map.find(passname) == g_pass_map.end())
 	 {
 	    log::debug("Creating Default Renderpass: '{}'", passname.m_literal);
-	    
+#if USE_DYNAMIC_RENDERING
+	    log::debug("DynamicRendering - skipping vkCreateRenderPass");
+	    VkRenderPass pass = VK_NULL_HANDLE;
+	    (void)layout;
+#else
+
 	    auto colour_attachment = GetDefaultColourAttachment();
 	    auto depth_attachment = GetDefaultDepthAttachment();
 	    
@@ -1622,9 +1631,6 @@ namespace fwvulkan
 	    depth_attachment_reference.attachment = 1;
 	    depth_attachment_reference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-	    // todo: may need roughness... not liking that I need to make a pipeline.
-	    // ....: ree. Nope, see above.
-	    // It does need a slot for binding however, which is in our descriptor set layout.
 	    VkSubpassDescription subpass_description = {};
 	    subpass_description.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	    subpass_description.colorAttachmentCount = 1;
@@ -1656,12 +1662,14 @@ namespace fwvulkan
 	    render_pass_ci.pSubpasses = &subpass_description;
 	    render_pass_ci.dependencyCount = 1;
 	    render_pass_ci.pDependencies = &subpass_dependency;
-	    
+
 	    VkRenderPass pass;
 	    if (vkCreateRenderPass(g_logical_device, &render_pass_ci, nullptr, &pass) != VK_SUCCESS)
 	    {
 	       throw std::runtime_error("failed to create render pass!");
 	    }
+	    
+#endif
 	    VkCommandBuffer buffer = buffers::CreateCommandBuffer();
 	    g_pass_map[passname] = {pass, buffer, extent, format, {}, {}, {}, {}, {}, {}};
 	    return true;
@@ -2049,10 +2057,11 @@ namespace fwvulkan
 	 VkRenderingAttachmentInfo color_attachment_info = {};
 	 color_attachment_info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 	 color_attachment_info.pNext = VK_NULL_HANDLE;
-	 color_attachment_info.imageView = g_pass_map["swapchain"].image_views[g_flight_frame];
+	 color_attachment_info.imageView = g_pass_map["swapchain"].image_views[g_current_swapchain_image];
 	 color_attachment_info.clearValue = {{{0.1f, 0.1f, 0.1f, 1.0f}}};
-	 // note: if this wasn't the swap chain it would be VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-	 // color_attachment_info.imageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	 // note: even though we're attaching the swapchain views, renderdoc points to specs when validating.
+	 // ....: we should never have an attachment of VK_IMAGE_LAYOUT_PRESENT_SRC_KHR.
+	 // ....: https://vulkan.lunarg.com/doc/view/1.3.280.1/linux/1.3-extensions/vkspec.html#VUID-VkRenderingAttachmentInfo-imageView-06145
 	 color_attachment_info.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	 color_attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	 color_attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -2455,7 +2464,9 @@ int gGlfwVulkan::render()
       {
 	 throw std::runtime_error("failed to acquire swap chain image!");
       }
+      g_current_swapchain_image = image_index;
    }
+
    UpdateUniformBuffer(g_flight_frame);
    for(auto pass : g_pass_map)
    {
