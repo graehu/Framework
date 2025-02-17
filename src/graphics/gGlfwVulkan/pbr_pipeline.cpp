@@ -86,12 +86,12 @@ namespace fwvulkan
       {
 	 static std::array<VkDescriptorSetLayout, 2> layouts;
 	 layouts = {g_shared_descriptor_set_layout, g_pbr_descriptor_set_layout};
-	 VkPipelineLayoutCreateInfo pipeline_layout_ci = {};
+	 static VkPipelineLayoutCreateInfo pipeline_layout_ci = {};
 	 pipeline_layout_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	 pipeline_layout_ci.setLayoutCount = layouts.size();
 	 pipeline_layout_ci.pSetLayouts = layouts.data();
 	 
-	 VkPushConstantRange push_constant;
+	 static VkPushConstantRange push_constant = {};
 	 push_constant.offset = 0;
 	 push_constant.size = sizeof(DefaultPushConstants);
 	 push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;

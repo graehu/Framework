@@ -1140,9 +1140,9 @@ namespace fwvulkan
 	 suitable_device = suitable_device && device_features.features.geometryShader;
 	 suitable_device = suitable_device && device_features.features.samplerAnisotropy;
 	 suitable_device = suitable_device && extensions_supported;
-	 #if USE_DYNAMIC_RENDERING
+#if USE_DYNAMIC_RENDERING
 	 suitable_device = suitable_device && features13.dynamicRendering;
-	 #endif
+#endif
 
 	 bool swap_chain_adequate = false;
 	 if (extensions_supported)
@@ -1301,6 +1301,7 @@ namespace fwvulkan
       }
       void CreateSwapchainFrameBuffers()
       {
+#if !USE_DYNAMIC_RENDERING
 	 log::debug("CreateSwapchainFrameBuffers");
 	 auto& pass = g_pass_map["swapchain"];
 	 assert(pass.frame_buffers.size() == 0);
@@ -1326,6 +1327,9 @@ namespace fwvulkan
 	       throw std::runtime_error("failed to create framebuffer!");
 	    }
 	 }
+#else
+	 log::debug("DynamicRendering - skipping CreateSwapchainFrameBuffers");
+#endif
       }
       void CleanupSwapChain()
       {
@@ -1335,10 +1339,12 @@ namespace fwvulkan
 	 // todo: with dynamic rendering, we're not going to need framebuffers.
 	 for (auto pass : g_pass_map)
 	 {
+#if !USE_DYNAMIC_RENDERING
 	    for (auto framebuffer : pass.second.frame_buffers)
 	    {
 	       vkDestroyFramebuffer(g_logical_device, framebuffer, nullptr);
 	    }
+#endif
 	    for (auto view : pass.second.image_views)
 	    {
 	       vkDestroyImageView(g_logical_device, view, nullptr);
@@ -1361,9 +1367,9 @@ namespace fwvulkan
 	    pass.second.image_mems.clear();
 	    //
 	    vkFreeCommandBuffers(g_logical_device, g_command_pool, 1, &pass.second.cmd_buffer);
-	    #if !USE_DYNAMIC_RENDERING
+#if !USE_DYNAMIC_RENDERING
 	    vkDestroyRenderPass(g_logical_device, pass.second.pass, nullptr);
-	    #endif
+#endif
 	 }
 	 vkDestroySwapchainKHR(g_logical_device, g_swap_chain, nullptr);
 	 
@@ -1414,9 +1420,12 @@ namespace fwvulkan
 	 for (size_t i = 0; i < pass.images.size(); i++)
 	 {
 	    pass.image_views[i] = buffers::CreateImageView(pass.images[i], pass.image_format);
-	    #if USE_DYNAMIC_RENDERING
+	    // note: I checked the validation layer after doing this.
+	    // ----: this transition is not needed, but I don't trust validation on my integrated card.
+	    // ----: maybe it matters on a different card. :)
+#if USE_DYNAMIC_RENDERING
 	    utils::TransitionImageLayout(pass.images[i], pass.image_format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-	    #endif
+#endif
 	 }
       }
       VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> available_formats)
@@ -1559,6 +1568,7 @@ namespace fwvulkan
 	 {
 	    buffers::CreateImage(pass.extent.width, pass.extent.height, pass.image_format, usage, pass.images[i], pass.image_mems[i]);
 	    pass.image_views[i] = buffers::CreateImageView(pass.images[i], pass.image_format);
+#if !USE_DYNAMIC_RENDERING
 	    // todo:  may need to add roughness.
 	    // Once again, no. for same reason as before, roughness belongs to models.
 	    VkImageView attachments[] = { pass.image_views[i] };
@@ -1576,6 +1586,7 @@ namespace fwvulkan
 	    {
 	       throw std::runtime_error("failed to create framebuffer!");
 	    }
+#endif
 	 }
       }
 
@@ -1980,7 +1991,7 @@ namespace fwvulkan
 	    pipeline_ci.pColorBlendState = &blend_state_ci;
 	    pipeline_ci.pDynamicState = &dynamic_state_ci;
 	    pipeline_ci.layout = pipeline_layout;
-	    #if USE_DYNAMIC_RENDERING
+#if USE_DYNAMIC_RENDERING
 	    // VkPipelineRenderingCreateInfoKHR rendering_ci = {};
 	    VkPipelineRenderingCreateInfo rendering_ci = {};
 	    // VkPipelineRenderingCreateInfoKHR
@@ -1995,11 +2006,11 @@ namespace fwvulkan
 	    rendering_ci.stencilAttachmentFormat = depth_format;
 	    pipeline_ci.pNext = &rendering_ci;
 	    pipeline_ci.renderPass = VK_NULL_HANDLE;
-	    #else
+#else
 	    // note: this pipeline isn't limited to this render pass.
 	    // ----: but we do require a render pass, so setup a default.
 	    pipeline_ci.renderPass = g_pass_map["swapchain"].pass;
-	    #endif
+#endif
 	    pipeline_ci.subpass = 0;
 	    pipeline_ci.basePipelineHandle = VK_NULL_HANDLE;
 	    pipeline_ci.basePipelineIndex = -1;
@@ -2179,11 +2190,11 @@ namespace fwvulkan
 	 }
 
 	 // log::debug("end renderpass");
-	 #if USE_DYNAMIC_RENDERING
+#if USE_DYNAMIC_RENDERING
 	 vkCmdEndRendering(pass.cmd_buffer);
-	 #else
+#else
 	 vkCmdEndRenderPass(pass.cmd_buffer);
-	 #endif
+#endif
 	 
 	 
 	 // log::debug("end commandbuffer");
