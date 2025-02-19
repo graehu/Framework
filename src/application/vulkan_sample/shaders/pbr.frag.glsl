@@ -4,6 +4,8 @@
 layout(set=0, binding = 1) uniform sampler tex_sampler;
 layout(set=1, binding = 0) uniform texture2D albedo_tex;
 layout(set=1, binding = 1) uniform texture2D roughness_tex;
+layout(set=1, binding = 2) uniform texture2D metallic_tex;
+layout(set=1, binding = 3) uniform texture2D ao_tex;
 
 layout(location = 0) in vec3 in_position;
 layout(location = 1) in vec3 in_normal;
@@ -125,9 +127,9 @@ void main()
    albedo = pow(albedo, vec4(2.2));
    float roughness = texture(sampler2D(roughness_tex, tex_sampler), in_uv).r;
    // todo: add texture bind
-   float metallic = 0.5;
+   float metallic = texture(sampler2D(metallic_tex, tex_sampler), in_uv).r;//0.5;
    // todo: add texture bind
-   float ao = 1.0;
+   float ao = texture(sampler2D(ao_tex, tex_sampler), in_uv).r;//0.5;1.0;
    // todo: refractive index, probably ought to be on a uniform.
    vec3 RI = vec3(0.04);
    RI = mix(RI, albedo.rgb, metallic);

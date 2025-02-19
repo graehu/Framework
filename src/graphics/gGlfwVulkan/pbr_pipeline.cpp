@@ -15,7 +15,7 @@ namespace fwvulkan
    // put these in vulkan_types.h?
    extern VkDescriptorSetLayout g_shared_descriptor_set_layout;
    extern std::map<uint32_t, struct IMHandle> g_im_map;
-   
+   const unsigned int g_pbr_num_textures = 4;   
    namespace buffers
    {
       // fwd dec
@@ -23,13 +23,23 @@ namespace fwvulkan
       VkDescriptorSetLayout CreateDescriptorSetLayout(VkDescriptorType* types, VkShaderStageFlags* stage_flags, int num);
       void SetPBRDescriptorAlbedo(VkImageView image_view, std::vector<VkDescriptorSet> albedo_sets)
       {
-	  log::debug("SetPBRDescriptorAlbedo: {}", size_t(image_view));
+	 log::debug("SetPBRDescriptorAlbedo: {}", size_t(image_view));
 	 SetDescriptorImage(image_view, albedo_sets, descriptor_binds::albedo);
       }
       void SetPBRDescriptorRoughness(VkImageView image_view, std::vector<VkDescriptorSet> rough_sets)
       {
-	 log::debug("SetPBRDescriptoRoughness: {}", size_t(image_view));
+	 log::debug("SetPBRDescriptorRoughness: {}", size_t(image_view));
 	 SetDescriptorImage(image_view, rough_sets, descriptor_binds::roughness);
+      }
+      void SetPBRDescriptorMetallic(VkImageView image_view, std::vector<VkDescriptorSet> rough_sets)
+      {
+	 log::debug("SetPBRDescriptorMetallic: {}", size_t(image_view));
+	 SetDescriptorImage(image_view, rough_sets, descriptor_binds::metallic);
+      }
+      void SetPBRDescriptorAO(VkImageView image_view, std::vector<VkDescriptorSet> rough_sets)
+      {
+	 log::debug("SetPBRDescriptorAO: {}", size_t(image_view));
+	 SetDescriptorImage(image_view, rough_sets, descriptor_binds::ao);
       }
       void CreatePBRDescriptorSets()
       {
@@ -47,21 +57,26 @@ namespace fwvulkan
             throw std::runtime_error("failed to allocate descriptor sets!");
 	 }
 	 
-	 auto im_handle = CreateImageHandle(initdata::images::missing.data(), 4, 4);
-	 buffers::SetPBRDescriptorAlbedo(g_im_map[im_handle].view, g_pbr_descriptor_sets);
-	 buffers::SetPBRDescriptorRoughness(g_im_map[im_handle].view, g_pbr_descriptor_sets);
+	 auto white = CreateImageHandle(initdata::images::white.data(), 4, 4);
+	 auto grey = CreateImageHandle(initdata::images::grey.data(), 4, 4);
+	 
+	 buffers::SetPBRDescriptorAlbedo(g_im_map[white].view, g_pbr_descriptor_sets);
+	 buffers::SetPBRDescriptorRoughness(g_im_map[white].view, g_pbr_descriptor_sets);
+	 buffers::SetPBRDescriptorMetallic(g_im_map[grey].view, g_pbr_descriptor_sets);
+	 buffers::SetPBRDescriptorAO(g_im_map[grey].view, g_pbr_descriptor_sets);
       }
       VkDescriptorPool CreatePBRDescriptorPool()
       {
-	 VkDescriptorPoolSize pool_sizes[2];
-	 pool_sizes[0].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	 pool_sizes[0].descriptorCount = DrawHandle::max_draws;
-         pool_sizes[1].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	 pool_sizes[1].descriptorCount = DrawHandle::max_draws;
+	 VkDescriptorPoolSize pool_sizes[g_pbr_num_textures] = {};
+	 for(unsigned int i = 0; i < g_pbr_num_textures; i++)
+	 {
+	    pool_sizes[i].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	    pool_sizes[i].descriptorCount = DrawHandle::max_draws;
+	 }
 
 	 VkDescriptorPoolCreateInfo pool_ci{};
 	 pool_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	 pool_ci.poolSizeCount = 2;
+	 pool_ci.poolSizeCount = g_pbr_num_textures;
 	 pool_ci.pPoolSizes = &pool_sizes[0];
 	 pool_ci.maxSets = DrawHandle::max_draws;
 
@@ -73,9 +88,11 @@ namespace fwvulkan
       }
       void InitPBRDescriptors()
       {
-	 VkDescriptorType types[] = { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE };
-	 VkShaderStageFlags stages[] = { VK_SHADER_STAGE_FRAGMENT_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
-	 g_pbr_descriptor_set_layout = buffers::CreateDescriptorSetLayout(types, stages, 2);
+	 VkDescriptorType types[g_pbr_num_textures] = { };
+	 VkShaderStageFlags stages[g_pbr_num_textures] = { };
+	 for(unsigned int i = 0; i < g_pbr_num_textures; i++) { types[i] = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE; }
+	 for(unsigned int i = 0; i < g_pbr_num_textures; i++) { stages[i] = VK_SHADER_STAGE_FRAGMENT_BIT; }
+	 g_pbr_descriptor_set_layout = buffers::CreateDescriptorSetLayout(types, stages, g_pbr_num_textures);
 	 g_pbr_descriptor_pool = buffers::CreatePBRDescriptorPool();
 	 buffers::CreatePBRDescriptorSets();
       }

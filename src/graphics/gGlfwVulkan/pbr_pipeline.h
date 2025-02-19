@@ -18,6 +18,8 @@ namespace fwvulkan
       namespace descriptor_binds {
 	 const unsigned int albedo = 0;
 	 const unsigned int roughness = 1;
+	 const unsigned int metallic = 2;
+	 const unsigned int ao = 3;
       }
       void SetPBRDescriptorAlbedo(VkImageView image_view, std::vector<VkDescriptorSet> albedo_sets);
       void SetPBRDescriptorRoughness(VkImageView image_view, std::vector<VkDescriptorSet> rough_sets);
