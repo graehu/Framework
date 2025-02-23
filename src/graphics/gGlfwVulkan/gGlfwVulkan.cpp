@@ -1970,7 +1970,7 @@ namespace fwvulkan
 	    depth_stencil_ci.depthTestEnable = VK_TRUE;
 	    depth_stencil_ci.depthWriteEnable = VK_FALSE;
 	    //
-	    depth_stencil_ci.depthCompareOp = VK_COMPARE_OP_LESS;
+	    depth_stencil_ci.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 	    depth_stencil_ci.depthBoundsTestEnable = VK_FALSE;
 	    depth_stencil_ci.minDepthBounds = 0.0f; // Optional
 	    depth_stencil_ci.maxDepthBounds = 1.0f; // Optional
@@ -2180,12 +2180,16 @@ namespace fwvulkan
 	    // note: the firstSet value is 1, because we're binding from that set number. I.e. we're binding set 1, which has our per-draw descriptor layout. (image, image)
 	    // ----: vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 0, 2, desc_sets.data(), 0, nullptr);
 	    vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 1, 1, &g_pbr_descriptor_sets[dh.ds_handle], 0, nullptr);
-	    
-	    vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].pipeline);
-	    vkCmdDrawIndexed(pass.cmd_buffer, ibh.len, 1, 0, 0, 0);
+
 	    // note: separate depth draw here.
+	    // note: depth must be first in order to fix self occlusion issues, otherwise it's just tri-order albedo.
 	    vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].depth_pipeline);
 	    vkCmdDrawIndexed(pass.cmd_buffer, ibh.len, 1, 0, 0, 0);
+	    
+	    // colour.
+            vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].pipeline);
+	    vkCmdDrawIndexed(pass.cmd_buffer, ibh.len, 1, 0, 0, 0);
+
 	    id++;
 	 }
 

@@ -40,7 +40,7 @@ namespace fwvulkan
    // todo: consider renaming to shared.
    struct DefaultUniforms
    {
-      mat4x4f model[16];
+      mat4x4f model[DrawHandle::max_draws];
       mat4x4f view;
       mat4x4f proj;
       vec3f light;
