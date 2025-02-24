@@ -4,7 +4,8 @@
 layout(set=0, binding = 0) uniform UniformBufferObject
 {
    // limitation of 16 objects per pass / pipeline
-   mat4 model[16];
+   // note: this must match DefaultUniforms, fix the 128 magic number
+   mat4 model[128];
    mat4 view;
    mat4 proj;
    vec3 light;

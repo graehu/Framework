@@ -27,11 +27,11 @@ namespace fw
       // todo: arbitrary limit for ease of construction atm.
       // note: this awkwardly ties into how many images we allow on the drawhandler atm.
       static const unsigned int max_images = 4;
-      Geometry geometry;
-      Image images[max_images];
-      Material material;
-      PassList passes;
-      mat4x4f transform;
+      Geometry geometry = {};
+      Image images[max_images] = {};
+      Material material = {};
+      PassList passes = {};
+      mat4x4f transform = {};
    };
    struct Light
    {

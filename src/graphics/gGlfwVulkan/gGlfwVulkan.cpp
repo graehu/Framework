@@ -462,8 +462,8 @@ namespace fwvulkan
       VkDescriptorSetLayout CreateDescriptorSetLayout(VkDescriptorType* types, VkShaderStageFlags* stage_flags, int num)
       {
 	 log::debug("CreateDescriptorSetLayout");
-	 assert(num < 16);
-	 std::array<VkDescriptorSetLayoutBinding, 16> bindings;
+	 assert(num < DrawHandle::max_draws);
+	 std::array<VkDescriptorSetLayoutBinding, DrawHandle::max_draws> bindings;
 		      
 	 for (int i = 0; i < num; i++)
 	 {
@@ -490,6 +490,7 @@ namespace fwvulkan
       
       void CreateBuffer(void* source, size_t size, VkBufferUsageFlags usage, VkBuffer& buffer, VkDeviceMemory& memory)
       {
+	 log::debug("CreateBuffer: {}", size);
 	 VkBufferCreateInfo buffer_ci = {};
 	 buffer_ci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	 buffer_ci.size = size;
@@ -617,7 +618,7 @@ namespace fwvulkan
 	 log::debug("SetDescriptorImage: {}", size_t(image_view));
 	 for (size_t i = 0; i < image_sets.size(); i++)
 	 {
-	    VkDescriptorImageInfo image_info{};
+	    VkDescriptorImageInfo image_info = {};
 	    image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	    image_info.imageView = image_view;
 
@@ -631,6 +632,7 @@ namespace fwvulkan
 	    descriptorWrites[0].pImageInfo = &image_info;
 
             vkUpdateDescriptorSets(g_logical_device, 1, descriptorWrites, 0, nullptr);
+
 	 }
       }
 
@@ -760,10 +762,13 @@ namespace fwvulkan
       }
       int CreateImageHandle(const unsigned int* image_buffer, size_t width, size_t height)
       {
+	 log::debug("CreateImageHandle: {} x {}", width, height);
 	 if (image_buffer == nullptr) return 0;
 	 // todo: grab type size, not 4.
-	 size_t image_size = width*height*4;
+	 size_t image_size = width * height * 4;
+	 log::debug("before image hash: {}", image_size);
 	 uint32_t hash = hash::hash_buffer((const char*)image_buffer, image_size);
+	 log::debug("passed the hash");
 	 if (g_im_map.find(hash) == g_im_map.end())
 	 {
 	    VkBuffer copy_buffer = VK_NULL_HANDLE;
@@ -2148,7 +2153,7 @@ namespace fwvulkan
 	 for(auto dh : pass.draws)
 	 {
 	    // todo: push constants have limited mat4x4s atm, fix it.
-	    assert(id < 16);
+	    assert(id < DrawHandle::max_draws);
 	    // log::debug("Recording Draw vb: {} pi: {} nverts: {}", dh.vb_handle, dh.pi_handle, dh.num_verts);
 	    // log::debug("bind pipeline");
 
@@ -2346,8 +2351,6 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
       drawhandle = { _mesh,
 	 buffers::CreateVertexBufferHandle(_mesh->geometry.vbo.data, _mesh->geometry.vbo.len),
 	 buffers::CreateIndexBufferHandle(_mesh->geometry.ibo.data, _mesh->geometry.ibo.len),
-	 // todo: this needs to handle no images
-	 // ----: kindof done. draw descriptors default to safe image views.
 	 {},
 	 // todo: this should be "create all pipeline variants"
 	 // ----: then we store draws against pipelines / passes, or something. :)
@@ -2360,11 +2363,15 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
       
       for(unsigned int i = 0; i < Mesh::max_images; i++)
       {
-	 if(_mesh->images[i].data == nullptr) break;
+	 if(_mesh->images[i].data == nullptr) continue;
 	 drawhandle.im_handles[i] = buffers::CreateImageHandle(_mesh->images[i].data, _mesh->images[i].width, _mesh->images[i].height);
+	 
 	 if(i == 0) buffers::SetPBRDescriptorAlbedo(g_im_map[drawhandle.im_handles[0]].view, set);
-	 else if(i == 1) buffers::SetPBRDescriptorRoughness(g_im_map[drawhandle.im_handles[1]].view, set);
+	 else if(i == 1) buffers::SetPBRDescriptorMetallicRoughness(g_im_map[drawhandle.im_handles[1]].view, set);
+	 else if(i == 2) buffers::SetPBRDescriptorNormal(g_im_map[drawhandle.im_handles[2]].view, set);
+	 else if(i == 3) buffers::SetPBRDescriptorAO(g_im_map[drawhandle.im_handles[3]].view, set);
       }
+
       g_drawhandles[_mesh] = drawhandle;
    }
    else { drawhandle = handles_iter->second; }

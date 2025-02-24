@@ -5,7 +5,7 @@ namespace fwvulkan
 {
    struct DrawHandle
    {
-      static const int max_draws = 16;
+      static const int max_draws = 128;
       fw::Mesh* owner = nullptr;
       int vb_handle = -1;
       int ib_handle = -1;

@@ -26,26 +26,28 @@ namespace fwvulkan
 	 log::debug("SetPBRDescriptorAlbedo: {}", size_t(image_view));
 	 SetDescriptorImage(image_view, albedo_sets, descriptor_binds::albedo);
       }
-      void SetPBRDescriptorRoughness(VkImageView image_view, std::vector<VkDescriptorSet> rough_sets)
+      void SetPBRDescriptorMetallicRoughness(VkImageView image_view, std::vector<VkDescriptorSet> rough_sets)
       {
-	 log::debug("SetPBRDescriptorRoughness: {}", size_t(image_view));
+	 log::debug("SetPBRDescriptorMetallicRoughness: {}", size_t(image_view));
 	 SetDescriptorImage(image_view, rough_sets, descriptor_binds::roughness);
       }
-      void SetPBRDescriptorMetallic(VkImageView image_view, std::vector<VkDescriptorSet> rough_sets)
+      void SetPBRDescriptorNormal(VkImageView image_view, std::vector<VkDescriptorSet> normal_sets)
       {
-	 log::debug("SetPBRDescriptorMetallic: {}", size_t(image_view));
-	 SetDescriptorImage(image_view, rough_sets, descriptor_binds::metallic);
+	 log::debug("SetPBRDescriptorNormal: {}", size_t(image_view));
+	 SetDescriptorImage(image_view, normal_sets, descriptor_binds::normal);
       }
-      void SetPBRDescriptorAO(VkImageView image_view, std::vector<VkDescriptorSet> rough_sets)
+      void SetPBRDescriptorAO(VkImageView image_view, std::vector<VkDescriptorSet> ao_sets)
       {
 	 log::debug("SetPBRDescriptorAO: {}", size_t(image_view));
-	 SetDescriptorImage(image_view, rough_sets, descriptor_binds::ao);
+	 SetDescriptorImage(image_view, ao_sets, descriptor_binds::ao);
       }
       void CreatePBRDescriptorSets()
       {
 	 log::debug("CreatePBRDescriptorSets");
+	 
 	 std::vector<VkDescriptorSetLayout> layouts(DrawHandle::max_draws, g_pbr_descriptor_set_layout);
 	 VkDescriptorSetAllocateInfo alloc_info{};
+	 
 	 alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	 alloc_info.descriptorPool = g_pbr_descriptor_pool;
 	 alloc_info.descriptorSetCount = DrawHandle::max_draws;
@@ -61,8 +63,8 @@ namespace fwvulkan
 	 auto grey = CreateImageHandle(initdata::images::grey.data(), 4, 4);
 	 
 	 buffers::SetPBRDescriptorAlbedo(g_im_map[white].view, g_pbr_descriptor_sets);
-	 buffers::SetPBRDescriptorRoughness(g_im_map[white].view, g_pbr_descriptor_sets);
-	 buffers::SetPBRDescriptorMetallic(g_im_map[grey].view, g_pbr_descriptor_sets);
+	 buffers::SetPBRDescriptorMetallicRoughness(g_im_map[white].view, g_pbr_descriptor_sets);
+	 buffers::SetPBRDescriptorNormal(g_im_map[grey].view, g_pbr_descriptor_sets);
 	 buffers::SetPBRDescriptorAO(g_im_map[grey].view, g_pbr_descriptor_sets);
       }
       VkDescriptorPool CreatePBRDescriptorPool()

@@ -18,11 +18,13 @@ namespace fwvulkan
       namespace descriptor_binds {
 	 const unsigned int albedo = 0;
 	 const unsigned int roughness = 1;
-	 const unsigned int metallic = 2;
+	 const unsigned int normal = 2;
 	 const unsigned int ao = 3;
       }
       void SetPBRDescriptorAlbedo(VkImageView image_view, std::vector<VkDescriptorSet> albedo_sets);
-      void SetPBRDescriptorRoughness(VkImageView image_view, std::vector<VkDescriptorSet> rough_sets);
+      void SetPBRDescriptorMetallicRoughness(VkImageView image_view, std::vector<VkDescriptorSet> rough_sets);
+      void SetPBRDescriptorNormal(VkImageView image_view, std::vector<VkDescriptorSet> normal_sets);
+      void SetPBRDescriptorAO(VkImageView image_view, std::vector<VkDescriptorSet> ao_sets);
       void CreatePBRDescriptorSets();
       VkDescriptorPool CreatePBRDescriptorPool();
    }

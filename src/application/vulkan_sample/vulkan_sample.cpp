@@ -71,25 +71,24 @@ void vulkan_sample::run()
    quad2.material[fw::shader::e_fragment] = fw::hash::string("pbr");
 
    
-   std::vector<Vertex> model_verts;   std::vector<uint16_t> model_indices; std::vector<Image> images;
-   loadmodel("../../../libs/tinygltf/models/Cube/Cube.gltf", model_verts, model_indices, images);
+   std::vector<Mesh> meshes; std::vector<Image> images;
+   loadmodel("../../../libs/tinygltf/models/Cube/Cube.gltf", meshes, images);
+   // loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images);
+   // loadmodel("../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", meshes, images);
+   // loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", model_verts, model_indices, images);
+   
+   for(Mesh& mesh : meshes)
+   {
+      mesh.passes = {"swapchain"};
+      mesh.material[fw::shader::e_vertex] = fw::hash::string("shared");
+      mesh.material[fw::shader::e_fragment] = fw::hash::string("pbr");
+   }
 
-   Mesh model = {
-      {{model_verts.data(), model_verts.size()}, {model_indices.data(),model_indices.size()}},
-      // todo: make this less of a hack.
-      {images[0], images[1]},
-      {}, {"swapchain"}, {}
-   };
-   model.material[fw::shader::e_vertex] = fw::hash::string("shared");
-   model.material[fw::shader::e_fragment] = fw::hash::string("pbr");
-
-   Mesh model2 = model;
    float time = 0;
    quad.transform =  mat4x4f::rotated(deg2rad(75), 0, 0)*mat4x4f::translated(1, 0, -2);
-   model2.transform = mat4x4f::translated(4, 1, 4);
    quad2.transform = mat4x4f::scaled(10, 10, 10)  * mat4x4f::rotated(deg2rad(90), 0, 0) * mat4x4f::translated(0, -1, 0);
    camera cam;
-   fw::Light light; light.position = vec3f(0.0f, 0.5f);
+   fw::Light light; light.position = vec3f(2.0f, 2.5f, -2.0f);
    enum cam_mode {cam_linear, cam_swoop, cam_circle, cam_cycle} cmode = cam_cycle;
    int cam_num = 0;
    if(params::get_value("camera", cam_num, 0))
@@ -99,8 +98,6 @@ void vulkan_sample::run()
    }
    while (m_window->update())
    {
-      model.transform = mat4x4f::scaled(.25,.25,.25)*mat4x4f::rotated(deg2rad(-90), deg2rad(-90), 0)*mat4x4f::translated(1, 0, 0)*mat4x4f::rotated(0, time*2.0f, 0)*mat4x4f::translated(0, 0, 0);
-      model2.transform = mat4x4f::rotated(0, time*2.0f, 0)*mat4x4f::translated(4, 1, 4);
       float alpha = 1.0-(cos(time*0.5f)+1.0f)*0.5f;
       if (alpha == 0 && cmode == cam_cycle)
       {
@@ -128,10 +125,9 @@ void vulkan_sample::run()
       }
       light.intensity = 2.0f*alpha;
       cam.update();
-      m_graphics->getRenderer()->visit(&model);
+      for(Mesh& mesh : meshes) { m_graphics->getRenderer()->visit(&mesh); }
       m_graphics->getRenderer()->visit(&quad);
       m_graphics->getRenderer()->visit(&quad2);
-      m_graphics->getRenderer()->visit(&model2);
       m_graphics->getRenderer()->visit(&cam);
       m_graphics->getRenderer()->visit(&light);
       m_graphics->render();
