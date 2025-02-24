@@ -760,13 +760,13 @@ namespace fwvulkan
 	 }
 	 return hash;
       }
-      int CreateImageHandle(const unsigned int* image_buffer, size_t width, size_t height)
+      int CreateImageHandle(const unsigned int* image_buffer, size_t width, size_t height, size_t bits)
       {
-	 log::debug("CreateImageHandle: {} x {}", width, height);
+	 log::debug("CreateImageHandle: {} x {} ({}bit)", width, height, bits);
 	 if (image_buffer == nullptr) return 0;
 	 // todo: grab type size, not 4.
-	 size_t image_size = width * height * 4;
-	 log::debug("before image hash: {}", image_size);
+	 size_t image_size = width * height * (bits/8); 
+	 log::debug("before image hash ({}): {}", (void*)image_buffer, image_size);
 	 uint32_t hash = hash::hash_buffer((const char*)image_buffer, image_size);
 	 log::debug("passed the hash");
 	 if (g_im_map.find(hash) == g_im_map.end())
@@ -841,14 +841,14 @@ namespace fwvulkan
 	 }
 	 return hash;
       }
-      int CreateIndexBufferHandle(const uint16_t* indices, int num_indices)
+      int CreateIndexBufferHandle(const uint32_t* indices, int num_indices)
       {
-	 uint32_t hash = hash::hash_buffer((const char*)indices, num_indices*sizeof(uint16_t));
+	 uint32_t hash = hash::hash_buffer((const char*)indices, num_indices*sizeof(uint32_t));
 	 if (g_ib_map.find(hash) == g_ib_map.end())
 	 {
 	    VkBuffer index_buffer;
 	    VkDeviceMemory index_buffer_memory;
-	    CreateBuffer((void*)indices, sizeof(uint16_t) * num_indices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, index_buffer, index_buffer_memory);
+	    CreateBuffer((void*)indices, sizeof(uint32_t) * num_indices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, index_buffer, index_buffer_memory);
 	    g_ib_map[hash] = {index_buffer, index_buffer_memory, (size_t)num_indices};
 	    log::debug("Created IBHandle: {}", hash);
 	 }
@@ -2176,7 +2176,7 @@ namespace fwvulkan
 	    vkCmdPushConstants(pass.cmd_buffer, g_pipe_map[pipeline_hash].layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(DefaultPushConstants), &constants);
 	    vkCmdBindVertexBuffers(pass.cmd_buffer, 0, 1, vertex_buffers, offsets);
 	    auto ibh = g_ib_map[dh.ib_handle];
-	    vkCmdBindIndexBuffer(pass.cmd_buffer, ibh.ib, 0, VK_INDEX_TYPE_UINT16);
+	    vkCmdBindIndexBuffer(pass.cmd_buffer, ibh.ib, 0, VK_INDEX_TYPE_UINT32);
 
 	    assert(dh.ds_handle != -1);
 	    
@@ -2364,7 +2364,7 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
       for(unsigned int i = 0; i < Mesh::max_images; i++)
       {
 	 if(_mesh->images[i].data == nullptr) continue;
-	 drawhandle.im_handles[i] = buffers::CreateImageHandle(_mesh->images[i].data, _mesh->images[i].width, _mesh->images[i].height);
+	 drawhandle.im_handles[i] = buffers::CreateImageHandle(_mesh->images[i].data, _mesh->images[i].width, _mesh->images[i].height, _mesh->images[i].bits);
 	 
 	 if(i == 0) buffers::SetPBRDescriptorAlbedo(g_im_map[drawhandle.im_handles[0]].view, set);
 	 else if(i == 1) buffers::SetPBRDescriptorMetallicRoughness(g_im_map[drawhandle.im_handles[1]].view, set);

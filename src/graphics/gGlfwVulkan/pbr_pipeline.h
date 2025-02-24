@@ -12,7 +12,7 @@ namespace fwvulkan
    {
       // fwd dec
       void SetDescriptorImage(VkImageView image_view, std::vector<VkDescriptorSet> image_sets, unsigned int dst_binding);
-      int CreateImageHandle(const unsigned int* image, size_t width, size_t height);
+      int CreateImageHandle(const unsigned int* image, size_t width, size_t height, size_t bits);
       void InitPBRDescriptors();
       
       namespace descriptor_binds {

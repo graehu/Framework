@@ -66,7 +66,7 @@ void vulkan_sample::run()
    quad.material[fw::shader::e_vertex] = fw::hash::string("shared");
    quad.material[fw::shader::e_fragment] = fw::hash::string("unlit");
 
-   Mesh quad2 = {{{quad_verts, quad_verts_count}, {quad_indices, quad_indices_count}}, {{white_image, 4, 4}}, {}, {"swapchain"}, {}};
+   Mesh quad2 = {{{quad_verts, quad_verts_count}, {quad_indices, quad_indices_count}}, {{white_image, 4, 4, 32}}, {}, {"swapchain"}, {}};
    quad2.material[fw::shader::e_vertex] = fw::hash::string("shared");
    quad2.material[fw::shader::e_fragment] = fw::hash::string("pbr");
 
@@ -75,7 +75,8 @@ void vulkan_sample::run()
    loadmodel("../../../libs/tinygltf/models/Cube/Cube.gltf", meshes, images);
    // loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images);
    // loadmodel("../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", meshes, images);
-   // loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", model_verts, model_indices, images);
+   // loadmodel("../../../../glTF-Sample-Assets/Models/ABeautifulGame/glTF/ABeautifulGame.gltf", meshes, images);
+   // loadmodel("../../../../CopyCat/Project/GamePlay/Characters/CopyCat/Bodies/CopyCat.gltf", meshes, images);
    
    for(Mesh& mesh : meshes)
    {
@@ -88,7 +89,7 @@ void vulkan_sample::run()
    quad.transform =  mat4x4f::rotated(deg2rad(75), 0, 0)*mat4x4f::translated(1, 0, -2);
    quad2.transform = mat4x4f::scaled(10, 10, 10)  * mat4x4f::rotated(deg2rad(90), 0, 0) * mat4x4f::translated(0, -1, 0);
    camera cam;
-   fw::Light light; light.position = vec3f(2.0f, 2.5f, -2.0f);
+   fw::Light light; light.position = vec3f(0.0f, 2.5f, 2.0f);
    enum cam_mode {cam_linear, cam_swoop, cam_circle, cam_cycle} cmode = cam_cycle;
    int cam_num = 0;
    if(params::get_value("camera", cam_num, 0))
@@ -118,14 +119,16 @@ void vulkan_sample::run()
 	    cam.m_pitchDegrees = 90*(1.0f-alpha);
 	    break;
 	 case cam_circle: // note: rotate around the scene.
-	    cam.setPosition({10*sin(time), 3, -10*cos(time)});
+	    const float cam_dist = 3.0f;
+	    cam.setPosition({cam_dist*sin(time), .5f, -cam_dist*cos(time)});
 	    cam.m_headingDegrees = -(360.0/(PI*2.0))*time;
 	    // cam.m_pitchDegrees = 15; // todo: this shows that the view matrix is wrong or something.
 	    break;
       }
-      light.intensity = 2.0f*alpha;
+      // light.intensity = 2.0f*alpha;
       cam.update();
       for(Mesh& mesh : meshes) { m_graphics->getRenderer()->visit(&mesh); }
+      // m_graphics->getRenderer()->visit(&meshes[0]);
       m_graphics->getRenderer()->visit(&quad);
       m_graphics->getRenderer()->visit(&quad2);
       m_graphics->getRenderer()->visit(&cam);
@@ -134,6 +137,7 @@ void vulkan_sample::run()
       std::this_thread::sleep_for(std::chrono::milliseconds(16));
       time += 1.0f/60.0f;
    }
+   for(auto image : images) { delete[] image.data; }
 }
 
 void vulkan_sample::shutdown()

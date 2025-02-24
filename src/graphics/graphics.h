@@ -19,9 +19,9 @@ namespace fw
    typedef std::vector<hash::string> PassList;
    struct Vertex { vec3f position; vec3f normal; vec3f color; vec2f uv; };
    struct VertexArray { const Vertex* data; size_t len; };
-   struct IndexArray { const uint16_t* data; size_t len; };
+   struct IndexArray { const uint32_t* data; size_t len; };
    struct Geometry { VertexArray vbo; IndexArray ibo; };
-   struct Image { const unsigned int* data; int width = 0; int height = 0; };
+   struct Image { const unsigned int* data = nullptr; int width = 0; int height = 0; int bits = 0;};
    struct Mesh
    {
       // todo: arbitrary limit for ease of construction atm.
@@ -98,7 +98,7 @@ namespace fw
 	    {{ 0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1, 0}},
 	 };
 	 
-	 const std::array<uint16_t, 6> quad_indices = {0, 1, 2, 2, 3, 0};
+	 const std::array<uint32_t, 6> quad_indices = {0, 1, 2, 2, 3, 0};
       }
    }
 }    

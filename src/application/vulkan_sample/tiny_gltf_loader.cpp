@@ -41,11 +41,12 @@ void loadmodel(const char* modelpath, std::vector<Mesh>& out_meshes, std::vector
    }
 
    log::debug("images: {}", model.images.size());
-
    for(auto& image : model.images)
    {
-      log::debug("image info: {}, {}, {}", image.name.c_str(), image.width, image.height);
-      out_images.push_back({(const unsigned int*)image.image.data(), image.width, image.height});
+      log::debug("image info: {}/{}: {}, {}x{}, comp: {}, bits: {}, type: {}", (void*)image.image.data(), image.image.size(), image.name.c_str(), image.width, image.height, image.component, image.bits, image.pixel_type);
+      unsigned int* image_data = new unsigned int[image.image.size()];
+      memcpy(image_data,image.image.data(),image.image.size());
+      out_images.push_back({(const unsigned int*)image_data, image.width, image.height, image.component*image.bits});
    }
    log::debug("meshes: {}", model.meshes.size());
    for (auto& mesh : model.meshes)
@@ -53,25 +54,38 @@ void loadmodel(const char* modelpath, std::vector<Mesh>& out_meshes, std::vector
       log::debug("primatives: {}", mesh.primitives.size());
       for (auto& primitive : mesh.primitives)
       {
-	 out_meshes.push_back(fw::Mesh());
-	 auto& out_mesh = out_meshes.back();
+	 fw::Mesh out_mesh;
+	 
 	 const tinygltf::Accessor& pos_accessor = model.accessors[primitive.attributes["POSITION"]];
 	 const tinygltf::BufferView& pos_bufferView = model.bufferViews[pos_accessor.bufferView];
 	 const tinygltf::Buffer& pos_buffer = model.buffers[pos_bufferView.buffer];
+	 int pos_stride = pos_accessor.ByteStride(pos_bufferView);
 
 	 const tinygltf::Accessor& norm_accessor = model.accessors[primitive.attributes["NORMAL"]];
 	 const tinygltf::BufferView& norm_bufferView = model.bufferViews[norm_accessor.bufferView];
 	 const tinygltf::Buffer& norm_buffer = model.buffers[norm_bufferView.buffer];
+	 int norm_stride = norm_accessor.ByteStride(norm_bufferView);
 
 	 const tinygltf::Accessor& uv_accessor = model.accessors[primitive.attributes["TEXCOORD_0"]];
 	 const tinygltf::BufferView& uv_bufferView = model.bufferViews[uv_accessor.bufferView];
 	 const tinygltf::Buffer& uv_buffer = model.buffers[pos_bufferView.buffer];
+	 int uv_stride = uv_accessor.ByteStride(uv_bufferView);
+	 
+	 const tinygltf::Accessor& idx_accessor = model.accessors[primitive.indices];
+	 const tinygltf::BufferView& idx_bufferView = model.bufferViews[idx_accessor.bufferView];
+	 const tinygltf::Buffer& idx_buffer = model.buffers[idx_bufferView.buffer];
+	 int idx_stride = idx_accessor.ByteStride(idx_bufferView);
 
 	 const float* positions = reinterpret_cast<const float*>(&pos_buffer.data[pos_bufferView.byteOffset + pos_accessor.byteOffset]);
 	 const float* normals = reinterpret_cast<const float*>(&norm_buffer.data[norm_bufferView.byteOffset + norm_accessor.byteOffset]);
 	 const float* uvs = reinterpret_cast<const float*>(&uv_buffer.data[uv_bufferView.byteOffset + uv_accessor.byteOffset]);
+	 
+	 const uint32_t* data32 = reinterpret_cast<const uint32_t *>(&idx_buffer.data[idx_bufferView.byteOffset + idx_accessor.byteOffset]);
+	 const uint16_t* data16 = reinterpret_cast<const uint16_t *>(&idx_buffer.data[idx_bufferView.byteOffset + idx_accessor.byteOffset]);
+	 const uint8_t* data8 = reinterpret_cast<const uint8_t *>(&idx_buffer.data[idx_bufferView.byteOffset + idx_accessor.byteOffset]);
 
-	 log::debug("verts: {}", pos_accessor.count);
+	 log::debug("verts: {}, mode: {}, pos: {}, norm: {}, uv: {}, idx: {}", pos_accessor.count, primitive.mode, pos_stride, norm_stride, uv_stride, idx_stride);
+	 
 	 // switch(uv_accessor.type)
 	 // {
 	 //    case TINYGLTF_TYPE_VEC2: //TINYGLTF_TYPE_VEC2
@@ -96,8 +110,10 @@ void loadmodel(const char* modelpath, std::vector<Mesh>& out_meshes, std::vector
 	 //       log::debug("unknown type");
 	 //    }
 	 // }
+	 
 	 Vertex* verts = new Vertex[pos_accessor.count];
-	 for (size_t i = 0; i < pos_accessor.count; ++i) {
+	 for (size_t i = 0; i < pos_accessor.count; ++i)
+	 {
 	    verts[i] = {
 		  { positions[i * 3 + 0],  positions[i * 3 + 1],  positions[i * 3 + 2] },
 		  { normals[i * 3 + 0],  normals[i * 3 + 1],  normals[i * 3 + 2] },
@@ -109,14 +125,13 @@ void loadmodel(const char* modelpath, std::vector<Mesh>& out_meshes, std::vector
 	 out_mesh.geometry.vbo.data = verts;
 	 out_mesh.geometry.vbo.len = pos_accessor.count;
       
-	 const tinygltf::Accessor& idx_accessor = model.accessors[primitive.indices];
-	 const tinygltf::BufferView& idx_bufferView = model.bufferViews[idx_accessor.bufferView];
-	 const tinygltf::Buffer& idx_buffer = model.buffers[idx_bufferView.buffer];
-	 const uint16_t *data = reinterpret_cast<const uint16_t *>(&idx_buffer.data[idx_bufferView.byteOffset + idx_accessor.byteOffset]);
-	 uint16_t* indices = new uint16_t[idx_accessor.count];
-      
-	 for (size_t i = 0; i < idx_accessor.count; ++i) {
-	    indices[i] = data[i];
+	 uint32_t* indices = new uint32_t[idx_accessor.count];
+	 for (size_t i = 0; i < idx_accessor.count; ++i)
+	 {
+	    if(idx_stride == 1) indices[i] = data8[i];
+	    else if(idx_stride == 2) indices[i] = data16[i];
+	    else if(idx_stride == 4) indices[i] = data32[i];
+	    
 	 }
 	 out_mesh.geometry.ibo.data = indices;
 	 out_mesh.geometry.ibo.len = idx_accessor.count;
@@ -149,6 +164,7 @@ void loadmodel(const char* modelpath, std::vector<Mesh>& out_meshes, std::vector
 	       out_mesh.images[3] = out_images[mat.occlusionTexture.index];
 	    }
 	 }
+	 out_meshes.push_back(out_mesh);
       }
    }
 }

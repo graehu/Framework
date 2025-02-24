@@ -59,8 +59,8 @@ namespace fwvulkan
             throw std::runtime_error("failed to allocate descriptor sets!");
 	 }
 	 
-	 auto white = CreateImageHandle(initdata::images::white.data(), 4, 4);
-	 auto grey = CreateImageHandle(initdata::images::grey.data(), 4, 4);
+	 auto white = CreateImageHandle(initdata::images::white.data(), 4, 4, 32);
+	 auto grey = CreateImageHandle(initdata::images::grey.data(), 4, 4, 32);
 	 
 	 buffers::SetPBRDescriptorAlbedo(g_im_map[white].view, g_pbr_descriptor_sets);
 	 buffers::SetPBRDescriptorMetallicRoughness(g_im_map[white].view, g_pbr_descriptor_sets);
