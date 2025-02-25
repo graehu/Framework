@@ -29,6 +29,7 @@ layout(location = 2) out vec3 out_color;
 layout(location = 3) out vec2 out_uv;
 layout(location = 4) out vec4 out_light;
 layout(location = 5) out vec3 out_view_pos;
+layout(location = 6) out mat4 out_modelrot;
 
 void main()
 {
@@ -36,6 +37,7 @@ void main()
    mat4 mvp = ubo.proj * ubo.view * ubo.model[perdraw.id];
    mat4 modelrot = ubo.model[perdraw.id];
    modelrot[3] = vec4(0,0,0,1);
+   out_modelrot = modelrot;
    mat4 viewrot = ubo.view;
 
    viewrot[3] = vec4(0,0,0,1);

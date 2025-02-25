@@ -764,11 +764,8 @@ namespace fwvulkan
       {
 	 log::debug("CreateImageHandle: {} x {} ({}bit)", width, height, bits);
 	 if (image_buffer == nullptr) return 0;
-	 // todo: grab type size, not 4.
 	 size_t image_size = width * height * (bits/8); 
-	 log::debug("before image hash ({}): {}", (void*)image_buffer, image_size);
 	 uint32_t hash = hash::hash_buffer((const char*)image_buffer, image_size);
-	 log::debug("passed the hash");
 	 if (g_im_map.find(hash) == g_im_map.end())
 	 {
 	    VkBuffer copy_buffer = VK_NULL_HANDLE;
@@ -802,16 +799,20 @@ namespace fwvulkan
 	    VkImage image = VK_NULL_HANDLE;
 	    VkDeviceMemory image_memory = VK_NULL_HANDLE;
 	    {
+	       // todo: this will be wrong if the bits aren't 32 / non 8888.
 	       const VkImageUsageFlags usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 	       CreateImage(width, height, VK_FORMAT_R8G8B8A8_SRGB, usage, image, image_memory);
 	    }
+	    // todo: this will be wrong if the bits aren't 32 / non 8888.
 	    utils::TransitionImageLayout(image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	    utils::CopyBufferToImage(copy_buffer, image, width, height);
+	    // todo: this will be wrong if the bits aren't 32 / non 8888.
 	    utils::TransitionImageLayout(image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	    
 	    vkDestroyBuffer(g_logical_device, copy_buffer, nullptr);
 	    vkFreeMemory(g_logical_device, copy_memory, nullptr);
-
+	    
+	    // todo: this will be wrong if the bits aren't 32 / non 8888.
 	    VkImageView view = CreateImageView(image, VK_FORMAT_R8G8B8A8_SRGB);
 	    
 	    g_im_map[hash] = {image, view, image_memory, width, height};
@@ -825,7 +826,6 @@ namespace fwvulkan
       }
       int CreateVertexBufferHandle(const fw::Vertex* vertices, int num_vertices)
       {
-	 // uint32_t hash = hash::i32((const char*)vertices, num_vertices*sizeof(fw::Vertex));
 	 uint32_t hash = hash::hash_buffer((const char*)vertices, num_vertices*sizeof(fw::Vertex));
 	 if (g_vb_map.find(hash) == g_vb_map.end())
 	 {

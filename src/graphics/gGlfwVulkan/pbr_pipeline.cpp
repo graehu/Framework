@@ -61,10 +61,11 @@ namespace fwvulkan
 	 
 	 auto white = CreateImageHandle(initdata::images::white.data(), 4, 4, 32);
 	 auto grey = CreateImageHandle(initdata::images::grey.data(), 4, 4, 32);
+	 auto black = CreateImageHandle(initdata::images::black.data(), 4, 4, 32);
 	 
 	 buffers::SetPBRDescriptorAlbedo(g_im_map[white].view, g_pbr_descriptor_sets);
 	 buffers::SetPBRDescriptorMetallicRoughness(g_im_map[white].view, g_pbr_descriptor_sets);
-	 buffers::SetPBRDescriptorNormal(g_im_map[grey].view, g_pbr_descriptor_sets);
+	 buffers::SetPBRDescriptorNormal(g_im_map[black].view, g_pbr_descriptor_sets);
 	 buffers::SetPBRDescriptorAO(g_im_map[grey].view, g_pbr_descriptor_sets);
       }
       VkDescriptorPool CreatePBRDescriptorPool()

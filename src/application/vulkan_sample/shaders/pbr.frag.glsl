@@ -13,6 +13,7 @@ layout(location = 2) in vec3 in_color;
 layout(location = 3) in vec2 in_uv;
 layout(location = 4) flat in vec4 light_pos;
 layout(location = 5) flat in vec3 in_view_pos;
+layout(location = 6) flat in mat4 in_modelrot;
 layout(location = 0) out vec4 out_color;
 
 struct Lights
@@ -119,8 +120,12 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 // not right now?
 void main()
 {		
-   vec3 world_normal = normalize(in_normal);
+   vec3 world_normal = in_normal;
    vec3 view_direction = normalize(in_view_pos - in_position);
+   vec3 tex_normal = vec3(in_modelrot * texture(sampler2D(normal_tex, tex_sampler), in_uv).rgba);
+   // todo: remove this branch nicely.
+   if(tex_normal != vec3(0.0)) world_normal = tex_normal;
+   world_normal = normalize(world_normal);
    
    vec4 albedo = texture(sampler2D(albedo_tex, tex_sampler), in_uv);
    // convert srgb to linear
@@ -129,10 +134,8 @@ void main()
    vec3 metallicRoughness = texture(sampler2D(roughness_tex, tex_sampler), in_uv).rgb;
    float metallic = metallicRoughness.r;
    float roughness = metallicRoughness.g;
-   // todo: add texture bind
-   // float metallic = texture(sampler2D(metallic_tex, tex_sampler), in_uv).r;//0.5;
-   // todo: add texture bind
-   float ao = texture(sampler2D(ao_tex, tex_sampler), in_uv).r;//0.5;1.0;
+   // currently binding grey by default, test out bindnig white.
+   float ao = texture(sampler2D(ao_tex, tex_sampler), in_uv).r;
    // todo: refractive index, probably ought to be on a uniform.
    vec3 RI = vec3(0.04);
    RI = mix(RI, albedo.rgb, metallic);
@@ -196,7 +199,7 @@ void main()
    // out_color = vec4(in_color, 1.0); // show colors
    // out_color = vec4(in_uv, 1.0, 1.0); // show uvs
    // out_color = vec4(vec3(roughness), 1.0); // show roughness
-   // out_color = vec4(vec3(metallic), 1.0); // show metalic
+   // out_color = vec4(vec3(metallic), 1.0); // show metallic
    // out_color = vec4(vec3(ao), 1.0); // show ao
    // out_color = vec4(vec3(attenuation), 1.0); // show ao
    // out_color = vec4(vec3(radiance), 1.0); // show radiance

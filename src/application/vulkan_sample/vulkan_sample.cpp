@@ -72,9 +72,9 @@ void vulkan_sample::run()
 
    
    std::vector<Mesh> meshes; std::vector<Image> images;
-   loadmodel("../../../libs/tinygltf/models/Cube/Cube.gltf", meshes, images);
+   // loadmodel("../../../libs/tinygltf/models/Cube/Cube.gltf", meshes, images);
    // loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images);
-   // loadmodel("../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", meshes, images);
+   loadmodel("../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", meshes, images);
    // loadmodel("../../../../glTF-Sample-Assets/Models/ABeautifulGame/glTF/ABeautifulGame.gltf", meshes, images);
    // loadmodel("../../../../CopyCat/Project/GamePlay/Characters/CopyCat/Bodies/CopyCat.gltf", meshes, images);
    
