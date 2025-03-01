@@ -116,17 +116,51 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
    return ggx1 * ggx2;
 }
 
+// not using this atm, it makes fresnel look worse.
+mat3 CalculateTBN( vec3 N, vec3 p, vec2 uv )
+{
+   // get edge vectors of the pixel triangle
+   #if BETTER_METHOD
+   vec3 dp1 = dFdx( p );
+   vec3 dp2 = dFdy( p );
+   vec2 duv1 = dFdx( uv );
+   vec2 duv2 = dFdy( uv );
+
+   // solve the linear system
+   vec3 dp2perp = cross( dp2, N );
+   vec3 dp1perp = cross( N, dp1 );
+   vec3 T = dp2perp * duv1.x + dp1perp * duv2.x;
+   vec3 B = dp2perp * duv1.y + dp1perp * duv2.y;
+
+   // construct a scale-invariant frame 
+   float invmax = inversesqrt( max( dot(T,T), dot(B,B) ) );
+   return mat3( T * invmax, B * invmax, N );
+   #else
+   // simpler method below
+   
+   // compute tangent T and bitangent B
+   vec3 Q1 = dFdx(p);
+   vec3 Q2 = dFdy(p);
+   vec2 st1 = dFdx(uv);
+   vec2 st2 = dFdy(uv);
+	
+   vec3 T = normalize(Q1*st2.t - Q2*st1.t);
+   vec3 B = normalize(-Q1*st2.s + Q2*st1.s);
+	
+   // the transpose of texture-to-eye space matrix
+   return mat3(T, B, N);
+   #endif
+}
+
+
+
 // do I care about specular ibl and diffuse irradience.
 // not right now?
 void main()
 {		
-   vec3 world_normal = in_normal;
+   vec3 world_normal = normalize(in_normal);
    vec3 view_direction = normalize(in_view_pos - in_position);
-   vec3 tex_normal = vec3(in_modelrot * texture(sampler2D(normal_tex, tex_sampler), in_uv).rgba);
-   // todo: remove this branch nicely.
-   if(tex_normal != vec3(0.0)) world_normal = tex_normal;
-   world_normal = normalize(world_normal);
-   
+   vec3 tex_normal = texture(sampler2D(normal_tex, tex_sampler), in_uv).rgb;
    vec4 albedo = texture(sampler2D(albedo_tex, tex_sampler), in_uv);
    // convert srgb to linear
    albedo = pow(albedo, vec4(2.2));
@@ -151,11 +185,26 @@ void main()
    // for(int i = 0; i < 4; ++i) 
    // {
    // calculate per-light radiance
-   vec3 light_direction = normalize(light.position - in_position);
+   vec3 position = in_position;
+   vec3 light_direction = normalize(light.position-position);
+
+
+   // todo: remove this branch nicely.
+   // note: sadness.
+   // ----: fresnel looks wrong when using these normals, and I'm not sure why.
+   // ----: the normals themselves look _ok_ but I'm also not sure if they're right.
+   // ----: fernel colour is black when it should be white light, so they're inverting?
+   if (tex_normal != vec3(0.0))
+   {
+      // this should move us from tangent space, to world space
+      mat3 tbn = CalculateTBN(world_normal, position, in_uv);
+      world_normal = normalize(tbn*tex_normal);
+   }
+   
    // todo: check the math here? original halfway vector is:
    // vec3 halfway = in_view_pos + light.position; halfway = halfway / length(halfway);
    vec3 halfway = normalize(view_direction + light_direction);
-   float dist    = length(light.position - in_position);
+   float dist    = length(light.position - position);
    float attenuation = 1.0 / (dist * dist);
    vec3 radiance     = (light.intensity * light.diffuse * attenuation);
         
@@ -163,7 +212,6 @@ void main()
    float normal_distrib = DistributionGGX(world_normal, halfway, roughness);
    float self_occlusion = GeometrySmith(world_normal, view_direction, light_direction, roughness);
    vec3 fresnel = fresnelSchlick(max(dot(halfway, view_direction), 0.0), RI);
-	
    vec3 kS = fresnel;
    vec3 kD = vec3(1.0) - kS;
    kD *= 1.0 - metallic;
@@ -179,7 +227,7 @@ void main()
    Lo += (kD * vec3(albedo) / PI + specular) * radiance * NdotL; 
    // }
    // todo: bind ambient intensity + diffuse.
-   vec3 am_light = vec3(0.0001);
+   vec3 am_light = vec3(0.00001);
    vec3 ambient = am_light * vec3(albedo) * ao;
    vec3 color = ambient + Lo;
     
@@ -189,13 +237,21 @@ void main()
    out_color = vec4(color, 1.0);
 
    // debug
-   // out_color = vec4(abs(world_normal), 1.0); // show normals
+
+   // normals
+   // ---
+   // out_color = vec4(abs(world_normal), 1.0); // show normal
+   // out_color = vec4(world_normal, 1.0); // show normals
+   // out_color = vec4(abs(world_normal.x)); // show normals
+   // out_color = vec4(abs(world_normal.y)); // show normals
+   // out_color = vec4(abs(world_normal.z)); // show normals
+   // ----
    // out_color = vec4(light_direction, 1.0); // show lightdir
    // out_color = vec4(abs(light.position)*.1, 1.0); // show light.position
    // out_color = vec4(vec3(lambert(world_normal, light_direction)), 1.0); // show lambert
    // out_color = vec4(abs(in_view_pos)*0.1, 1.0); // show view_pos
    // out_color = vec4(abs(halfway), 1.0); // show halway
-   // out_color = vec4(abs(in_position), 1.0); // show position
+   // out_color = vec4(abs(position), 1.0); // show position
    // out_color = vec4(in_color, 1.0); // show colors
    // out_color = vec4(in_uv, 1.0, 1.0); // show uvs
    // out_color = vec4(vec3(roughness), 1.0); // show roughness
