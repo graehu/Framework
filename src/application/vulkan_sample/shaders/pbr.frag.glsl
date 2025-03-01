@@ -105,6 +105,7 @@ float GeometrySchlickGGX(float NdotV, float roughness)
 	
    return num / denom;
 }
+
 // geometry self shadowing
 float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 {
@@ -166,12 +167,13 @@ void main()
    albedo = pow(albedo, vec4(2.2));
    // gltf metallic and roughness are packed in one texture
    vec3 metallicRoughness = texture(sampler2D(roughness_tex, tex_sampler), in_uv).rgb;
-   float metallic = metallicRoughness.r;
+   float metallic = metallicRoughness.b;
    float roughness = metallicRoughness.g;
+   
    // currently binding grey by default, test out bindnig white.
    float ao = texture(sampler2D(ao_tex, tex_sampler), in_uv).r;
    // todo: refractive index, probably ought to be on a uniform.
-   vec3 RI = vec3(0.04);
+   vec3 RI = vec3(0.045);
    RI = mix(RI, albedo.rgb, metallic);
     
    Lights light;
@@ -188,7 +190,6 @@ void main()
    vec3 position = in_position;
    vec3 light_direction = normalize(light.position-position);
 
-
    // todo: remove this branch nicely.
    // note: sadness.
    // ----: fresnel looks wrong when using these normals, and I'm not sure why.
@@ -202,23 +203,28 @@ void main()
    }
    
    // todo: check the math here? original halfway vector is:
-   // vec3 halfway = in_view_pos + light.position; halfway = halfway / length(halfway);
+   // vec3 halfway = normalize(in_view_pos + light.position);
    vec3 halfway = normalize(view_direction + light_direction);
-   float dist    = length(light.position - position);
+   float dist = length(light.position - position);
    float attenuation = 1.0 / (dist * dist);
-   vec3 radiance     = (light.intensity * light.diffuse * attenuation);
+   vec3 radiance = (light.intensity * light.diffuse * attenuation);
         
    // cook-torrance brdf - Bidirectional Reflectance Distribution Function
+   // This is correct looking.
    float normal_distrib = DistributionGGX(world_normal, halfway, roughness);
+   // This is very aggressive, not sure why.
    float self_occlusion = GeometrySmith(world_normal, view_direction, light_direction, roughness);
+   // This is correct looking.
    vec3 fresnel = fresnelSchlick(max(dot(halfway, view_direction), 0.0), RI);
    vec3 kS = fresnel;
    vec3 kD = vec3(1.0) - kS;
    kD *= 1.0 - metallic;
-        
-   vec3 numerator    = normal_distrib * self_occlusion * fresnel;
+   
+   vec3 numerator = normal_distrib * self_occlusion * fresnel;
    float denominator = 4.0 * max(dot(world_normal, view_direction), 0.0);
+   
    // lambert / diffuse reflectance
+   // This is also very aggressive, not sure why. Should this be light dir?
    denominator *= max(dot(world_normal, light_direction), 0.0) + 0.0001;
    vec3 specular = numerator / denominator;
             
@@ -227,7 +233,7 @@ void main()
    Lo += (kD * vec3(albedo) / PI + specular) * radiance * NdotL; 
    // }
    // todo: bind ambient intensity + diffuse.
-   vec3 am_light = vec3(0.00001);
+   vec3 am_light = vec3(0.001);
    vec3 ambient = am_light * vec3(albedo) * ao;
    vec3 color = ambient + Lo;
     
@@ -237,7 +243,6 @@ void main()
    out_color = vec4(color, 1.0);
 
    // debug
-
    // normals
    // ---
    // out_color = vec4(abs(world_normal), 1.0); // show normal
@@ -246,6 +251,14 @@ void main()
    // out_color = vec4(abs(world_normal.y)); // show normals
    // out_color = vec4(abs(world_normal.z)); // show normals
    // ----
+   // out_color = vec4(normal_distrib);
+   // out_color = vec4(roughness);
+   // out_color = vec4(metallic);
+   // out_color = vec4(ao);
+   // out_color = vec4(self_occlusion);
+   // out_color = vec4(specular, 1.0);
+   // out_color = vec4(denominator);
+   // out_color = vec4(fresnel,1.0);
    // out_color = vec4(light_direction, 1.0); // show lightdir
    // out_color = vec4(abs(light.position)*.1, 1.0); // show light.position
    // out_color = vec4(vec3(lambert(world_normal, light_direction)), 1.0); // show lambert
@@ -257,7 +270,7 @@ void main()
    // out_color = vec4(vec3(roughness), 1.0); // show roughness
    // out_color = vec4(vec3(metallic), 1.0); // show metallic
    // out_color = vec4(vec3(ao), 1.0); // show ao
-   // out_color = vec4(vec3(attenuation), 1.0); // show ao
+   // out_color = vec4(vec3(attenuation), 1.0); // show attenuation
    // out_color = vec4(vec3(radiance), 1.0); // show radiance
 
 }
