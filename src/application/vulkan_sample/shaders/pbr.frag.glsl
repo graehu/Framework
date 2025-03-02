@@ -153,12 +153,10 @@ mat3 CalculateTBN( vec3 N, vec3 p, vec2 uv )
    #endif
 }
 
-
-
 // do I care about specular ibl and diffuse irradience.
 // not right now?
 void main()
-{		
+{
    vec3 world_normal = normalize(in_normal);
    vec3 view_direction = normalize(in_view_pos - in_position);
    vec3 tex_normal = texture(sampler2D(normal_tex, tex_sampler), in_uv).rgb;
@@ -191,10 +189,6 @@ void main()
    vec3 light_direction = normalize(light.position-position);
 
    // todo: remove this branch nicely.
-   // note: sadness.
-   // ----: fresnel looks wrong when using these normals, and I'm not sure why.
-   // ----: the normals themselves look _ok_ but I'm also not sure if they're right.
-   // ----: fernel colour is black when it should be white light, so they're inverting?
    if (tex_normal != vec3(0.0))
    {
       // this should move us from tangent space, to world space
@@ -210,28 +204,25 @@ void main()
    vec3 radiance = (light.intensity * light.diffuse * attenuation);
         
    // cook-torrance brdf - Bidirectional Reflectance Distribution Function
-   // This is correct looking.
    float normal_distrib = DistributionGGX(world_normal, halfway, roughness);
-   // This is very aggressive, not sure why.
    float self_occlusion = GeometrySmith(world_normal, view_direction, light_direction, roughness);
-   // This is correct looking.
    vec3 fresnel = fresnelSchlick(max(dot(halfway, view_direction), 0.0), RI);
+
    vec3 kS = fresnel;
    vec3 kD = vec3(1.0) - kS;
    kD *= 1.0 - metallic;
    
    vec3 numerator = normal_distrib * self_occlusion * fresnel;
-   float denominator = 4.0 * max(dot(world_normal, view_direction), 0.0);
-   
+   float denominator = 4.0 * max(dot(world_normal, view_direction), 0.0) + max(dot(world_normal, light_direction), 0.0) + 0.0001;
    // lambert / diffuse reflectance
    // This is also very aggressive, not sure why. Should this be light dir?
-   denominator *= max(dot(world_normal, light_direction), 0.0) + 0.0001;
    vec3 specular = numerator / denominator;
             
    // add to outgoing radiance Lo
    float NdotL = max(dot(world_normal, light_direction), 0.0);
    Lo += (kD * vec3(albedo) / PI + specular) * radiance * NdotL; 
    // }
+   
    // todo: bind ambient intensity + diffuse.
    vec3 am_light = vec3(0.001);
    vec3 ambient = am_light * vec3(albedo) * ao;
@@ -242,35 +233,42 @@ void main()
    color = pow(color, vec3(1.0/2.2));
    out_color = vec4(color, 1.0);
 
-   // debug
+   // debugging
+
    // normals
-   // ---
+   // ------
    // out_color = vec4(abs(world_normal), 1.0); // show normal
    // out_color = vec4(world_normal, 1.0); // show normals
    // out_color = vec4(abs(world_normal.x)); // show normals
    // out_color = vec4(abs(world_normal.y)); // show normals
    // out_color = vec4(abs(world_normal.z)); // show normals
-   // ----
+
+   // pbr lighting
+   // ------------
    // out_color = vec4(normal_distrib);
-   // out_color = vec4(roughness);
-   // out_color = vec4(metallic);
-   // out_color = vec4(ao);
    // out_color = vec4(self_occlusion);
    // out_color = vec4(specular, 1.0);
    // out_color = vec4(denominator);
-   // out_color = vec4(fresnel,1.0);
+   // out_color = vec4(fresnel, 1.0);
    // out_color = vec4(light_direction, 1.0); // show lightdir
    // out_color = vec4(abs(light.position)*.1, 1.0); // show light.position
    // out_color = vec4(vec3(lambert(world_normal, light_direction)), 1.0); // show lambert
    // out_color = vec4(abs(in_view_pos)*0.1, 1.0); // show view_pos
    // out_color = vec4(abs(halfway), 1.0); // show halway
-   // out_color = vec4(abs(position), 1.0); // show position
-   // out_color = vec4(in_color, 1.0); // show colors
+   // out_color = vec4(vec3(attenuation), 1.0); // show attenuation
+   // out_color = vec4(vec3(radiance), 1.0); // show radiance
+   
+   // texturing
+   // ---------
    // out_color = vec4(in_uv, 1.0, 1.0); // show uvs
    // out_color = vec4(vec3(roughness), 1.0); // show roughness
    // out_color = vec4(vec3(metallic), 1.0); // show metallic
    // out_color = vec4(vec3(ao), 1.0); // show ao
-   // out_color = vec4(vec3(attenuation), 1.0); // show attenuation
-   // out_color = vec4(vec3(radiance), 1.0); // show radiance
+
+   // misc
+   // ---
+   // out_color = vec4(in_color, 1.0); // show colors
+   // out_color = vec4(abs(position), 1.0); // show position
+
 
 }
