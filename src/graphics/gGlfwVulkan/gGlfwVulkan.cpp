@@ -2354,6 +2354,7 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
 	 {},
 	 // todo: this should be "create all pipeline variants"
 	 // ----: then we store draws against pipelines / passes, or something. :)
+	 // todo: have this read the material to decide the pipeline layout.
 	 pipeline::CreatePipelineVariants(_mesh->material, pipeline::GetPBRPipelineLayout()),
 	 g_used_pbr_descriptors++
       };
@@ -2364,8 +2365,10 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
       for(unsigned int i = 0; i < Mesh::max_images; i++)
       {
 	 if(_mesh->images[i].data == nullptr) continue;
+	 // todo: add image type field to fw::Image so we can assign more dynamically than below.
+	 // ....: their order inside _mesh->images[i] should be arbitrary.
+	 // todo: handle non pbr textures.
 	 drawhandle.im_handles[i] = buffers::CreateImageHandle(_mesh->images[i].data, _mesh->images[i].width, _mesh->images[i].height, _mesh->images[i].bits);
-	 
 	 if(i == 0) buffers::SetPBRDescriptorAlbedo(g_im_map[drawhandle.im_handles[0]].view, set);
 	 else if(i == 1) buffers::SetPBRDescriptorMetallicRoughness(g_im_map[drawhandle.im_handles[1]].view, set);
 	 else if(i == 2) buffers::SetPBRDescriptorNormal(g_im_map[drawhandle.im_handles[2]].view, set);

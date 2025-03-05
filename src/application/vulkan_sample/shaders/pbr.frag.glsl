@@ -224,7 +224,7 @@ void main()
    // }
    
    // todo: bind ambient intensity + diffuse.
-   vec3 am_light = vec3(0.001);
+   vec3 am_light = vec3(0.01);
    vec3 ambient = am_light * vec3(albedo) * ao;
    vec3 color = ambient + Lo;
     

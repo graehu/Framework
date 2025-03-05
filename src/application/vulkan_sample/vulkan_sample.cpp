@@ -11,6 +11,7 @@
 #include <vulkan/vulkan_core.h>
 #include "iostream"
 #include "../../graphics/camera/camera.h"
+#include "../../input/input.h"
 
 // todo: we don't want to have this as an explicit file like this I don't think.
 #include "tiny_gltf_loader.h"
@@ -36,6 +37,10 @@ void vulkan_sample::init()
    fw::log::topics::add("graphics");
    m_graphics = graphics::graphicsFactory();
    m_graphics->init();
+
+   fw::log::topics::add("input");
+   m_input = input::inputFactory();
+   m_input->init();
 }
 
 // todo: add pass dependencies.
@@ -75,6 +80,7 @@ void vulkan_sample::run()
    // loadmodel("../../../libs/tinygltf/models/Cube/Cube.gltf", meshes, images);
    // loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images);
    loadmodel("../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", meshes, images);
+   // loadmodel("../../../../glTF-Sample-Assets/Models/SheenChair/glTF/SheenChair.gltf", meshes, images);
    // loadmodel("../../../../glTF-Sample-Assets/Models/ABeautifulGame/glTF/ABeautifulGame.gltf", meshes, images);
    // loadmodel("../../../../CopyCat/Project/GamePlay/Characters/CopyCat/Bodies/CopyCat.gltf", meshes, images);
    
@@ -83,15 +89,21 @@ void vulkan_sample::run()
       mesh.passes = {"swapchain"};
       mesh.material[fw::shader::e_vertex] = fw::hash::string("shared");
       mesh.material[fw::shader::e_fragment] = fw::hash::string("pbr");
+      // mesh.transform = mat4x4f::translated(0, -.5, -0.1)*mat4x4f::scaled(2, 2, 2);
+      // mesh.transform = mat4x4f::scaled(40, 40, 40);
+      // mesh.transform = mat4x4f::scaled(.02, .02, .02);
    }
 
    float time = 0;
    quad.transform =  mat4x4f::rotated(deg2rad(75), 0, 0)*mat4x4f::translated(1, 0, -2);
    quad2.transform = mat4x4f::scaled(10, 10, 10)  * mat4x4f::rotated(deg2rad(90), 0, 0) * mat4x4f::translated(0, -1, 0);
    camera cam;
-   fw::Light light; light.position = vec3f(0.0f, 2.5f, 2.0f);
+   fw::Light light; light.position = vec3f(-1.0f, 5.0f, 1.0f);
+   light.intensity = 0.01;
    enum cam_mode {cam_linear, cam_swoop, cam_circle, cam_cycle} cmode = cam_cycle;
    int cam_num = 0;
+   float cam_rot_offset = 0;
+   float cam_dist_offset = 0;
    if(params::get_value("camera", cam_num, 0))
    {
       log::debug("camera mode: {}", cam_num);
@@ -119,9 +131,20 @@ void vulkan_sample::run()
 	    cam.m_pitchDegrees = 90*(1.0f-alpha);
 	    break;
 	 case cam_circle: // note: rotate around the scene.
-	    const float cam_dist = 3.0f;
-	    cam.setPosition({cam_dist*sin(time), .5f, -cam_dist*cos(time)});
-	    cam.m_headingDegrees = -(360.0/(PI*2.0))*time;
+	    const float cam_dist = 2.0f+cam_dist_offset;
+	    const float height = 0.5f;
+	    const float cam_time = time+cam_rot_offset;
+	    cam.setPosition({cam_dist*sin(cam_time), height, -cam_dist*cos(cam_time)});
+	    cam.m_headingDegrees = -(360.0/(PI*2.0))*cam_time;
+	    light.position = cam.m_position;
+	    light.position.j = light.position.j;
+	    light.intensity = 100*alpha+0.0001;
+	    if(m_input->isKeyPressed(input::e_left)) cam_rot_offset += 0.01;
+	    if(m_input->isKeyPressed(input::e_right)) cam_rot_offset -= 0.01;
+	    if(m_input->isKeyPressed(input::e_down)) cam_dist_offset += 0.01;
+	    if(m_input->isKeyPressed(input::e_up)) cam_dist_offset -= 0.01;
+	    // light.position.i = -light.position.i;
+	    // light.position.k = -light.position.k;
 	    // cam.m_pitchDegrees = 15; // todo: this shows that the view matrix is wrong or something.
 	    break;
       }
@@ -129,13 +152,15 @@ void vulkan_sample::run()
       cam.update();
       for(Mesh& mesh : meshes) { m_graphics->getRenderer()->visit(&mesh); }
       // m_graphics->getRenderer()->visit(&meshes[0]);
-      m_graphics->getRenderer()->visit(&quad);
-      m_graphics->getRenderer()->visit(&quad2);
+      // m_graphics->getRenderer()->visit(&quad);
+      // m_graphics->getRenderer()->visit(&quad2);
       m_graphics->getRenderer()->visit(&cam);
       m_graphics->getRenderer()->visit(&light);
       m_graphics->render();
       std::this_thread::sleep_for(std::chrono::milliseconds(16));
-      time += 1.0f/60.0f;
+      time += (1.0f/60.0f)*0.1f;
+      m_input->update();
+      // time += 1.0f/60.0f;
    }
    for(auto image : images) { delete[] image.data; }
 }
