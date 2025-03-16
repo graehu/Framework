@@ -109,6 +109,7 @@ void vulkan_sample::run()
       log::debug("camera mode: {}", cam_num);
       cmode = (cam_mode)cam_num;
    }
+   bool cam_toggling = false;
    while (m_window->update())
    {
       float alpha = 1.0-(cos(time*0.5f)+1.0f)*0.5f;
@@ -120,6 +121,18 @@ void vulkan_sample::run()
 	 cam.m_headingDegrees = 0;
 	 time = 0;
       }
+      bool wants_toggle = m_input->isKeyPressed(input::e_respawn);
+      if (wants_toggle && !cam_toggling)
+      {
+	 cmode = (cam_mode)(((int)cmode+1) % (int)cam_cycle+1);
+	 log::debug("user camera mode: {}, {}, {}", cam_num, ((int)cmode+1), (int)cam_cycle);
+	 cam_toggling = true;
+	 cam_num = cmode%cam_cycle;
+	 cam.m_pitchDegrees = 0;
+	 cam.m_headingDegrees = 0;
+	 time = 0;
+      }
+      else if (!wants_toggle && cam_toggling) { cam_toggling = false; }
       switch(cam_num)
       {
 	 case cam_linear: // note: this is to verify fixing below doesn't break linear view normals.
@@ -133,14 +146,14 @@ void vulkan_sample::run()
 	 case cam_circle: // note: rotate around the scene.
 	    const float cam_dist = 2.0f+cam_dist_offset;
 	    const float height = 0.5f;
-	    const float cam_time = time+cam_rot_offset;
+	    const float cam_time = (time*0.1f+cam_rot_offset);
 	    cam.setPosition({cam_dist*sin(cam_time), height, -cam_dist*cos(cam_time)});
 	    cam.m_headingDegrees = -(360.0/(PI*2.0))*cam_time;
 	    light.position = cam.m_position;
 	    light.position.j = light.position.j;
 	    light.intensity = 100*alpha+0.0001;
-	    if(m_input->isKeyPressed(input::e_left)) cam_rot_offset += 0.01;
-	    if(m_input->isKeyPressed(input::e_right)) cam_rot_offset -= 0.01;
+	    if(m_input->isKeyPressed(input::e_right)) cam_rot_offset += 0.01;
+	    if(m_input->isKeyPressed(input::e_left)) cam_rot_offset -= 0.01;
 	    if(m_input->isKeyPressed(input::e_down)) cam_dist_offset += 0.01;
 	    if(m_input->isKeyPressed(input::e_up)) cam_dist_offset -= 0.01;
 	    // light.position.i = -light.position.i;
@@ -158,7 +171,7 @@ void vulkan_sample::run()
       m_graphics->getRenderer()->visit(&light);
       m_graphics->render();
       std::this_thread::sleep_for(std::chrono::milliseconds(16));
-      time += (1.0f/60.0f)*0.1f;
+      time += (1.0f/60.0f);
       m_input->update();
       // time += 1.0f/60.0f;
    }

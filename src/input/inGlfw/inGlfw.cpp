@@ -20,12 +20,14 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
    if (key == GLFW_KEY_UP && action == GLFW_PRESS) { g_glfw_keys[input::e_up] = true; }
    if (key == GLFW_KEY_DOWN && action == GLFW_PRESS) { g_glfw_keys[input::e_down] = true; }
    if (key == GLFW_KEY_Q && action == GLFW_PRESS) { g_glfw_keys[input::e_quit] = true; }
+   if (key == GLFW_KEY_R && action == GLFW_PRESS) { g_glfw_keys[input::e_respawn] = true; }
 
    if (key == GLFW_KEY_RIGHT && action == GLFW_RELEASE) { g_glfw_keys[input::e_right] = false; }
    if (key == GLFW_KEY_LEFT && action == GLFW_RELEASE) { g_glfw_keys[input::e_left] = false; }
    if (key == GLFW_KEY_UP && action == GLFW_RELEASE) { g_glfw_keys[input::e_up] = false; }
    if (key == GLFW_KEY_DOWN && action == GLFW_RELEASE) { g_glfw_keys[input::e_down] = false; }
    if (key == GLFW_KEY_Q && action == GLFW_RELEASE) { g_glfw_keys[input::e_quit] = false; }
+   if (key == GLFW_KEY_R && action == GLFW_RELEASE) { g_glfw_keys[input::e_respawn] = false; }
 }
 int inGlfw::init()
 {
