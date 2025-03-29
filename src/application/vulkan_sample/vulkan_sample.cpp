@@ -46,7 +46,7 @@ void vulkan_sample::init()
 // todo: add pass dependencies.
 // todo: add pass framebuffer blending/compositing.
 // todo: add basic pbr shaders.
-// todo: add input to cycle cameras
+// todo: add shademode to shader global constants.
 // todo: add user input camera
 
 void vulkan_sample::run()
@@ -173,7 +173,7 @@ void vulkan_sample::run()
       std::this_thread::sleep_for(std::chrono::milliseconds(16));
       time += (1.0f/60.0f);
       m_input->update();
-      // time += 1.0f/60.0f;
+      if(m_input->isKeyPressed(input::e_quit)) break;
    }
    for(auto image : images) { delete[] image.data; }
 }

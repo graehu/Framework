@@ -13,21 +13,19 @@ input::~input()
 
 bool g_glfw_keys[input::e_totalKeys];
 
+#define MAP_KEY(glfw_key, fw_key) \
+   if (key == glfw_key && action == GLFW_PRESS) { g_glfw_keys[fw_key] = true; } \
+   if (key == glfw_key && action == GLFW_RELEASE) { g_glfw_keys[fw_key] = false; }
+
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-   if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS) { g_glfw_keys[input::e_right] = true; }
-   if (key == GLFW_KEY_LEFT && action == GLFW_PRESS) { g_glfw_keys[input::e_left] = true; }
-   if (key == GLFW_KEY_UP && action == GLFW_PRESS) { g_glfw_keys[input::e_up] = true; }
-   if (key == GLFW_KEY_DOWN && action == GLFW_PRESS) { g_glfw_keys[input::e_down] = true; }
-   if (key == GLFW_KEY_Q && action == GLFW_PRESS) { g_glfw_keys[input::e_quit] = true; }
-   if (key == GLFW_KEY_R && action == GLFW_PRESS) { g_glfw_keys[input::e_respawn] = true; }
-
-   if (key == GLFW_KEY_RIGHT && action == GLFW_RELEASE) { g_glfw_keys[input::e_right] = false; }
-   if (key == GLFW_KEY_LEFT && action == GLFW_RELEASE) { g_glfw_keys[input::e_left] = false; }
-   if (key == GLFW_KEY_UP && action == GLFW_RELEASE) { g_glfw_keys[input::e_up] = false; }
-   if (key == GLFW_KEY_DOWN && action == GLFW_RELEASE) { g_glfw_keys[input::e_down] = false; }
-   if (key == GLFW_KEY_Q && action == GLFW_RELEASE) { g_glfw_keys[input::e_quit] = false; }
-   if (key == GLFW_KEY_R && action == GLFW_RELEASE) { g_glfw_keys[input::e_respawn] = false; }
+   MAP_KEY(GLFW_KEY_RIGHT, input::e_right);
+   MAP_KEY(GLFW_KEY_LEFT, input::e_left);
+   MAP_KEY(GLFW_KEY_UP, input::e_up);
+   MAP_KEY(GLFW_KEY_DOWN, input::e_down);
+   MAP_KEY(GLFW_KEY_R, input::e_respawn);
+   MAP_KEY(GLFW_KEY_Q, input::e_quit);
+   MAP_KEY(GLFW_KEY_G, input::e_shademode);
 }
 int inGlfw::init()
 {

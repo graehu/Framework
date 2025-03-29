@@ -12,6 +12,7 @@ enum keys
     e_left,
     e_right,
     e_respawn,
+    e_shademode,
     e_quit,
     e_totalKeys
   };
