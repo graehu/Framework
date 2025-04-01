@@ -16,6 +16,7 @@ public:
 
    bool register_shader(fw::hash::string name, const char* path, fw::shader::type type) override;
    bool register_pass(fw::hash::string name) override;
+   void set_shademode(int shademode) override;
 
    iRenderVisitor* getRenderer(void) override;
 

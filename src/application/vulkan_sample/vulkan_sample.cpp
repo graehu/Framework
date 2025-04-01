@@ -95,6 +95,8 @@ void vulkan_sample::run()
    }
 
    float time = 0;
+   int shademode = 0;
+
    quad.transform =  mat4x4f::rotated(deg2rad(75), 0, 0)*mat4x4f::translated(1, 0, -2);
    quad2.transform = mat4x4f::scaled(10, 10, 10)  * mat4x4f::rotated(deg2rad(90), 0, 0) * mat4x4f::translated(0, -1, 0);
    camera cam;
@@ -110,6 +112,7 @@ void vulkan_sample::run()
       cmode = (cam_mode)cam_num;
    }
    bool cam_toggling = false;
+   bool shade_toggling = false;
    while (m_window->update())
    {
       float alpha = 1.0-(cos(time*0.5f)+1.0f)*0.5f;
@@ -121,7 +124,9 @@ void vulkan_sample::run()
 	 cam.m_headingDegrees = 0;
 	 time = 0;
       }
+      
       bool wants_toggle = m_input->isKeyPressed(input::e_respawn);
+
       if (wants_toggle && !cam_toggling)
       {
 	 cmode = (cam_mode)(((int)cmode+1) % (int)cam_cycle+1);
@@ -132,7 +137,18 @@ void vulkan_sample::run()
 	 cam.m_headingDegrees = 0;
 	 time = 0;
       }
-      else if (!wants_toggle && cam_toggling) { cam_toggling = false; }
+      else if(!wants_toggle && cam_toggling) { cam_toggling = false; }
+
+      bool wants_shade = m_input->isKeyPressed(input::e_shademode);
+      if(!shade_toggling && wants_shade)
+      {
+	 shade_toggling = true;
+	 shademode = (shademode+1) % 8;
+	 log::debug("toggle shading: {}", shademode);
+	 m_graphics->set_shademode(shademode);
+      }
+      else if(!wants_shade && shade_toggling) { shade_toggling = false; }
+      
       switch(cam_num)
       {
 	 case cam_linear: // note: this is to verify fixing below doesn't break linear view normals.

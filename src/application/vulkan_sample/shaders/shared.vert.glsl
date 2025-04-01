@@ -11,6 +11,7 @@ layout(set=0, binding = 0) uniform UniformBufferObject
    vec3 light;
    float light_intensity;
    vec3 cam_pos;
+   uint shademode;
 } ubo;
 
 layout( push_constant ) uniform constants
@@ -30,6 +31,7 @@ layout(location = 3) out vec2 out_uv;
 layout(location = 4) out vec4 out_light;
 layout(location = 5) out vec3 out_view_pos;
 layout(location = 6) out mat4 out_modelrot;
+layout(location = 10) out uint out_shademode;
 
 void main()
 {
@@ -55,4 +57,5 @@ void main()
    out_light = vec4(ubo.light, 1.0); // worldspace light
    out_light.w = ubo.light_intensity;
    out_view_pos = ubo.cam_pos;
+   out_shademode = ubo.shademode;
 }

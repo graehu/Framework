@@ -11,9 +11,11 @@ layout(location = 0) in vec3 in_position;
 layout(location = 1) in vec3 in_normal;
 layout(location = 2) in vec3 in_color;
 layout(location = 3) in vec2 in_uv;
-layout(location = 4) flat in vec4 light_pos;
+layout(location = 4) flat in vec4 in_light_pos;
 layout(location = 5) flat in vec3 in_view_pos;
 layout(location = 6) flat in mat4 in_modelrot;
+layout(location = 10) flat in uint in_shademode;
+
 layout(location = 0) out vec4 out_color;
 
 struct Lights
@@ -175,10 +177,10 @@ void main()
    RI = mix(RI, albedo.rgb, metallic);
     
    Lights light;
-   light.position = light_pos.xyz;
+   light.position = in_light_pos.xyz;
    // todo: this isn't bound
    light.diffuse = vec3(1.0);
-   light.intensity = light_pos.w;
+   light.intensity = in_light_pos.w;
 	           
    vec3 Lo = vec3(0.0);
    // loop for however many lights you have, I have 1.
@@ -231,8 +233,21 @@ void main()
    color = color / (color + vec3(1.0));
    // convert from linear to srgb
    color = pow(color, vec3(1.0/2.2));
-   out_color = vec4(color, 1.0);
 
+   switch(in_shademode)
+   {
+      case 0: out_color = vec4(color, 1.0); break;
+      //  Debugging modes
+      case 1: out_color = vec4(in_uv, 1.0, 1.0); break;        // show uvs
+      case 2: out_color = pow(albedo, vec4(1.0/2.2)); break;   // show albedo
+      case 3: out_color = vec4(abs(world_normal), 1.0); break; // show normals
+      case 4: out_color = vec4(vec3(roughness), 1.0); break;   // show roughness
+      case 5: out_color = vec4(vec3(metallic), 1.0); break;    // show metallic
+      case 6: out_color = vec4(vec3(ao), 1.0); break;          // show ao
+      case 7: out_color = vec4(abs(position), 1.0); break;     // show position
+      default: out_color = vec4(color, 1.0); break;
+   }
+   
    // debugging
 
    // normals

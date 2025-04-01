@@ -2261,6 +2261,7 @@ namespace fwvulkan
 mat4x4f g_view;
 vec3f g_cam_pos;
 fw::Light g_light;
+int g_shademode = 0;
 void UpdateUniformBuffer(uint32_t currentImage)
 {
    using namespace fwvulkan;
@@ -2273,6 +2274,7 @@ void UpdateUniformBuffer(uint32_t currentImage)
    ubo.cam_pos = g_cam_pos;
 
    ubo.light_intensity = g_light.intensity;
+   ubo.shademode = g_shademode;
    memcpy(g_uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }
 
@@ -2312,6 +2314,8 @@ int gGlfwVulkan::init()
    {
       buffers::CreateDefaultUniformBuffers();
       {
+	 // todo: This is a bit awkward, the DefaultUniforms aren't bound for shaders which is making me export
+	 // ----: them in glsl. Probably want to bind them for frag stage too?
 	 VkDescriptorType types[] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_SAMPLER };
 	 VkShaderStageFlags stages[] = { VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
 	 g_shared_descriptor_set_layout = buffers::CreateDescriptorSetLayout(types, stages, 2);
@@ -2614,6 +2618,11 @@ bool gGlfwVulkan::register_pass(fw::hash::string pass)
       return true;
    }
    return false;
+}
+
+void gGlfwVulkan::set_shademode(int in_shademode)
+{
+   g_shademode = in_shademode;
 }
 
 iRenderVisitor* gGlfwVulkan::getRenderer()

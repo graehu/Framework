@@ -46,6 +46,7 @@ namespace fwvulkan
       vec3f light;
       float light_intensity;
       vec3f cam_pos;
+      unsigned int shademode;
    };
    // todo: consider renaming to shared.
    struct DefaultPushConstants
