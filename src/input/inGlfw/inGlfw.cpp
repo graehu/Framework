@@ -26,6 +26,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
    MAP_KEY(GLFW_KEY_R, input::e_respawn);
    MAP_KEY(GLFW_KEY_Q, input::e_quit);
    MAP_KEY(GLFW_KEY_G, input::e_shademode);
+   MAP_KEY(GLFW_KEY_M, input::e_nextmodel);
+   MAP_KEY(GLFW_KEY_LEFT_SHIFT, input::e_shift);
 }
 int inGlfw::init()
 {

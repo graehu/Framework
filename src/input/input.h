@@ -13,7 +13,9 @@ enum keys
     e_right,
     e_respawn,
     e_shademode,
+    e_nextmodel,
     e_quit,
+    e_shift,
     e_totalKeys
   };
 enum mouseButtons

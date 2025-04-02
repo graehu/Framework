@@ -113,6 +113,8 @@ void vulkan_sample::run()
    }
    bool cam_toggling = false;
    bool shade_toggling = false;
+   bool model_toggling = false;
+   int model_id = 0;
    while (m_window->update())
    {
       float alpha = 1.0-(cos(time*0.5f)+1.0f)*0.5f;
@@ -129,8 +131,9 @@ void vulkan_sample::run()
 
       if (wants_toggle && !cam_toggling)
       {
-	 cmode = (cam_mode)(((int)cmode+1) % (int)cam_cycle+1);
-	 log::debug("user camera mode: {}, {}, {}", cam_num, ((int)cmode+1), (int)cam_cycle);
+	 int dir = m_input->isKeyPressed(input::e_shift) ? -1 : 1;
+	 cmode = (cam_mode)(((int)cmode+dir) % (int)cam_cycle+1);
+	 log::debug("user camera mode: {}, {}, {}", cam_num, ((int)cmode+dir), (int)cam_cycle);
 	 cam_toggling = true;
 	 cam_num = cmode%cam_cycle;
 	 cam.m_pitchDegrees = 0;
@@ -143,11 +146,21 @@ void vulkan_sample::run()
       if(!shade_toggling && wants_shade)
       {
 	 shade_toggling = true;
-	 shademode = (shademode+1) % 8;
+	 int dir = m_input->isKeyPressed(input::e_shift) ? -1 : 1;
+	 shademode = (shademode+dir) % 8;
 	 log::debug("toggle shading: {}", shademode);
 	 m_graphics->set_shademode(shademode);
       }
       else if(!wants_shade && shade_toggling) { shade_toggling = false; }
+      bool wants_model = m_input->isKeyPressed(input::e_nextmodel);
+      if(!model_toggling && wants_model)
+      {
+	 model_toggling = true;
+	 int dir = m_input->isKeyPressed(input::e_shift) ? -1 : 1;
+	 model_id = (model_id+dir) % meshes.size();
+	 log::debug("toggle meshes: {}", model_id);
+      }
+      else if(!wants_model && model_toggling) { model_toggling = false; }
       
       switch(cam_num)
       {
@@ -179,7 +192,8 @@ void vulkan_sample::run()
       }
       // light.intensity = 2.0f*alpha;
       cam.update();
-      for(Mesh& mesh : meshes) { m_graphics->getRenderer()->visit(&mesh); }
+      // todo: you can't isolate model 0.
+      for(int i = 0; i < meshes.size(); i++) { if(i == model_id || !model_id) { m_graphics->getRenderer()->visit(&meshes[i]); } }
       // m_graphics->getRenderer()->visit(&meshes[0]);
       // m_graphics->getRenderer()->visit(&quad);
       // m_graphics->getRenderer()->visit(&quad2);
