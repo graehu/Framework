@@ -20,6 +20,7 @@ camera::camera()
    m_pitchDegrees = 0.0f;
    m_forwardVelocity = 0.0f;
    m_strafeVelocity = 0.0f;
+   m_changedVelocity = false;
 }
 
 void camera::update()
@@ -31,7 +32,8 @@ void camera::update()
    m_qHeading.create_from_axis_angle(0.0f, 1.0f, 0.0f, -m_headingDegrees);
 
    // Combine the pitch and heading rotations and store the results in q
-   quaternion q =  m_qPitch * m_qHeading;
+   // quaternion q =  m_qPitch * m_qHeading;
+   quaternion q =  m_qHeading * m_qPitch;
    
    mat4x4f Matrix;
    q.create_matrix(&Matrix);
@@ -87,7 +89,14 @@ void camera::update()
    if(m_forwardVelocity > 0)  { m_forwardVelocity -= 0.0005f; }
    else if(m_forwardVelocity < 0) { m_forwardVelocity += 0.0005f; }
 
-   if(m_forwardVelocity < 0.0005 && m_forwardVelocity > -0.0005) {m_forwardVelocity = 0;}
+   if(m_forwardVelocity < 0.0005 && m_forwardVelocity > -0.0005) { m_forwardVelocity = 0;}
+
+   if(!m_changedVelocity)
+   {
+      m_forwardVelocity = m_forwardVelocity*0.5;
+      m_strafeVelocity = m_strafeVelocity*0.5;
+   }
+   m_changedVelocity = false;
 
 }
 
@@ -202,6 +211,8 @@ void camera::changeHeading(float degrees)
 
 void camera::changeForwardVelocity(float vel)
 {
+   if(vel == 0) return;
+   m_changedVelocity = true;
    if(fabs(vel) < fabs(m_maxVelocity))
    {
       // Our velocity is less than the max velocity increment that we 
@@ -228,6 +239,8 @@ void camera::changeForwardVelocity(float vel)
 
 void camera::changeStrafeVelocity(float vel)
 {
+   if(vel == 0) return;
+   m_changedVelocity = true;
    if(fabs(vel) < fabs(m_maxVelocity))
    {
       // Our velocity is less than the max velocity increment that we 

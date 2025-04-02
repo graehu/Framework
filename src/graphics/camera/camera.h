@@ -48,6 +48,8 @@ public:
    vec3f m_DirectionVector;
    vec3f m_strafeVector;
 
+   bool m_changedVelocity;
+
 };
 
 #endif//CAMERA_H

@@ -78,8 +78,8 @@ void vulkan_sample::run()
    
    std::vector<Mesh> meshes; std::vector<Image> images;
    // loadmodel("../../../libs/tinygltf/models/Cube/Cube.gltf", meshes, images);
-   // loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images);
-   loadmodel("../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", meshes, images);
+   loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images);
+   // loadmodel("../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", meshes, images);
    // loadmodel("../../../../glTF-Sample-Assets/Models/SheenChair/glTF/SheenChair.gltf", meshes, images);
    // loadmodel("../../../../glTF-Sample-Assets/Models/ABeautifulGame/glTF/ABeautifulGame.gltf", meshes, images);
    // loadmodel("../../../../CopyCat/Project/GamePlay/Characters/CopyCat/Bodies/CopyCat.gltf", meshes, images);
@@ -102,7 +102,7 @@ void vulkan_sample::run()
    camera cam;
    fw::Light light; light.position = vec3f(-1.0f, 5.0f, 1.0f);
    light.intensity = 0.01;
-   enum cam_mode {cam_linear, cam_swoop, cam_circle, cam_cycle} cmode = cam_cycle;
+   enum cam_mode {cam_linear, cam_swoop, cam_circle, cam_free, cam_cycle} cmode = cam_cycle;
    int cam_num = 0;
    float cam_rot_offset = 0;
    float cam_dist_offset = 0;
@@ -115,6 +115,7 @@ void vulkan_sample::run()
    bool shade_toggling = false;
    bool model_toggling = false;
    int model_id = 0;
+   
    while (m_window->update())
    {
       float alpha = 1.0-(cos(time*0.5f)+1.0f)*0.5f;
@@ -128,14 +129,13 @@ void vulkan_sample::run()
       }
       
       bool wants_toggle = m_input->isKeyPressed(input::e_respawn);
-
       if (wants_toggle && !cam_toggling)
       {
 	 int dir = m_input->isKeyPressed(input::e_shift) ? -1 : 1;
-	 cmode = (cam_mode)(((int)cmode+dir) % (int)cam_cycle+1);
+	 cmode = (cam_mode)((((int)cmode)+dir) % ((int)cam_cycle));
 	 log::debug("user camera mode: {}, {}, {}", cam_num, ((int)cmode+dir), (int)cam_cycle);
 	 cam_toggling = true;
-	 cam_num = cmode%cam_cycle;
+	 cam_num = cmode % cam_cycle;
 	 cam.m_pitchDegrees = 0;
 	 cam.m_headingDegrees = 0;
 	 time = 0;
@@ -161,9 +161,31 @@ void vulkan_sample::run()
 	 log::debug("toggle meshes: {}", model_id);
       }
       else if(!wants_model && model_toggling) { model_toggling = false; }
-      
+      float dt = (1.0f/60.0f);
       switch(cam_num)
       {
+	 case cam_free:
+	 {
+	    const float speed = 10.0;
+	    float dx, dy;
+	    m_input->mouseDelta(dx, dy);
+	    cam.changeHeading(dx);
+	    cam.changePitch(-dy);
+	    float forward = 0.0;
+	    float right = 0.0;
+	    right += m_input->isKeyPressed(input::e_right)?speed*dt:0.0;
+	    right -= m_input->isKeyPressed(input::e_left)?speed*dt:0.0;
+	    forward += m_input->isKeyPressed(input::e_up)?speed*dt:0.0;
+	    forward -= m_input->isKeyPressed(input::e_down)?speed*dt:0.0;
+	    
+	    cam.changeForwardVelocity(-forward);
+	    cam.changeStrafeVelocity(right);
+	    
+	    light.position = cam.m_position;
+	    light.intensity = 100.0;
+
+	    break;
+	 }
 	 case cam_linear: // note: this is to verify fixing below doesn't break linear view normals.
 	    cam.setPosition({0, 1+50*(1.0f-alpha), 0});
 	    cam.m_pitchDegrees = 90;
@@ -204,6 +226,7 @@ void vulkan_sample::run()
       time += (1.0f/60.0f);
       m_input->update();
       if(m_input->isKeyPressed(input::e_quit)) break;
+
    }
    for(auto image : images) { delete[] image.data; }
 }
