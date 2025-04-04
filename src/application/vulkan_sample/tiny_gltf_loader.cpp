@@ -1,3 +1,4 @@
+#include <cassert>
 #include <vector>
 #include "../../utils/log/log.h"
 #include "../../graphics/graphics.h"
@@ -41,13 +42,18 @@ void loadmodel(const char* modelpath, std::vector<Mesh>& out_meshes, std::vector
    }
 
    log::debug("images: {}", model.images.size());
-   for(auto& image : model.images)
+   out_images.resize(model.images.size());
+   for(int i = 0; i < model.images.size(); i++)
+   // for(auto& image : model.images)
    {
+      auto& image = model.images[i];
       log::debug("image info: {}/{}: {}, {}x{}, comp: {}, bits: {}, type: {}", (void*)image.image.data(), image.image.size(), image.name.c_str(), image.width, image.height, image.component, image.bits, image.pixel_type);
       unsigned int* image_data = new unsigned int[image.image.size()];
-      memcpy(image_data,image.image.data(),image.image.size());
-      out_images.push_back({(const unsigned int*)image_data, image.width, image.height, image.component*image.bits});
+      memcpy(image_data, image.image.data(), image.image.size());
+      out_images[i] = {(const unsigned int*)image_data, image.width, image.height, image.component*image.bits};
+      // out_images.push_back({(const unsigned int*)image_data, image.width, image.height, image.component*image.bits});
    }
+
    log::debug("meshes: {}", model.meshes.size());
    for (auto& mesh : model.meshes)
    {
@@ -55,6 +61,8 @@ void loadmodel(const char* modelpath, std::vector<Mesh>& out_meshes, std::vector
       for (auto& primitive : mesh.primitives)
       {
 	 fw::Mesh out_mesh;
+	 // todo: support more triangle modes
+	 assert(primitive.mode == TINYGLTF_MODE_TRIANGLES);
 	 
 	 const tinygltf::Accessor& pos_accessor = model.accessors[primitive.attributes["POSITION"]];
 	 const tinygltf::BufferView& pos_bufferView = model.bufferViews[pos_accessor.bufferView];
@@ -65,7 +73,7 @@ void loadmodel(const char* modelpath, std::vector<Mesh>& out_meshes, std::vector
 	 const tinygltf::BufferView& norm_bufferView = model.bufferViews[norm_accessor.bufferView];
 	 const tinygltf::Buffer& norm_buffer = model.buffers[norm_bufferView.buffer];
 	 int norm_stride = norm_accessor.ByteStride(norm_bufferView);
-
+	 // todo: support TEXCOORD_1 etc. asserts below.
 	 const tinygltf::Accessor& uv_accessor = model.accessors[primitive.attributes["TEXCOORD_0"]];
 	 const tinygltf::BufferView& uv_bufferView = model.bufferViews[uv_accessor.bufferView];
 	 const tinygltf::Buffer& uv_buffer = model.buffers[pos_bufferView.buffer];
@@ -86,30 +94,32 @@ void loadmodel(const char* modelpath, std::vector<Mesh>& out_meshes, std::vector
 
 	 log::debug("verts: {}, mode: {}, pos: {}, norm: {}, uv: {}, idx: {}", pos_accessor.count, primitive.mode, pos_stride, norm_stride, uv_stride, idx_stride);
 	 
-	 // switch(uv_accessor.type)
-	 // {
-	 //    case TINYGLTF_TYPE_VEC2: //TINYGLTF_TYPE_VEC2
-	 //    {
-	 //       switch (uv_accessor.componentType)
-	 //       {
-	 // 	  case TINYGLTF_COMPONENT_TYPE_FLOAT:
-	 // 	  {
-	 // 	     log::debug("UVs: float");
-	 // 	     break;
-	 // 	  }
-	 // 	  case TINYGLTF_COMPONENT_TYPE_DOUBLE :
-	 // 	  {
-	 // 	     log::debug("UVs: double");
-	 // 	     break;
-	 // 	  }
-	 //       }
-	 //       break;
-	 //    }
-	 //    default:
-	 //    {
-	 //       log::debug("unknown type");
-	 //    }
-	 // }
+	 switch(uv_accessor.type)
+	 {
+	    case TINYGLTF_TYPE_VEC2: //TINYGLTF_TYPE_VEC2
+	    {
+	       switch (uv_accessor.componentType)
+	       {
+		  case TINYGLTF_COMPONENT_TYPE_FLOAT:
+		  {
+		     log::debug("UVs: float");
+		     break;
+		  }
+		  case TINYGLTF_COMPONENT_TYPE_DOUBLE :
+		  {
+		     log::debug("UVs: double");
+		     // todo: support double type uvs
+		     assert(false);
+		     break;
+		  }
+	       }
+	       break;
+	    }
+	    default:
+	    {
+	       log::debug("unknown type");
+	    }
+	 }
 	 
 	 Vertex* verts = new Vertex[pos_accessor.count];
 	 for (size_t i = 0; i < pos_accessor.count; ++i)
@@ -141,27 +151,42 @@ void loadmodel(const char* modelpath, std::vector<Mesh>& out_meshes, std::vector
 	 {
 	    tinygltf::Material& mat = model.materials[material_id];
 	    const char* name = model.materials[material_id].name.c_str();
-	    log::debug("material: {}", name);
-
-	    if(mat.pbrMetallicRoughness.baseColorTexture.index != -1)
+	    log::debug("material: {}, {}", material_id, name);
+	    
+	    int tex_id = mat.pbrMetallicRoughness.baseColorTexture.index;
+	    int coord_id = mat.pbrMetallicRoughness.baseColorTexture.texCoord;
+	    if(tex_id != -1)
 	    {
-	       log::debug("base tex: {}", mat.pbrMetallicRoughness.baseColorTexture.index);
-	       out_mesh.images[0] = out_images[mat.pbrMetallicRoughness.baseColorTexture.index];
+	       assert(coord_id == 0);
+	       log::debug("base tex: {}, coords: {}", tex_id, coord_id);
+	       out_mesh.images[0] = out_images[model.textures[tex_id].source];
 	    }
-	    if(mat.pbrMetallicRoughness.metallicRoughnessTexture.index != -1)
+	    
+	    tex_id = mat.pbrMetallicRoughness.metallicRoughnessTexture.index;
+	    coord_id = mat.pbrMetallicRoughness.metallicRoughnessTexture.texCoord;
+	    if(tex_id != -1)
 	    {
-	       log::debug("met-rough tex: {}", mat.pbrMetallicRoughness.metallicRoughnessTexture.index);
-	       out_mesh.images[1] = out_images[mat.pbrMetallicRoughness.metallicRoughnessTexture.index];
+	       assert(coord_id == 0);
+	       log::debug("met-rough tex: {}, coords: {}", tex_id, coord_id);
+	       out_mesh.images[1] = out_images[model.textures[tex_id].source];
 	    }
-	    if(mat.normalTexture.index != -1)
+	    
+	    tex_id = mat.normalTexture.index;
+	    coord_id = mat.normalTexture.texCoord;
+	    if(tex_id != -1)
 	    {
-	       log::debug("normal tex: {}", mat.normalTexture.index);
-	       out_mesh.images[2] = out_images[mat.normalTexture.index];
+	       assert(coord_id == 0);
+	       log::debug("normal tex: {}, coords: {}", tex_id, coord_id);
+	       out_mesh.images[2] = out_images[model.textures[tex_id].source];
 	    }
+	    
+	    tex_id = mat.occlusionTexture.index;
+	    coord_id = mat.occlusionTexture.texCoord;
 	    if(mat.occlusionTexture.index != -1)
 	    {
-	       log::debug("ao tex: {}", mat.occlusionTexture.index);
-	       out_mesh.images[3] = out_images[mat.occlusionTexture.index];
+	       assert(coord_id == 0);
+	       log::debug("ao tex: {}, coords: {}", tex_id, coord_id);
+	       out_mesh.images[3] = out_images[model.textures[tex_id].source];
 	    }
 	 }
 	 out_meshes.push_back(out_mesh);

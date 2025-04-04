@@ -240,11 +240,11 @@ void main()
       //  Debugging modes
       case 1: out_color = vec4(in_uv, 1.0, 1.0); break;        // show uvs
       case 2: out_color = pow(albedo, vec4(1.0/2.2)); break;   // show albedo
-      case 3: out_color = vec4(abs(world_normal), 1.0); break; // show normals
+      case 3: out_color = vec4(tex_normal, 1.0); break;          // show normals
       case 4: out_color = vec4(vec3(roughness), 1.0); break;   // show roughness
       case 5: out_color = vec4(vec3(metallic), 1.0); break;    // show metallic
       case 6: out_color = vec4(vec3(ao), 1.0); break;          // show ao
-      case 7: out_color = vec4(abs(position), 1.0); break;     // show position
+      case 7: out_color = vec4(abs(world_normal), 1.0); break; // show world normals
       default: out_color = vec4(color, 1.0); break;
    }
    

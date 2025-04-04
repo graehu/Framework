@@ -91,7 +91,7 @@ void vulkan_sample::run()
       mesh.material[fw::shader::e_fragment] = fw::hash::string("pbr");
       // mesh.transform = mat4x4f::translated(0, -.5, -0.1)*mat4x4f::scaled(2, 2, 2);
       // mesh.transform = mat4x4f::scaled(40, 40, 40);
-      // mesh.transform = mat4x4f::scaled(.02, .02, .02);
+      mesh.transform = mat4x4f::scaled(.02, .02, .02);
    }
 
    float time = 0;
@@ -135,6 +135,7 @@ void vulkan_sample::run()
 	 cmode = (cam_mode)((((int)cmode)+dir) % ((int)cam_cycle));
 	 log::debug("user camera mode: {}, {}, {}", cam_num, ((int)cmode+dir), (int)cam_cycle);
 	 cam_toggling = true;
+	 // todo: make this loop going backwards.
 	 cam_num = cmode % cam_cycle;
 	 cam.m_pitchDegrees = 0;
 	 cam.m_headingDegrees = 0;
@@ -148,6 +149,7 @@ void vulkan_sample::run()
 	 shade_toggling = true;
 	 int dir = m_input->isKeyPressed(input::e_shift) ? -1 : 1;
 	 shademode = (shademode+dir) % 8;
+	 if(shademode < 0) shademode = 7;
 	 log::debug("toggle shading: {}", shademode);
 	 m_graphics->set_shademode(shademode);
       }
@@ -158,6 +160,7 @@ void vulkan_sample::run()
 	 model_toggling = true;
 	 int dir = m_input->isKeyPressed(input::e_shift) ? -1 : 1;
 	 model_id = (model_id+dir) % meshes.size();
+	 if(model_id < 0) model_id = meshes.size()-1;
 	 log::debug("toggle meshes: {}", model_id);
       }
       else if(!wants_model && model_toggling) { model_toggling = false; }
@@ -215,7 +218,7 @@ void vulkan_sample::run()
       // light.intensity = 2.0f*alpha;
       cam.update();
       // todo: you can't isolate model 0.
-      for(int i = 0; i < meshes.size(); i++) { if(i == model_id || !model_id) { m_graphics->getRenderer()->visit(&meshes[i]); } }
+      for(size_t i = 0; i < meshes.size(); i++) { if(i == (size_t)model_id || !model_id) { m_graphics->getRenderer()->visit(&meshes[i]); } }
       // m_graphics->getRenderer()->visit(&meshes[0]);
       // m_graphics->getRenderer()->visit(&quad);
       // m_graphics->getRenderer()->visit(&quad2);
