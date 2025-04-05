@@ -148,8 +148,8 @@ void vulkan_sample::run()
       {
 	 shade_toggling = true;
 	 int dir = m_input->isKeyPressed(input::e_shift) ? -1 : 1;
-	 shademode = (shademode+dir) % 8;
-	 if(shademode < 0) shademode = 7;
+	 shademode = (shademode+dir) % 9;
+	 if(shademode < 0) shademode = 8;
 	 log::debug("toggle shading: {}", shademode);
 	 m_graphics->set_shademode(shademode);
       }

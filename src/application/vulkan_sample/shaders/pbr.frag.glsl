@@ -26,7 +26,6 @@ struct Lights
 };
 
 #define PI			3.14159265358979323846
-
 // k term is for image based versus direct lighting
 // ibl = (rougness*rougness)*0.5f
 // direct = ((roughness+1)^2)*0.125
@@ -118,7 +117,7 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 	
    return ggx1 * ggx2;
 }
-
+#define BETTER_METHOD 1
 // not using this atm, it makes fresnel look worse.
 mat3 CalculateTBN( vec3 N, vec3 p, vec2 uv )
 {
@@ -140,6 +139,8 @@ mat3 CalculateTBN( vec3 N, vec3 p, vec2 uv )
    return mat3( T * invmax, B * invmax, N );
    #else
    // simpler method below
+   // note: this method can flip normal directions.
+   // ----: might be ok for geometry with normals in one hemisphere.
    
    // compute tangent T and bitangent B
    vec3 Q1 = dFdx(p);
@@ -239,12 +240,14 @@ void main()
       case 0: out_color = vec4(color, 1.0); break;
       //  Debugging modes
       case 1: out_color = vec4(in_uv, 1.0, 1.0); break;        // show uvs
-      case 2: out_color = pow(albedo, vec4(1.0/2.2)); break;   // show albedo
-      case 3: out_color = vec4(tex_normal, 1.0); break;          // show normals
-      case 4: out_color = vec4(vec3(roughness), 1.0); break;   // show roughness
-      case 5: out_color = vec4(vec3(metallic), 1.0); break;    // show metallic
-      case 6: out_color = vec4(vec3(ao), 1.0); break;          // show ao
-      case 7: out_color = vec4(abs(world_normal), 1.0); break; // show world normals
+      case 2: out_color = pow(albedo, vec4(1.0/2.2)); break;   // show texture albedo
+      case 3: out_color = vec4(abs(in_normal), 1.0); break;    // show vertex normals
+      case 4: out_color = vec4(tex_normal, 1.0); break;        // show texture normals
+      case 5: out_color = vec4(abs(world_normal), 1.0); break; // show world normals
+      case 6: out_color = vec4(vec3(roughness), 1.0); break;   // show texture roughness
+      case 7: out_color = vec4(vec3(metallic), 1.0); break;    // show texture metallic
+      case 8: out_color = vec4(vec3(ao), 1.0); break;          // show ao
+
       default: out_color = vec4(color, 1.0); break;
    }
    
