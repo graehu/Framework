@@ -3,7 +3,34 @@
 #include "../../utils/params.h"
 #include "../../utils/string_helpers.h"
 #include "../../networking/packet/packet.h"
+#include <cstddef>
 #include <type_traits>
+#include <array>
+
+#include <string_view>
+// this code came from here:
+// https://stackoverflow.com/questions/81870/is-it-possible-to-print-a-variables-type-in-standard-c/56766138#56766138
+
+template <typename T>
+constexpr auto type_name() {
+  std::string_view name, prefix, suffix;
+#ifdef __clang__
+  name = __PRETTY_FUNCTION__;
+  prefix = "auto type_name() [T = ";
+  suffix = "]";
+#elif defined(__GNUC__)
+  name = __PRETTY_FUNCTION__;
+  prefix = "constexpr auto type_name() [with T = ";
+  suffix = "]";
+#elif defined(_MSC_VER)
+  name = __FUNCSIG__;
+  prefix = "auto __cdecl type_name<";
+  suffix = ">(void)";
+#endif
+  name.remove_prefix(prefix.size());
+  name.remove_suffix(suffix.size());
+  return name;
+}
 
 using namespace fw;
 
@@ -32,7 +59,8 @@ struct struct_c
    void method_b() { log::info("this wont be called"); }
 };
 
-std::vector<struct_a> struct_vas = {};
+std::vector<struct_a> struct_vas_vec = {};
+std::array<struct_a, 8> struct_vas_arr = {};
 
 
 struct MethodABase {}; // concrete type to call funcs on
@@ -79,10 +107,18 @@ struct MethodHandler
 // this only works for contiguous memory.
 // it also assumes the type implements size and operator[]
 // might be better to just iterate and store array of base ptrs up to some max.
-template <template <class, typename...> class c, class t>
-MethodHandler GetMethodAHandler(c<t>& in)
+template <template <typename, typename...> class c, typename t, typename... ts>
+MethodHandler GetMethodAHandler(c<t, ts...>& in)
 {
    log::info("Generate array method handler");
+   MethodHandler out = { (MethodABase*)&in[0], MethodAHelper<t>::GetPtr(), in.size(), sizeof(t) };
+   return out;
+}
+
+template <template <typename, size_t, typename...> class c, typename t, size_t N, typename... ts>
+MethodHandler GetMethodAHandler(c<t, N, ts...>& in)
+{
+   log::info("Generate array method handler with int");
    MethodHandler out = { (MethodABase*)&in[0], MethodAHelper<t>::GetPtr(), in.size(), sizeof(t) };
    return out;
 }
@@ -100,8 +136,10 @@ void new_sample::run()
 {
    log::scope new_sample("new_sample", true);
    {
-      struct_vas.push_back({0,20,9});
-      struct_vas.push_back({0,30,0});
+      struct_vas_vec.push_back({0,20,9});
+      struct_vas_vec.push_back({0,30,0});
+      struct_vas_arr[0] = {0,20,9};
+      struct_vas_arr[7] = {0,20,9};
       struct_a test_a;
       struct_b test_b;
       struct_c test_c;
@@ -112,7 +150,8 @@ void new_sample::run()
       GetMethodAHandler(test_a).Call(); // calls the correct function
       GetMethodAHandler(test_b).Call(); // calls incorrect fuction, kind of.
       GetMethodAHandler(test_c).Call(); // handles nullptr
-      GetMethodAHandler(struct_vas).Call(); // handles vectors without knowing the type.
+      GetMethodAHandler(struct_vas_vec).Call(); // handles vectors without knowing the type.
+      GetMethodAHandler(struct_vas_arr).Call();
    }
    {
       typedef net::NewPacket<32> test_packet;
