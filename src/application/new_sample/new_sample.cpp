@@ -59,10 +59,6 @@ struct struct_c
    void method_b() { log::info("this wont be called"); }
 };
 
-std::vector<struct_a> struct_vas_vec = {};
-std::array<struct_a, 8> struct_vas_arr = {};
-
-
 struct MethodABase {}; // concrete type to call funcs on
 typedef void (MethodABase::* MethodAPtr)(int);
 
@@ -110,7 +106,7 @@ struct MethodHandler
 template <template <typename, typename...> class c, typename t, typename... ts>
 MethodHandler GetMethodAHandler(c<t, ts...>& in)
 {
-   log::info("Generate array method handler");
+   log::info("Generate vector method handler");
    MethodHandler out = { (MethodABase*)&in[0], MethodAHelper<t>::GetPtr(), in.size(), sizeof(t) };
    return out;
 }
@@ -122,8 +118,25 @@ MethodHandler GetMethodAHandler(c<t, N, ts...>& in)
    MethodHandler out = { (MethodABase*)&in[0], MethodAHelper<t>::GetPtr(), in.size(), sizeof(t) };
    return out;
 }
+// this only works if wrapper has no other members.
+// kind of a hack, but could be made better with additional type checking /
+// helpers.
+template <template <typename, typename...> class c, typename t, template<class> class w, typename... ts>
+MethodHandler GetMethodAHandler(c<w<t>, ts...>& in)
+{
+   log::info("Generate vector of wrapped method handler");
+   MethodHandler out = { (MethodABase*)&in[0], MethodAHelper<t>::GetPtr(), in.size(), sizeof(t) };
+   return out;
+}
+template <template <typename, size_t, typename...> class c, typename t, size_t N, template<class> class w, typename... ts>
+MethodHandler GetMethodAHandler(c<w<t>, N, ts...>& in)
+{
+   log::info("Generate array of wrapped method handler with int");
+   MethodHandler out = { (MethodABase*)&in[0], MethodAHelper<t>::GetPtr(), in.size(), sizeof(t) };
+   return out;
+}
 
-// this works for anything.
+// this works for anything implementing methoda
 template <typename t>
 MethodHandler GetMethodAHandler(t& in)
 {
@@ -132,14 +145,26 @@ MethodHandler GetMethodAHandler(t& in)
    return out;
 }
 
+template <typename t> struct wrapper { t wrapped; };
+
 void new_sample::run()
 {
    log::scope new_sample("new_sample", true);
    {
+      std::vector<struct_a> struct_vas_vec = {};
       struct_vas_vec.push_back({0,20,9});
       struct_vas_vec.push_back({0,30,0});
+      std::array<struct_a, 2> struct_vas_arr = {};
       struct_vas_arr[0] = {0,20,9};
-      struct_vas_arr[7] = {0,20,9};
+      struct_vas_arr[1] = {0,20,9};
+      std::array<wrapper<struct_a>, 2> wrapped_arr = {};
+      wrapped_arr[0].wrapped = {0,20,9};
+      wrapped_arr[1].wrapped = {0,40,9};
+      std::vector<wrapper<struct_a>> wrapped_vec = {};
+      wrapped_vec.push_back({0,20,9});
+      wrapped_vec.push_back({0,10,9});
+      wrapped_vec.push_back({0,0,9});
+      
       struct_a test_a;
       struct_b test_b;
       struct_c test_c;
@@ -151,7 +176,9 @@ void new_sample::run()
       GetMethodAHandler(test_b).Call(); // calls incorrect fuction, kind of.
       GetMethodAHandler(test_c).Call(); // handles nullptr
       GetMethodAHandler(struct_vas_vec).Call(); // handles vectors without knowing the type.
-      GetMethodAHandler(struct_vas_arr).Call();
+      GetMethodAHandler(struct_vas_arr).Call(); // handles arrays wtihhout knowing len or type.
+      GetMethodAHandler(wrapped_vec).Call();        // handles wrapped arrays
+      GetMethodAHandler(wrapped_arr).Call();        // handles wrapped arrays
    }
    {
       typedef net::NewPacket<32> test_packet;
