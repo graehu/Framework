@@ -28,3 +28,7 @@
 	path = libs/vulkan
 	url = git@github.com:KhronosGroup/Vulkan-Headers.git
 	shallow = true
+[submodule "libs/imgui"]
+	path = libs/imgui
+	url = git@github.com:ocornut/imgui.git
+	shallow = true

@@ -30,7 +30,16 @@ config.include_paths = [
     f"{libs}/vulkan/include/",
     f"{libs}/glfw/include/",
     f"{libs}/tinygltf/",
+    f"{libs}/imgui/",
 ]
+imgui_files = [
+f"{libs}/imgui/imgui.cpp",
+f"{libs}/imgui/imgui_demo.cpp",
+f"{libs}/imgui/imgui_draw.cpp",
+f"{libs}/imgui/imgui_tables.cpp",
+f"{libs}/imgui/imgui_widgets.cpp"
+]
+config.source_files += imgui_files
 
 config.library_paths = [libs]
 config.warnings = ["all", "extra", "pedantic"]

@@ -1,17 +1,16 @@
+
 #include "vulkan_sample.h"
 #include "../../utils/log/log.h"
 #include "../../utils/params.h"
 #include "../../window/window.h"
 #include "../../graphics/graphics.h"
 #include <array>
-#include <cmath>
-#include <cstdint>
 #include <thread>
 #include <vector>
 #include <vulkan/vulkan_core.h>
-#include "iostream"
 #include "../../graphics/camera/camera.h"
 #include "../../input/input.h"
+#include "../../../libs/imgui/imgui.h"
 
 // todo: we don't want to have this as an explicit file like this I don't think.
 #include "tiny_gltf_loader.h"
@@ -45,9 +44,6 @@ void vulkan_sample::init()
 
 // todo: add pass dependencies.
 // todo: add pass framebuffer blending/compositing.
-// todo: add basic pbr shaders.
-// todo: add shademode to shader global constants.
-// todo: add user input camera
 
 void vulkan_sample::run()
 {
@@ -77,21 +73,16 @@ void vulkan_sample::run()
 
    
    std::vector<Mesh> meshes; std::vector<Image> images;
-   // loadmodel("../../../libs/tinygltf/models/Cube/Cube.gltf", meshes, images);
-   loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images);
-   // loadmodel("../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", meshes, images);
-   // loadmodel("../../../../glTF-Sample-Assets/Models/SheenChair/glTF/SheenChair.gltf", meshes, images);
-   // loadmodel("../../../../glTF-Sample-Assets/Models/ABeautifulGame/glTF/ABeautifulGame.gltf", meshes, images);
-   // loadmodel("../../../../CopyCat/Project/GamePlay/Characters/CopyCat/Bodies/CopyCat.gltf", meshes, images);
+   float model_scale = 1.0;
+   // loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images); model_scale = 0.02;
+   loadmodel("../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", meshes, images);
    
    for(Mesh& mesh : meshes)
    {
       mesh.passes = {"swapchain"};
       mesh.material[fw::shader::e_vertex] = fw::hash::string("shared");
       mesh.material[fw::shader::e_fragment] = fw::hash::string("pbr");
-      // mesh.transform = mat4x4f::translated(0, -.5, -0.1)*mat4x4f::scaled(2, 2, 2);
-      // mesh.transform = mat4x4f::scaled(40, 40, 40);
-      mesh.transform = mat4x4f::scaled(.02, .02, .02);
+      mesh.transform = mat4x4f::scaled(model_scale, model_scale, model_scale);
    }
 
    float time = 0;
@@ -115,9 +106,25 @@ void vulkan_sample::run()
    bool shade_toggling = false;
    bool model_toggling = false;
    int model_id = 0;
+   ImGui::CreateContext();
+   ImGuiIO& io = ImGui::GetIO(); (void)io;
+   ImGui::StyleColorsDark();
    
    while (m_window->update())
    {
+      
+      // imgui.cpp:10227: void ImGui::ErrorCheckNewFrameSanityChecks():
+      // Assertion `g.IO.DisplaySize.x >= 0.0f && g.IO.DisplaySize.y >= 0.0f && "Invalid DisplaySize value!"' failed.
+
+      // new frame wont work until all of the sanity checks pass, looks like DisplaySize is linked to window creation.
+      // but that's inside imgui's backend functions which messy my vulkan abstraction a bit.
+      // this is a fine starting point.
+      
+      // ImGui::NewFrame();
+      // ImGui::Render();
+      // ImDrawData* draw_data = ImGui::GetDrawData();
+
+      
       float alpha = 1.0-(cos(time*0.5f)+1.0f)*0.5f;
       if (alpha == 0 && cmode == cam_cycle)
       {
@@ -131,6 +138,7 @@ void vulkan_sample::run()
       bool wants_toggle = m_input->isKeyPressed(input::e_respawn);
       if (wants_toggle && !cam_toggling)
       {
+
 	 int dir = m_input->isKeyPressed(input::e_shift) ? -1 : 1;
 	 cmode = (cam_mode)((((int)cmode)+dir) % ((int)cam_cycle));
 	 log::debug("user camera mode: {}, {}, {}", cam_num, ((int)cmode+dir), (int)cam_cycle);
@@ -231,6 +239,7 @@ void vulkan_sample::run()
       if(m_input->isKeyPressed(input::e_quit)) break;
 
    }
+   ImGui::DestroyContext();
    for(auto image : images) { delete[] image.data; }
 }
 
