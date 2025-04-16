@@ -14,9 +14,12 @@
 
 // todo: we don't want to have this as an explicit file like this I don't think.
 #include "tiny_gltf_loader.h"
-
+#include "GLFW/glfw3.h"
 using namespace fw;
-
+namespace fwvulkan
+{
+   extern GLFWwindow* g_window;
+}
 application* application::factory()
 {
    return new vulkan_sample();
@@ -108,6 +111,23 @@ void vulkan_sample::run()
    int model_id = 0;
    ImGui::CreateContext();
    ImGuiIO& io = ImGui::GetIO(); (void)io;
+   // void ImGui_ImplGlfw_NewFrame()
+   {
+      int w, h;
+      int display_w, display_h;
+      glfwGetWindowSize(fwvulkan::g_window, &w, &h);
+      glfwGetFramebufferSize(fwvulkan::g_window, &display_w, &display_h);
+      io.DisplaySize = ImVec2((float)w, (float)h);
+      if (w > 0 && h > 0)
+      {
+	 io.DisplayFramebufferScale = ImVec2((float)display_w / (float)w, (float)display_h / (float)h);
+      }
+      // double current_time = glfwGetTime();
+      // if (current_time <= bd->Time)
+      // 	 current_time = bd->Time + 0.00001f;
+      // io.DeltaTime = bd->Time > 0.0 ? (float)(current_time - bd->Time) : (float)(1.0f / 60.0f);
+      // bd->Time = current_time;
+   }
    ImGui::StyleColorsDark();
    
    while (m_window->update())
@@ -123,6 +143,7 @@ void vulkan_sample::run()
       // ImGui::NewFrame();
       // ImGui::Render();
       // ImDrawData* draw_data = ImGui::GetDrawData();
+      // (void)draw_data;
 
       
       float alpha = 1.0-(cos(time*0.5f)+1.0f)*0.5f;
