@@ -25,6 +25,8 @@
 #include "../../types/mat4x4f.h"
 #include "vulkan_types.h"
 
+#include "../../../libs/imgui/backends/imgui_impl_vulkan.h"
+
 
 using namespace fw;
 struct vkVertex : public fw::Vertex
@@ -2277,6 +2279,38 @@ void UpdateUniformBuffer(uint32_t currentImage)
    ubo.shademode = g_shademode;
    memcpy(g_uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }
+static void check_vk_result(VkResult err)
+{
+    if (err == VK_SUCCESS)
+        return;
+    fprintf(stderr, "[vulkan] Error: VkResult = %d\n", err);
+    if (err < 0)
+        abort();
+}
+void InitIMGUI()
+{
+   ImGui_ImplVulkan_InitInfo init_info = {};
+   init_info.ApiVersion = VK_API_VERSION_1_3;              // Pass in your value of VkApplicationInfo::apiVersion, otherwise will default to header version.
+   init_info.Instance = fwvulkan::g_instance;
+   init_info.PhysicalDevice = fwvulkan::g_physical_device;
+   init_info.Device = fwvulkan::g_logical_device;
+   fwvulkan::QueueFamilyIndices indices = fwvulkan::device::FindQueueFamilies(fwvulkan::g_physical_device, fwvulkan::g_surface);
+   init_info.QueueFamily = indices.graphics_family.value();
+   init_info.Queue = fwvulkan::g_present_queue;
+   init_info.PipelineCache = VK_NULL_HANDLE; 
+   init_info.DescriptorPool = VK_NULL_HANDLE;
+   init_info.UseDynamicRendering = true;
+   // todo: this is a magix number
+   init_info.MinImageCount = 2;
+   // todo: this might be wrong
+   init_info.ImageCount = fwvulkan::g_max_frames_in_flight; 
+   init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+   init_info.Allocator = VK_NULL_HANDLE;      
+   init_info.CheckVkResultFn = check_vk_result;
+   // todo: this might be wrong
+   init_info.DescriptorPoolSize = fwvulkan::g_max_frames_in_flight;
+   ImGui_ImplVulkan_Init(&init_info);
+}
 
 int gGlfwVulkan::init()
 {
@@ -2323,6 +2357,8 @@ int gGlfwVulkan::init()
 	 buffers::CreateDescriptorSets();
       }
       buffers::InitPBRDescriptors();
+      // todo: make this not crash.
+      InitIMGUI();
    }
    // todo: swapchain pass extent is set here, kinda gross.
    swapchain::CreateSwapChain();

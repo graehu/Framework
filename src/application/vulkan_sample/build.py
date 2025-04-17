@@ -33,11 +33,14 @@ config.include_paths = [
     f"{libs}/imgui/",
 ]
 imgui_files = [
-f"{libs}/imgui/imgui.cpp",
-f"{libs}/imgui/imgui_demo.cpp",
-f"{libs}/imgui/imgui_draw.cpp",
-f"{libs}/imgui/imgui_tables.cpp",
-f"{libs}/imgui/imgui_widgets.cpp"
+    f"{libs}/imgui/imgui.cpp",
+    f"{libs}/imgui/imgui_demo.cpp",
+    f"{libs}/imgui/imgui_draw.cpp",
+    f"{libs}/imgui/imgui_tables.cpp",
+    f"{libs}/imgui/imgui_widgets.cpp",
+    f"{libs}/imgui/backends/imgui_impl_glfw.cpp",
+    f"{libs}/imgui/backends/imgui_impl_vulkan.cpp"
+    
 ]
 config.source_files += imgui_files
 

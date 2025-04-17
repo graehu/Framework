@@ -11,6 +11,8 @@
 #include "../../graphics/camera/camera.h"
 #include "../../input/input.h"
 #include "../../../libs/imgui/imgui.h"
+#include "../../../libs/imgui/backends/imgui_impl_glfw.h"
+#include "../../../libs/imgui/backends/imgui_impl_vulkan.h"
 
 // todo: we don't want to have this as an explicit file like this I don't think.
 #include "tiny_gltf_loader.h"
@@ -36,6 +38,12 @@ void vulkan_sample::init()
    m_width = 1920; m_height = 1080;
    m_window->init(m_width, m_height, m_name);
 
+   ImGui::CreateContext();
+   ImGuiIO& io = ImGui::GetIO(); (void)io;
+   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+   io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+   ImGui_ImplGlfw_InitForVulkan(fwvulkan::g_window, true);
+   
    fw::log::topics::add("graphics");
    m_graphics = graphics::graphicsFactory();
    m_graphics->init();
@@ -47,7 +55,6 @@ void vulkan_sample::init()
 
 // todo: add pass dependencies.
 // todo: add pass framebuffer blending/compositing.
-
 void vulkan_sample::run()
 {
    commandline::parse();
@@ -109,43 +116,19 @@ void vulkan_sample::run()
    bool shade_toggling = false;
    bool model_toggling = false;
    int model_id = 0;
-   ImGui::CreateContext();
-   ImGuiIO& io = ImGui::GetIO(); (void)io;
-   // void ImGui_ImplGlfw_NewFrame()
-   {
-      int w, h;
-      int display_w, display_h;
-      glfwGetWindowSize(fwvulkan::g_window, &w, &h);
-      glfwGetFramebufferSize(fwvulkan::g_window, &display_w, &display_h);
-      io.DisplaySize = ImVec2((float)w, (float)h);
-      if (w > 0 && h > 0)
-      {
-	 io.DisplayFramebufferScale = ImVec2((float)display_w / (float)w, (float)display_h / (float)h);
-      }
-      // double current_time = glfwGetTime();
-      // if (current_time <= bd->Time)
-      // 	 current_time = bd->Time + 0.00001f;
-      // io.DeltaTime = bd->Time > 0.0 ? (float)(current_time - bd->Time) : (float)(1.0f / 60.0f);
-      // bd->Time = current_time;
-   }
+   
+
    ImGui::StyleColorsDark();
+   ImGui_ImplVulkan_NewFrame();
+   ImGui_ImplGlfw_NewFrame();
    
    while (m_window->update())
    {
-      
-      // imgui.cpp:10227: void ImGui::ErrorCheckNewFrameSanityChecks():
-      // Assertion `g.IO.DisplaySize.x >= 0.0f && g.IO.DisplaySize.y >= 0.0f && "Invalid DisplaySize value!"' failed.
+      ImGui::NewFrame();
+      ImGui::Render();
+      ImDrawData* draw_data = ImGui::GetDrawData();
+      (void)draw_data;
 
-      // new frame wont work until all of the sanity checks pass, looks like DisplaySize is linked to window creation.
-      // but that's inside imgui's backend functions which messy my vulkan abstraction a bit.
-      // this is a fine starting point.
-      
-      // ImGui::NewFrame();
-      // ImGui::Render();
-      // ImDrawData* draw_data = ImGui::GetDrawData();
-      // (void)draw_data;
-
-      
       float alpha = 1.0-(cos(time*0.5f)+1.0f)*0.5f;
       if (alpha == 0 && cmode == cam_cycle)
       {
@@ -258,9 +241,8 @@ void vulkan_sample::run()
       time += (1.0f/60.0f);
       m_input->update();
       if(m_input->isKeyPressed(input::e_quit)) break;
-
    }
-   ImGui::DestroyContext();
+
    for(auto image : images) { delete[] image.data; }
 }
 
@@ -268,6 +250,7 @@ void vulkan_sample::shutdown()
 {
    log::scope vulkan_sample("vulkan_sample");
    m_graphics->shutdown();
+   ImGui::DestroyContext();
    m_window->shutdown();
    log::debug("vulkan_sample finished.");
 }
