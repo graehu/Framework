@@ -117,17 +117,31 @@ void vulkan_sample::run()
    bool model_toggling = false;
    int model_id = 0;
    
-
    ImGui::StyleColorsDark();
    ImGui_ImplVulkan_NewFrame();
+   auto io = ImGui::GetIO();
    ImGui_ImplGlfw_NewFrame();
-   
    while (m_window->update())
    {
       ImGui::NewFrame();
+      {
+	 // testing gui
+	 static float f = 0.0f;
+	 static int imgui_counter = 0;
+	 ImGui::Begin("Hello, world!");
+	 ImGui::Text("This is some useful text.");
+	 ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
+	 if (ImGui::Button("Button")) imgui_counter++;
+	 ImGui::SameLine();
+	 ImGui::Text("counter = %d", imgui_counter);
+	 ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+	 ImGui::End();
+      }
       ImGui::Render();
       ImDrawData* draw_data = ImGui::GetDrawData();
+      // todo: integrate the draw data as a visitor thing?
       (void)draw_data;
+      
 
       float alpha = 1.0-(cos(time*0.5f)+1.0f)*0.5f;
       if (alpha == 0 && cmode == cam_cycle)
@@ -249,6 +263,8 @@ void vulkan_sample::run()
 void vulkan_sample::shutdown()
 {
    log::scope vulkan_sample("vulkan_sample");
+   ImGui_ImplGlfw_Shutdown();
+   ImGui_ImplVulkan_Shutdown();
    m_graphics->shutdown();
    ImGui::DestroyContext();
    m_window->shutdown();

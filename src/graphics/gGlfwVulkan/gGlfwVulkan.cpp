@@ -2307,6 +2307,21 @@ void InitIMGUI()
    init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
    init_info.Allocator = VK_NULL_HANDLE;      
    init_info.CheckVkResultFn = check_vk_result;
+
+   VkPipelineRenderingCreateInfo rendering_ci = {};
+   // VkPipelineRenderingCreateInfoKHR
+   rendering_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+   // rendering_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+   rendering_ci.pNext = VK_NULL_HANDLE;
+   rendering_ci.colorAttachmentCount = 1;
+   VkFormat depth_format = fwvulkan::utils::FindDepthFormat();
+   const VkFormat col_formats[1] = {fwvulkan::g_pass_map["swapchain"].image_format};
+   rendering_ci.pColorAttachmentFormats = col_formats;
+   rendering_ci.depthAttachmentFormat   = depth_format;
+   rendering_ci.stencilAttachmentFormat = depth_format;
+   
+   init_info.PipelineRenderingCreateInfo = rendering_ci;
+   
    // todo: this might be wrong
    init_info.DescriptorPoolSize = fwvulkan::g_max_frames_in_flight;
    ImGui_ImplVulkan_Init(&init_info);
@@ -2357,8 +2372,6 @@ int gGlfwVulkan::init()
 	 buffers::CreateDescriptorSets();
       }
       buffers::InitPBRDescriptors();
-      // todo: make this not crash.
-      InitIMGUI();
    }
    // todo: swapchain pass extent is set here, kinda gross.
    swapchain::CreateSwapChain();
@@ -2367,6 +2380,8 @@ int gGlfwVulkan::init()
    swapchain::CreateSwapchainImageViews();
    swapchain::CreateSwapchainFrameBuffers();
    barriers::CreatePassSemaphores("swapchain");
+   
+   InitIMGUI();
 
    return 0;
 }
