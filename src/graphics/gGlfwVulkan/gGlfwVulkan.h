@@ -25,4 +25,5 @@ public:
    void visit(class camera* _camera) override;
    void visit(fw::Mesh* _mesh) override;
    void visit(fw::Light* _mesh) override;
+   void visit(ImDrawData* _imgui) override;
 };

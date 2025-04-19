@@ -138,10 +138,7 @@ void vulkan_sample::run()
 	 ImGui::End();
       }
       ImGui::Render();
-      ImDrawData* draw_data = ImGui::GetDrawData();
-      // todo: integrate the draw data as a visitor thing?
-      (void)draw_data;
-      
+      ImDrawData* ui_drawdata = ImGui::GetDrawData();
 
       float alpha = 1.0-(cos(time*0.5f)+1.0f)*0.5f;
       if (alpha == 0 && cmode == cam_cycle)
@@ -250,6 +247,7 @@ void vulkan_sample::run()
       // m_graphics->getRenderer()->visit(&quad2);
       m_graphics->getRenderer()->visit(&cam);
       m_graphics->getRenderer()->visit(&light);
+      m_graphics->getRenderer()->visit(ui_drawdata);
       m_graphics->render();
       std::this_thread::sleep_for(std::chrono::milliseconds(16));
       time += (1.0f/60.0f);

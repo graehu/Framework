@@ -25,6 +25,7 @@
 #include "../../types/mat4x4f.h"
 #include "vulkan_types.h"
 
+#include "../../../libs/imgui/imgui.h"
 #include "../../../libs/imgui/backends/imgui_impl_vulkan.h"
 
 
@@ -2387,6 +2388,10 @@ int gGlfwVulkan::init()
 }
 hash::string shaders[shader::e_count];
 void gGlfwVulkan::visit(class physics::collider::polygon * /*_poly*/) {}
+void gGlfwVulkan::visit(ImDrawData* _imgui)
+{
+   (void)_imgui;
+}
 #include "../camera/camera.h"
 void gGlfwVulkan::visit(camera* _camera)
 {
