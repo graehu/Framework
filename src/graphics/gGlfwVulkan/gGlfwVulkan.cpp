@@ -1549,7 +1549,7 @@ namespace fwvulkan
    }
    namespace renderpass
    {
-      void CreatePassImages(fw::hash::string passname)
+      void CreatePassImages(fw::hash::string passname, int count)
       {
 	 auto& pass = g_pass_map[passname];
 
@@ -1564,10 +1564,10 @@ namespace fwvulkan
 	 assert(pass.image_views.size() == 0);
 	 assert(pass.image_mems.size() == 0);
 	 
-	 pass.images.resize(g_max_frames_in_flight);
-	 pass.image_views.resize(g_max_frames_in_flight);
-	 pass.image_mems.resize(g_max_frames_in_flight);
-         pass.frame_buffers.resize(g_max_frames_in_flight);
+	 pass.images.resize(count);
+	 pass.image_views.resize(count);
+	 pass.image_mems.resize(count);
+         pass.frame_buffers.resize(count);
 	 
          // back buffer format
 	 const VkImageUsageFlags usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -2103,6 +2103,7 @@ namespace fwvulkan
 	 depth_attachment_info.resolveImageView = VK_NULL_HANDLE;
 	 return depth_attachment_info;
       }
+      ImDrawData* pass_gui = nullptr;
       void RecordPass(hash::string passname)
       {
 	 PassHandle& pass = g_pass_map[passname];
@@ -2200,7 +2201,7 @@ namespace fwvulkan
 
 	    id++;
 	 }
-
+	 if(pass_gui != nullptr) { ImGui_ImplVulkan_RenderDrawData(pass_gui, pass.cmd_buffer); }
 	 // log::debug("end renderpass");
 #if USE_DYNAMIC_RENDERING
 	 vkCmdEndRendering(pass.cmd_buffer);
@@ -2222,40 +2223,45 @@ namespace fwvulkan
       bool CreatePassSemaphores(hash::string passname)
       {
 	 log::debug("CreateSemaphores");
-	 if(auto it = g_semaphore_map.find(passname); it == g_semaphore_map.end())
+	 PassHandle& pass = g_pass_map[passname];
+	 int num_images = pass.images.size();
+	 if(num_images != 0)
 	 {
-	    auto& semas = g_semaphore_map[passname];
-	    semas.image_available.resize(g_max_frames_in_flight);
-	    semas.render_finished.resize(g_max_frames_in_flight);
-	    semas.in_flight_fences.resize(g_max_frames_in_flight);
-
-	    VkSemaphoreCreateInfo semaphore_create_info = {};
-	    semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-	    VkFenceCreateInfo fence_create_info = {};
-	    fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	    fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-	    for (int i = 0; i < g_max_frames_in_flight; i++)
+	    if(auto it = g_semaphore_map.find(passname); it == g_semaphore_map.end())
 	    {
-	       if (vkCreateSemaphore(g_logical_device, &semaphore_create_info, nullptr, &semas.image_available[i]) !=
-		   VK_SUCCESS)
-	       {
-		  throw std::runtime_error("failed to create semaphore!");
-	       }
+	       auto& semas = g_semaphore_map[passname];
+	       semas.image_available.resize(num_images);
+	       semas.render_finished.resize(num_images);
+	       semas.in_flight_fences.resize(num_images);
 
-	       if (vkCreateSemaphore(g_logical_device, &semaphore_create_info, nullptr, &semas.render_finished[i]) !=
-		   VK_SUCCESS)
-	       {
-		  throw std::runtime_error("failed to create semaphore!");
-	       }
+	       VkSemaphoreCreateInfo semaphore_create_info = {};
+	       semaphore_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-	       if (vkCreateFence(g_logical_device, &fence_create_info, nullptr, &semas.in_flight_fences[i]) != VK_SUCCESS)
+	       VkFenceCreateInfo fence_create_info = {};
+	       fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	       fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+	       for (int i = 0; i < num_images; i++)
 	       {
-		  throw std::runtime_error("failed to create semaphore!");
+		  if (vkCreateSemaphore(g_logical_device, &semaphore_create_info, nullptr, &semas.image_available[i]) !=
+		      VK_SUCCESS)
+		  {
+		     throw std::runtime_error("failed to create semaphore!");
+		  }
+
+		  if (vkCreateSemaphore(g_logical_device, &semaphore_create_info, nullptr, &semas.render_finished[i]) !=
+		      VK_SUCCESS)
+		  {
+		     throw std::runtime_error("failed to create semaphore!");
+		  }
+
+		  if (vkCreateFence(g_logical_device, &fence_create_info, nullptr, &semas.in_flight_fences[i]) != VK_SUCCESS)
+		  {
+		     throw std::runtime_error("failed to create semaphore!");
+		  }
 	       }
+	       return true;
 	    }
-	    return true;
 	 }
 	 return false;
       }
@@ -2381,7 +2387,6 @@ int gGlfwVulkan::init()
    swapchain::CreateSwapchainImageViews();
    swapchain::CreateSwapchainFrameBuffers();
    barriers::CreatePassSemaphores("swapchain");
-   
    InitIMGUI();
 
    return 0;
@@ -2390,7 +2395,7 @@ hash::string shaders[shader::e_count];
 void gGlfwVulkan::visit(class physics::collider::polygon * /*_poly*/) {}
 void gGlfwVulkan::visit(ImDrawData* _imgui)
 {
-   (void)_imgui;
+   fwvulkan::renderpass::pass_gui = _imgui;
 }
 #include "../camera/camera.h"
 void gGlfwVulkan::visit(camera* _camera)
@@ -2669,7 +2674,7 @@ bool gGlfwVulkan::register_pass(fw::hash::string pass)
    PassHandle& swapchain = g_pass_map["swapchain"];
    if(renderpass::CreateDefaultRenderPass(pass, swapchain.extent, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL))
    {
-      renderpass::CreatePassImages(pass);
+      renderpass::CreatePassImages(pass, 1);
       barriers::CreatePassSemaphores(pass);
       return true;
    }

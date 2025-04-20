@@ -38,6 +38,11 @@ void vulkan_sample::init()
    m_width = 1920; m_height = 1080;
    m_window->init(m_width, m_height, m_name);
 
+   fw::log::topics::add("input");
+   m_input = input::inputFactory();
+   m_input->init();
+   
+   IMGUI_CHECKVERSION();
    ImGui::CreateContext();
    ImGuiIO& io = ImGui::GetIO(); (void)io;
    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
@@ -48,9 +53,7 @@ void vulkan_sample::init()
    m_graphics = graphics::graphicsFactory();
    m_graphics->init();
 
-   fw::log::topics::add("input");
-   m_input = input::inputFactory();
-   m_input->init();
+
 }
 
 // todo: add pass dependencies.
@@ -118,11 +121,15 @@ void vulkan_sample::run()
    int model_id = 0;
    
    ImGui::StyleColorsDark();
-   ImGui_ImplVulkan_NewFrame();
+
    auto io = ImGui::GetIO();
-   ImGui_ImplGlfw_NewFrame();
+   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+   io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
    while (m_window->update())
    {
+      ImGui_ImplVulkan_NewFrame();
+      ImGui_ImplGlfw_NewFrame();
       ImGui::NewFrame();
       {
 	 // testing gui
@@ -251,6 +258,7 @@ void vulkan_sample::run()
       m_graphics->render();
       std::this_thread::sleep_for(std::chrono::milliseconds(16));
       time += (1.0f/60.0f);
+      io.Framerate = 60;
       m_input->update();
       if(m_input->isKeyPressed(input::e_quit)) break;
    }

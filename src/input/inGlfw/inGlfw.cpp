@@ -25,6 +25,9 @@ double g_glfw_prev_mouse_y = 0;
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
+   (void)scancode;
+   (void)mods;
+   (void)window;
    MAP_KEY(GLFW_KEY_RIGHT, input::e_right);
    MAP_KEY(GLFW_KEY_LEFT, input::e_left);
    MAP_KEY(GLFW_KEY_UP, input::e_up);
@@ -47,6 +50,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 // }
 void cursor_callback(GLFWwindow *window, double xpos, double ypos)
 {
+   (void)window;
    g_glfw_prev_mouse_x = g_glfw_mouse_x;
    g_glfw_prev_mouse_y = g_glfw_mouse_y;
    
@@ -67,6 +71,7 @@ bool inGlfw::update(void)
    for(int i = 0; i < input::e_totalKeys; i++) { m_keys[i] = g_glfw_keys[i]; }
    g_glfw_prev_mouse_x = g_glfw_mouse_x;
    g_glfw_prev_mouse_y = g_glfw_mouse_y;
+   glfwPollEvents();
    return false;
 }
 bool inGlfw::isMouseClicked(mouseButtons _button)
