@@ -128,21 +128,26 @@ void vulkan_sample::run()
 
    while (m_window->update())
    {
+      bool wants_shade = m_input->isKeyPressed(input::e_shademode);
+      bool wants_cmode = m_input->isKeyPressed(input::e_respawn);
+      bool wants_model = m_input->isKeyPressed(input::e_nextmodel);
       ImGui_ImplVulkan_NewFrame();
       ImGui_ImplGlfw_NewFrame();
       ImGui::NewFrame();
       {
-	 // testing gui
-	 static float f = 0.0f;
-	 static int imgui_counter = 0;
-	 ImGui::Begin("Hello, world!");
-	 ImGui::Text("This is some useful text.");
-	 ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
-	 if (ImGui::Button("Button")) imgui_counter++;
-	 ImGui::SameLine();
-	 ImGui::Text("counter = %d", imgui_counter);
-	 ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-	 ImGui::End();
+	 if(ImGui::Begin("vulkan_sample"))
+	 {
+	    if (ImGui::Button("next shademode")) wants_shade = true;
+	    ImGui::SameLine();
+	    ImGui::Text("shademode = %d", shademode);
+	    if (ImGui::Button("next cammode")) wants_cmode = true;
+	    ImGui::SameLine();
+	    ImGui::Text("cam_mode = %d", cmode);
+	    if (ImGui::Button("next model")) wants_model = true;
+	    ImGui::SameLine();
+	    ImGui::Text("model = %d", model_id);
+	    ImGui::End();
+	 }
       }
       ImGui::Render();
       ImDrawData* ui_drawdata = ImGui::GetDrawData();
@@ -157,8 +162,8 @@ void vulkan_sample::run()
 	 time = 0;
       }
       
-      bool wants_toggle = m_input->isKeyPressed(input::e_respawn);
-      if (wants_toggle && !cam_toggling)
+
+      if (wants_cmode && !cam_toggling)
       {
 
 	 int dir = m_input->isKeyPressed(input::e_shift) ? -1 : 1;
@@ -171,9 +176,9 @@ void vulkan_sample::run()
 	 cam.m_headingDegrees = 0;
 	 time = 0;
       }
-      else if(!wants_toggle && cam_toggling) { cam_toggling = false; }
+      else if(!wants_cmode && cam_toggling) { cam_toggling = false; }
 
-      bool wants_shade = m_input->isKeyPressed(input::e_shademode);
+
       if(!shade_toggling && wants_shade)
       {
 	 shade_toggling = true;
@@ -184,7 +189,7 @@ void vulkan_sample::run()
 	 m_graphics->set_shademode(shademode);
       }
       else if(!wants_shade && shade_toggling) { shade_toggling = false; }
-      bool wants_model = m_input->isKeyPressed(input::e_nextmodel);
+
       if(!model_toggling && wants_model)
       {
 	 model_toggling = true;
@@ -199,11 +204,15 @@ void vulkan_sample::run()
       {
 	 case cam_free:
 	 {
+	    // note: IsWindowHovered will assert if you don't use anywindow outwith a window being.
+	    if(!ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow))
+	    {
+	       float dx, dy;
+	       m_input->mouseDelta(dx, dy);
+	       cam.changeHeading(dx);
+	       cam.changePitch(-dy);
+	    }
 	    const float speed = 10.0;
-	    float dx, dy;
-	    m_input->mouseDelta(dx, dy);
-	    cam.changeHeading(dx);
-	    cam.changePitch(-dy);
 	    float forward = 0.0;
 	    float right = 0.0;
 	    right += m_input->isKeyPressed(input::e_right)?speed*dt:0.0;
@@ -232,7 +241,7 @@ void vulkan_sample::run()
 	    const float height = 0.5f;
 	    const float cam_time = (time*0.1f+cam_rot_offset);
 	    cam.setPosition({cam_dist*sin(cam_time), height, -cam_dist*cos(cam_time)});
-	    cam.m_headingDegrees = -(360.0/(PI*2.0))*cam_time;
+	    cam.m_headingDegrees = (360.0/(PI*2.0))*cam_time;
 	    light.position = cam.m_position;
 	    light.position.j = light.position.j;
 	    light.intensity = 100*alpha+0.0001;
