@@ -137,9 +137,22 @@ void vulkan_sample::run()
       {
 	 if(ImGui::Begin("vulkan_sample"))
 	 {
+	    const char* smode = "default";
+	    switch(shademode)
+	    {
+	       case 0: smode = "pbr";               break;
+	       case 1: smode = "texture uvs";       break;
+	       case 2: smode = "texture albedo";    break;
+	       case 3: smode = "vertex normals";    break;
+	       case 4: smode = "texture normals";   break;
+	       case 5: smode = "world normals";     break;
+	       case 6: smode = "texture roughness"; break;
+	       case 7: smode = "texture metallic";  break;
+	       case 8: smode = "texture ao";        break;
+	    }
 	    if (ImGui::Button("next shademode")) wants_shade = true;
 	    ImGui::SameLine();
-	    ImGui::Text("shademode = %d", shademode);
+	    ImGui::Text("shademode = %s", smode);
 	    if (ImGui::Button("next cammode")) wants_cmode = true;
 	    ImGui::SameLine();
 	    ImGui::Text("cam_mode = %d", cmode);
