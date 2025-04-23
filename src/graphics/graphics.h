@@ -100,6 +100,14 @@ namespace fw
 	 };
 	 
 	 const std::array<uint32_t, 6> quad_indices = {0, 1, 2, 2, 3, 0};
+
+	 const std::vector<Vertex> tri_verts = {
+	    {{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, {0, 0}},
+	    {{-0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f, 1.0f}, {0, 1}},
+	    {{ 0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 0.0f, 1.0f}, {1, 1}}
+	 };
+	 
+	 const std::array<uint32_t, 3> tri_indices = {0, 1, 2};
       }
    }
 }    

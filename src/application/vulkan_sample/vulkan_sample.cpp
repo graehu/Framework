@@ -84,6 +84,15 @@ void vulkan_sample::run()
    quad2.material[fw::shader::e_vertex] = fw::hash::string("shared");
    quad2.material[fw::shader::e_fragment] = fw::hash::string("pbr");
 
+   auto* tri_verts = initdata::geometry::tri_verts.data();
+   unsigned int tri_verts_count = initdata::geometry::tri_verts.size();
+
+   auto* tri_indices = initdata::geometry::tri_indices.data();
+   unsigned int tri_indices_count = initdata::geometry::tri_indices.size();
+
+   Mesh tri = {{{tri_verts, tri_verts_count}, {tri_indices, tri_indices_count}}, {}, {}, {"swapchain"}, {}};;
+   tri.material[fw::shader::e_vertex] = fw::hash::string("shared");
+   tri.material[fw::shader::e_fragment] = fw::hash::string("pbr");
    
    std::vector<Mesh> meshes; std::vector<Image> images;
    float model_scale = 1.0;
@@ -276,6 +285,7 @@ void vulkan_sample::run()
       // m_graphics->getRenderer()->visit(&quad2);
       m_graphics->getRenderer()->visit(&cam);
       m_graphics->getRenderer()->visit(&light);
+      m_graphics->getRenderer()->visit(&tri);
       m_graphics->getRenderer()->visit(ui_drawdata);
       m_graphics->render();
       std::this_thread::sleep_for(std::chrono::milliseconds(16));

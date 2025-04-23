@@ -2152,56 +2152,66 @@ namespace fwvulkan
 	 // log::debug("begin renderpass");
 	 vkCmdBeginRenderPass(pass.cmd_buffer, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 #endif
-	 uint32_t pipeline_hash = 0;
-	 uint32_t id = 0;
-	 for(auto dh : pass.draws)
+	 if(passname == hash::string("ui"))
 	 {
-	    // todo: push constants have limited mat4x4s atm, fix it.
-	    assert(id < DrawHandle::max_draws);
-	    // log::debug("Recording Draw vb: {} pi: {} nverts: {}", dh.vb_handle, dh.pi_handle, dh.num_verts);
-	    // log::debug("bind pipeline");
-
-	    if(uint32_t hash = dh.pi_handle; hash != pipeline_hash)
+	    if(pass_gui != nullptr)
 	    {
-	       // note: setting viewport and scissor when we bind pipeline incase it's changed
-	       // todo: it would be nicer to have this sort of thing covered as a init frame pass or something.
-	       pipeline_hash = hash;
-	       // todo: this works because we only really have 1 pipeline layout.
-	       vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 0, 1, &g_shared_descriptor_sets[g_flight_frame], 0, nullptr);
+	       ImGui_ImplVulkan_RenderDrawData(pass_gui, pass.cmd_buffer);
 	    }
 	    
-	    VkBuffer vertex_buffers[] = {g_vb_map[dh.vb_handle].vb};
-	    VkDeviceSize offsets[] = {0};
-	    DefaultPushConstants constants = {id};
-	    // todo: make this happen once per draw before depth when recording depth
-	    memcpy(&ubo.model[id], &dh.owner->transform, sizeof(mat4x4f));
-	    // this needs to happen every time we setup a draw.
-	    
-	    vkCmdPushConstants(pass.cmd_buffer, g_pipe_map[pipeline_hash].layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(DefaultPushConstants), &constants);
-	    vkCmdBindVertexBuffers(pass.cmd_buffer, 0, 1, vertex_buffers, offsets);
-	    auto ibh = g_ib_map[dh.ib_handle];
-	    vkCmdBindIndexBuffer(pass.cmd_buffer, ibh.ib, 0, VK_INDEX_TYPE_UINT32);
-
-	    assert(dh.ds_handle != -1);
-	    
-	    // std::array<VkDescriptorSet, 2> desc_sets = {g_descriptor_sets[g_flight_frame], g_drawdescriptor_sets[dh.ds_handle] };
-
-	    // note: the firstSet value is 1, because we're binding from that set number. I.e. we're binding set 1, which has our per-draw descriptor layout. (image, image)
-	    // ----: vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 0, 2, desc_sets.data(), 0, nullptr);
-	    vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 1, 1, &g_pbr_descriptor_sets[dh.ds_handle], 0, nullptr);
-
-	    // note: separate depth draw here.
-	    // note: depth must be first in order to fix self occlusion issues, otherwise it's just tri-order albedo.
-	    vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].depth_pipeline);
-	    vkCmdDrawIndexed(pass.cmd_buffer, ibh.len, 1, 0, 0, 0);
-	    
-	    // colour.
-            vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].pipeline);
-	    vkCmdDrawIndexed(pass.cmd_buffer, ibh.len, 1, 0, 0, 0);
-
-	    id++;
 	 }
-	 if(pass_gui != nullptr) { ImGui_ImplVulkan_RenderDrawData(pass_gui, pass.cmd_buffer); }
+	 else
+	 {
+	    uint32_t pipeline_hash = 0;
+	    uint32_t id = 0;
+	    for(auto dh : pass.draws)
+	    {
+	       // todo: push constants have limited mat4x4s atm, fix it.
+	       assert(id < DrawHandle::max_draws);
+	       // log::debug("Recording Draw vb: {} pi: {} nverts: {}", dh.vb_handle, dh.pi_handle, dh.num_verts);
+	       // log::debug("bind pipeline");
+
+	       if(uint32_t hash = dh.pi_handle; hash != pipeline_hash)
+	       {
+		  // note: setting viewport and scissor when we bind pipeline incase it's changed
+		  // todo: it would be nicer to have this sort of thing covered as a init frame pass or something.
+		  pipeline_hash = hash;
+		  // todo: this works because we only really have 1 pipeline layout.
+		  vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 0, 1, &g_shared_descriptor_sets[g_flight_frame], 0, nullptr);
+	       }
+	    
+	       VkBuffer vertex_buffers[] = {g_vb_map[dh.vb_handle].vb};
+	       VkDeviceSize offsets[] = {0};
+	       DefaultPushConstants constants = {id};
+	       // todo: make this happen once per draw before depth when recording depth
+	       memcpy(&ubo.model[id], &dh.owner->transform, sizeof(mat4x4f));
+	       // this needs to happen every time we setup a draw.
+	    
+	       vkCmdPushConstants(pass.cmd_buffer, g_pipe_map[pipeline_hash].layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(DefaultPushConstants), &constants);
+	       vkCmdBindVertexBuffers(pass.cmd_buffer, 0, 1, vertex_buffers, offsets);
+	       auto ibh = g_ib_map[dh.ib_handle];
+	       vkCmdBindIndexBuffer(pass.cmd_buffer, ibh.ib, 0, VK_INDEX_TYPE_UINT32);
+
+	       assert(dh.ds_handle != -1);
+	    
+	       // std::array<VkDescriptorSet, 2> desc_sets = {g_descriptor_sets[g_flight_frame], g_drawdescriptor_sets[dh.ds_handle] };
+
+	       // note: the firstSet value is 1, because we're binding from that set number. I.e. we're binding set 1, which has our per-draw descriptor layout. (image, image)
+	       // ----: vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 0, 2, desc_sets.data(), 0, nullptr);
+	       vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 1, 1, &g_pbr_descriptor_sets[dh.ds_handle], 0, nullptr);
+
+	       // note: separate depth draw here.
+	       // note: depth must be first in order to fix self occlusion issues, otherwise it's just tri-order albedo.
+	       vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].depth_pipeline);
+	       vkCmdDrawIndexed(pass.cmd_buffer, ibh.len, 1, 0, 0, 0);
+	    
+	       // colour.
+	       vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].pipeline);
+	       vkCmdDrawIndexed(pass.cmd_buffer, ibh.len, 1, 0, 0, 0);
+
+	       id++;
+	    }
+	 }
 	 // log::debug("end renderpass");
 #if USE_DYNAMIC_RENDERING
 	 vkCmdEndRendering(pass.cmd_buffer);
@@ -2388,7 +2398,7 @@ int gGlfwVulkan::init()
    swapchain::CreateSwapchainFrameBuffers();
    barriers::CreatePassSemaphores("swapchain");
    InitIMGUI();
-
+   register_pass("ui");
    return 0;
 }
 hash::string shaders[shader::e_count];
@@ -2536,7 +2546,8 @@ int gGlfwVulkan::render()
    using namespace fwvulkan;
    for(auto pass : g_pass_map)
    {
-      vkWaitForFences(g_logical_device, 1, &g_semaphore_map[pass.first].in_flight_fences[g_flight_frame], VK_TRUE, std::numeric_limits<uint64_t>::max());
+      unsigned int frame_id = pass.first == hash::string("swapchain") ? g_flight_frame : 0;
+      vkWaitForFences(g_logical_device, 1, &g_semaphore_map[pass.first].in_flight_fences[frame_id], VK_TRUE, std::numeric_limits<uint64_t>::max());
    }
 
    // this is needed for present, it's not needed for graphics queue submit.
@@ -2565,8 +2576,9 @@ int gGlfwVulkan::render()
    std::vector<VkSemaphore> all_signals;
    for(auto pass : g_pass_map)
    {
-      VkSemaphore wait_semaphores[] = {g_semaphore_map[pass.first].image_available[g_flight_frame]};
-      VkSemaphore signals[] = {g_semaphore_map[pass.first].render_finished[g_flight_frame]};
+      unsigned int frame_id = pass.first == hash::string("swapchain") ? g_flight_frame : 0;
+      VkSemaphore wait_semaphores[] = {g_semaphore_map[pass.first].image_available[frame_id]};
+      VkSemaphore signals[] = {g_semaphore_map[pass.first].render_finished[frame_id]};
       VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
       VkCommandBuffer cmd_buffers[] = {g_pass_map[pass.first].cmd_buffer};
       
@@ -2588,8 +2600,8 @@ int gGlfwVulkan::render()
       
       all_signals.push_back(signals[0]);
 
-      vkResetFences(g_logical_device, 1, &g_semaphore_map[pass.first].in_flight_fences[g_flight_frame]);
-      if (vkQueueSubmit(g_graphics_queue, 1, &submit_info, g_semaphore_map[pass.first].in_flight_fences[g_flight_frame]) != VK_SUCCESS)
+      vkResetFences(g_logical_device, 1, &g_semaphore_map[pass.first].in_flight_fences[frame_id]);
+      if (vkQueueSubmit(g_graphics_queue, 1, &submit_info, g_semaphore_map[pass.first].in_flight_fences[frame_id]) != VK_SUCCESS)
       {
 	 throw std::runtime_error("failed to submit draw command buffer!");
       }
