@@ -9,9 +9,13 @@ using namespace fw;
 namespace fwvulkan
 {
    VkDescriptorPool g_pbr_descriptor_pool;
+   VkDescriptorPool g_fullscreen_descriptor_pool;
    std::vector<VkDescriptorSet> g_pbr_descriptor_sets;
+   std::vector<VkDescriptorSet> g_fullscreen_descriptor_sets;
    VkDescriptorSetLayout g_pbr_descriptor_set_layout;
+   VkDescriptorSetLayout g_fullscreen_descriptor_set_layout;
    int g_used_pbr_descriptors = 0;
+   int g_used_fullscreen_descriptors = 0;
    // put these in vulkan_types.h?
    extern VkDescriptorSetLayout g_shared_descriptor_set_layout;
    extern std::map<uint32_t, struct IMHandle> g_im_map;
@@ -53,8 +57,16 @@ namespace fwvulkan
 	 alloc_info.descriptorSetCount = DrawHandle::max_draws;
 	 alloc_info.pSetLayouts = layouts.data();
 	 g_pbr_descriptor_sets.resize(DrawHandle::max_draws);
+	 g_fullscreen_descriptor_sets.resize(DrawHandle::max_draws);
 	 
 	 if (vkAllocateDescriptorSets(g_logical_device, &alloc_info, g_pbr_descriptor_sets.data()) != VK_SUCCESS)
+	 {
+            throw std::runtime_error("failed to allocate descriptor sets!");
+	 }
+	 std::vector<VkDescriptorSetLayout> fullscreen_layouts(DrawHandle::max_draws, g_fullscreen_descriptor_set_layout);
+	 alloc_info.pSetLayouts = fullscreen_layouts.data();
+	 alloc_info.descriptorPool = g_fullscreen_descriptor_pool;
+	 if (vkAllocateDescriptorSets(g_logical_device, &alloc_info, g_fullscreen_descriptor_sets.data()) != VK_SUCCESS)
 	 {
             throw std::runtime_error("failed to allocate descriptor sets!");
 	 }
@@ -67,6 +79,12 @@ namespace fwvulkan
 	 buffers::SetPBRDescriptorMetallicRoughness(g_im_map[white].view, g_pbr_descriptor_sets);
 	 buffers::SetPBRDescriptorNormal(g_im_map[black].view, g_pbr_descriptor_sets);
 	 buffers::SetPBRDescriptorAO(g_im_map[grey].view, g_pbr_descriptor_sets);
+
+
+	 buffers::SetPBRDescriptorAlbedo(g_im_map[white].view, g_fullscreen_descriptor_sets);
+	 buffers::SetPBRDescriptorMetallicRoughness(g_im_map[white].view, g_fullscreen_descriptor_sets);
+	 buffers::SetPBRDescriptorNormal(g_im_map[black].view, g_fullscreen_descriptor_sets);
+	 buffers::SetPBRDescriptorAO(g_im_map[grey].view, g_fullscreen_descriptor_sets);
       }
       VkDescriptorPool CreatePBRDescriptorPool()
       {
@@ -96,7 +114,9 @@ namespace fwvulkan
 	 for(unsigned int i = 0; i < g_pbr_num_textures; i++) { types[i] = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE; }
 	 for(unsigned int i = 0; i < g_pbr_num_textures; i++) { stages[i] = VK_SHADER_STAGE_FRAGMENT_BIT; }
 	 g_pbr_descriptor_set_layout = buffers::CreateDescriptorSetLayout(types, stages, g_pbr_num_textures);
+	 g_fullscreen_descriptor_set_layout = buffers::CreateDescriptorSetLayout(types, stages, g_pbr_num_textures);
 	 g_pbr_descriptor_pool = buffers::CreatePBRDescriptorPool();
+	 g_fullscreen_descriptor_pool = buffers::CreatePBRDescriptorPool();
 	 buffers::CreatePBRDescriptorSets();
       }
    }

@@ -2134,6 +2134,10 @@ namespace fwvulkan
 	 render_info.pColorAttachments = &colour_info;
 	 render_info.pDepthAttachment = &depth_info;
 	 render_info.pStencilAttachment = VK_NULL_HANDLE;
+	 if(passname == hash::string("ui") || passname == hash::string("pbr"))
+	 {
+	    colour_info.imageView = pass.image_views[0];
+	 }
 	 vkCmdBeginRendering(pass.cmd_buffer, &render_info);
 #else
 	 VkRenderPassBeginInfo render_pass_begin_info = {};
@@ -2158,7 +2162,6 @@ namespace fwvulkan
 	    {
 	       ImGui_ImplVulkan_RenderDrawData(pass_gui, pass.cmd_buffer);
 	    }
-	    
 	 }
 	 else
 	 {
@@ -2198,7 +2201,20 @@ namespace fwvulkan
 
 	       // note: the firstSet value is 1, because we're binding from that set number. I.e. we're binding set 1, which has our per-draw descriptor layout. (image, image)
 	       // ----: vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 0, 2, desc_sets.data(), 0, nullptr);
-	       vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 1, 1, &g_pbr_descriptor_sets[dh.ds_handle], 0, nullptr);
+	       if(passname == hash::string("swapchain"))
+	       {
+		  // setup the "fullscreen" descriptors - they should bind the PBR pass and the UI pass.
+		  vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 1, 1, &g_fullscreen_descriptor_sets[dh.ds_handle], 0, nullptr);
+	       }
+	       else if(passname == hash::string("pbr"))
+	       {
+		  vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 1, 1, &g_pbr_descriptor_sets[dh.ds_handle], 0, nullptr);
+	       }
+	       else
+	       {
+		  __builtin_debugtrap();
+		  assert(false);
+	       }
 
 	       // note: separate depth draw here.
 	       // note: depth must be first in order to fix self occlusion issues, otherwise it's just tri-order albedo.
@@ -2399,6 +2415,7 @@ int gGlfwVulkan::init()
    barriers::CreatePassSemaphores("swapchain");
    InitIMGUI();
    register_pass("ui");
+   register_pass("pbr");
    return 0;
 }
 hash::string shaders[shader::e_count];
@@ -2431,25 +2448,37 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
 	 // ----: then we store draws against pipelines / passes, or something. :)
 	 // todo: have this read the material to decide the pipeline layout.
 	 pipeline::CreatePipelineVariants(_mesh->material, pipeline::GetPBRPipelineLayout()),
-	 g_used_pbr_descriptors++
+	 0
       };
       log::debug("draw descriptors: {}/{}", g_used_pbr_descriptors, g_pbr_descriptor_sets.size());
-      assert(size_t(g_used_pbr_descriptors) <  g_pbr_descriptor_sets.size());
-      std::vector<VkDescriptorSet> set(1, {g_pbr_descriptor_sets[drawhandle.ds_handle]});
-      
-      for(unsigned int i = 0; i < Mesh::max_images; i++)
+      if(_mesh->passes[0] == hash::string("pbr"))
       {
-	 if(_mesh->images[i].data == nullptr) continue;
-	 // todo: add image type field to fw::Image so we can assign more dynamically than below.
-	 // ....: their order inside _mesh->images[i] should be arbitrary.
-	 // todo: handle non pbr textures.
-	 drawhandle.im_handles[i] = buffers::CreateImageHandle(_mesh->images[i].data, _mesh->images[i].width, _mesh->images[i].height, _mesh->images[i].bits);
-	 if(i == 0) buffers::SetPBRDescriptorAlbedo(g_im_map[drawhandle.im_handles[0]].view, set);
-	 else if(i == 1) buffers::SetPBRDescriptorMetallicRoughness(g_im_map[drawhandle.im_handles[1]].view, set);
-	 else if(i == 2) buffers::SetPBRDescriptorNormal(g_im_map[drawhandle.im_handles[2]].view, set);
-	 else if(i == 3) buffers::SetPBRDescriptorAO(g_im_map[drawhandle.im_handles[3]].view, set);
+	 assert(size_t(g_used_pbr_descriptors) <  g_pbr_descriptor_sets.size());
+	 std::vector<VkDescriptorSet> set(1, {g_pbr_descriptor_sets[drawhandle.ds_handle]});
+	 for(unsigned int i = 0; i < Mesh::max_images; i++)
+	 {
+	    if(_mesh->images[i].data == nullptr) continue;
+	    // todo: add image type field to fw::Image so we can assign more dynamically than below.
+	    // ....: their order inside _mesh->images[i] should be arbitrary.
+	    // todo: handle non pbr textures.
+	    drawhandle.im_handles[i] = buffers::CreateImageHandle(_mesh->images[i].data, _mesh->images[i].width, _mesh->images[i].height, _mesh->images[i].bits);
+	    if(i == 0) buffers::SetPBRDescriptorAlbedo(g_im_map[drawhandle.im_handles[0]].view, set);
+	    else if(i == 1) buffers::SetPBRDescriptorMetallicRoughness(g_im_map[drawhandle.im_handles[1]].view, set);
+	    else if(i == 2) buffers::SetPBRDescriptorNormal(g_im_map[drawhandle.im_handles[2]].view, set);
+	    else if(i == 3) buffers::SetPBRDescriptorAO(g_im_map[drawhandle.im_handles[3]].view, set);
+	 }
+	 drawhandle.ds_handle = g_used_pbr_descriptors++;
       }
-
+      else if(_mesh->passes[0] == hash::string("swapchain"))
+      {
+	 assert(size_t(g_used_fullscreen_descriptors) <  g_fullscreen_descriptor_sets.size());
+	 std::vector<VkDescriptorSet> set(1, {g_fullscreen_descriptor_sets[drawhandle.ds_handle]});
+	 buffers::SetPBRDescriptorAlbedo(g_pass_map["ui"].image_views[0], set);
+	 buffers::SetPBRDescriptorMetallicRoughness(g_pass_map["pbr"].image_views[0], set);
+	 buffers::SetPBRDescriptorNormal(g_pass_map["pbr"].image_views[0], set);
+	 buffers::SetPBRDescriptorAO(g_pass_map["pbr"].image_views[0], set);
+	 drawhandle.ds_handle = g_used_fullscreen_descriptors++;
+      }
       g_drawhandles[_mesh] = drawhandle;
    }
    else { drawhandle = handles_iter->second; }
@@ -2571,8 +2600,10 @@ int gGlfwVulkan::render()
    UpdateUniformBuffer(g_flight_frame);
    for(auto pass : g_pass_map)
    {
+      if (pass.first == hash::string("swapchain")) continue;
       fwvulkan::renderpass::RecordPass(pass.first);
    }
+   fwvulkan::renderpass::RecordPass(hash::string("swapchain"));
    std::vector<VkSemaphore> all_signals;
    for(auto pass : g_pass_map)
    {
@@ -2684,7 +2715,7 @@ bool gGlfwVulkan::register_pass(fw::hash::string pass)
 {
    using namespace fwvulkan;
    PassHandle& swapchain = g_pass_map["swapchain"];
-   if(renderpass::CreateDefaultRenderPass(pass, swapchain.extent, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL))
+   if(renderpass::CreateDefaultRenderPass(pass, swapchain.extent, swapchain.image_format, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL))
    {
       renderpass::CreatePassImages(pass, 1);
       barriers::CreatePassSemaphores(pass);

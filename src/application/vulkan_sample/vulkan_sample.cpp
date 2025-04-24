@@ -76,11 +76,11 @@ void vulkan_sample::run()
    auto* quad_indices = initdata::geometry::quad_indices.data();
    unsigned int quad_indices_count = initdata::geometry::quad_indices.size();
    
-   Mesh quad = {{{quad_verts, quad_verts_count}, {quad_indices, quad_indices_count}}, {}, {}, {"swapchain"}, {}};
+   Mesh quad = {{{quad_verts, quad_verts_count}, {quad_indices, quad_indices_count}}, {}, {}, {"pbr"}, {}};
    quad.material[fw::shader::e_vertex] = fw::hash::string("shared");
    quad.material[fw::shader::e_fragment] = fw::hash::string("unlit");
 
-   Mesh quad2 = {{{quad_verts, quad_verts_count}, {quad_indices, quad_indices_count}}, {{white_image, 4, 4, 32}}, {}, {"swapchain"}, {}};
+   Mesh quad2 = {{{quad_verts, quad_verts_count}, {quad_indices, quad_indices_count}}, {{white_image, 4, 4, 32}}, {}, {"pbr"}, {}};
    quad2.material[fw::shader::e_vertex] = fw::hash::string("shared");
    quad2.material[fw::shader::e_fragment] = fw::hash::string("pbr");
 
@@ -90,9 +90,10 @@ void vulkan_sample::run()
    auto* tri_indices = initdata::geometry::tri_indices.data();
    unsigned int tri_indices_count = initdata::geometry::tri_indices.size();
 
-   Mesh tri = {{{tri_verts, tri_verts_count}, {tri_indices, tri_indices_count}}, {}, {}, {"swapchain"}, {}};;
+   Mesh tri = {{{tri_verts, tri_verts_count}, {tri_indices, tri_indices_count}}, {}, {}, {"fullscreen"}, {}};;
+   tri.passes = {"swapchain"};
    tri.material[fw::shader::e_vertex] = fw::hash::string("shared");
-   tri.material[fw::shader::e_fragment] = fw::hash::string("pbr");
+   tri.material[fw::shader::e_fragment] = fw::hash::string("unlit");
    
    std::vector<Mesh> meshes; std::vector<Image> images;
    float model_scale = 1.0;
@@ -101,7 +102,7 @@ void vulkan_sample::run()
    
    for(Mesh& mesh : meshes)
    {
-      mesh.passes = {"swapchain"};
+      mesh.passes = {"pbr"};
       mesh.material[fw::shader::e_vertex] = fw::hash::string("shared");
       mesh.material[fw::shader::e_fragment] = fw::hash::string("pbr");
       mesh.transform = mat4x4f::scaled(model_scale, model_scale, model_scale);

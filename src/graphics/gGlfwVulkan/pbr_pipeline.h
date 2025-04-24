@@ -3,11 +3,14 @@
 
 namespace fwvulkan
 {
+   // todo: we shouldn't expose these, but have destruction calls inside the pbr layer.
    extern VkDescriptorPool g_pbr_descriptor_pool;
    extern std::vector<VkDescriptorSet> g_pbr_descriptor_sets;
+   extern std::vector<VkDescriptorSet> g_fullscreen_descriptor_sets;
    extern VkDescriptorSetLayout g_pbr_descriptor_set_layout;
    extern VkDevice g_logical_device;
    extern int g_used_pbr_descriptors;
+   extern int g_used_fullscreen_descriptors;
    namespace buffers
    {
       // fwd dec
