@@ -2136,6 +2136,7 @@ namespace fwvulkan
 	 render_info.pStencilAttachment = VK_NULL_HANDLE;
 	 if(passname == hash::string("ui") || passname == hash::string("pbr"))
 	 {
+	    colour_info.clearValue = {{{0.0f, 0.0f, 0.0f, 0.0f}}};
 	    colour_info.imageView = pass.image_views[0];
 	 }
 	 vkCmdBeginRendering(pass.cmd_buffer, &render_info);

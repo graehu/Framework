@@ -63,9 +63,9 @@ void vulkan_sample::run()
    commandline::parse();
 
    log::scope vulkan_sample("vulkan_sample", true);
-
-   m_graphics->register_shader("shared", "shaders/spv/shared.vert.spv", shader::e_vertex);
+   
    m_graphics->register_shader("fullscreen", "shaders/spv/fullscreen.vert.spv", shader::e_vertex);
+   m_graphics->register_shader("shared", "shaders/spv/shared.vert.spv", shader::e_vertex);
    m_graphics->register_shader("pbr", "shaders/spv/pbr.frag.spv", shader::e_fragment);
    m_graphics->register_shader("unlit", "shaders/spv/unlit.frag.spv", shader::e_fragment);
 

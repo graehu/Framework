@@ -13,7 +13,10 @@ layout(location = 0) out vec4 out_color;
 
 void main()
 {
-   out_color = texture(sampler2D(albedo, tex_sampler), in_uv);
-   out_color = mix(texture(sampler2D(roughness, tex_sampler), in_uv), out_color, 0.5);
-   // out_color = mix(out_color, vec4(in_uv,0,1), 0.5);
+   vec4 col_1 = texture(sampler2D(albedo, tex_sampler), in_uv);
+   vec4 col_2 = texture(sampler2D(roughness, tex_sampler), in_uv);
+   if(col_1 == vec4(0)) out_color = col_2;
+   else if(col_2 == vec4(0)) out_color = col_1;
+   else out_color = mix(col_2, col_1, col_1.a);
+   if (out_color == vec4(0)) discard;
 }
