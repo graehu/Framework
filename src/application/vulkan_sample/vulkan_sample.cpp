@@ -52,13 +52,15 @@ void vulkan_sample::init()
    fw::log::topics::add("graphics");
    m_graphics = graphics::graphicsFactory();
    m_graphics->init();
-
-
 }
 
 // todo: add pass dependencies.
-// todo: add pass framebuffer blending/compositing.
-// todo: move all imgui related init out of this sample and into framework proper
+// todo: move the swapchain mesh into framework.
+// todo: move all imgui related init out of this sample and into framework.
+// todo: lock the mouse center in freecam.
+// todo: fix window resizing.
+// todo: fix resource transition validation errors.
+
 void vulkan_sample::run()
 {
    commandline::parse();
@@ -70,31 +72,15 @@ void vulkan_sample::run()
    m_graphics->register_shader("pbr", "shaders/spv/pbr.frag.spv", shader::e_fragment);
    m_graphics->register_shader("unlit", "shaders/spv/unlit.frag.spv", shader::e_fragment);
 
-   auto* white_image = initdata::images::white.data();
-   
-   auto* quad_verts = initdata::geometry::quad_verts.data();
-   unsigned int quad_verts_count = initdata::geometry::quad_verts.size();
-   
-   auto* quad_indices = initdata::geometry::quad_indices.data();
-   unsigned int quad_indices_count = initdata::geometry::quad_indices.size();
-   
-   Mesh quad = {{{quad_verts, quad_verts_count}, {quad_indices, quad_indices_count}}, {}, {}, {"pbr"}, {}};
-   quad.material[fw::shader::e_vertex] = fw::hash::string("shared");
-   quad.material[fw::shader::e_fragment] = fw::hash::string("unlit");
-
-   Mesh quad2 = {{{quad_verts, quad_verts_count}, {quad_indices, quad_indices_count}}, {{white_image, 4, 4, 32}}, {}, {"pbr"}, {}};
-   quad2.material[fw::shader::e_vertex] = fw::hash::string("shared");
-   quad2.material[fw::shader::e_fragment] = fw::hash::string("pbr");
-
    auto* tri_verts = initdata::geometry::tri_verts.data();
    unsigned int tri_verts_count = initdata::geometry::tri_verts.size();
 
    auto* tri_indices = initdata::geometry::tri_indices.data();
    unsigned int tri_indices_count = initdata::geometry::tri_indices.size();
 
-   Mesh tri = {{{tri_verts, tri_verts_count}, {tri_indices, tri_indices_count}}, {}, {}, {"swapchain"}, {}};;
-   tri.material[fw::shader::e_vertex] = fw::hash::string("fullscreen");
-   tri.material[fw::shader::e_fragment] = fw::hash::string("unlit");
+   Mesh swapchain_mesh = {{{tri_verts, tri_verts_count}, {tri_indices, tri_indices_count}}, {}, {}, {"swapchain"}, {}};;
+   swapchain_mesh.material[fw::shader::e_vertex] = fw::hash::string("fullscreen");
+   swapchain_mesh.material[fw::shader::e_fragment] = fw::hash::string("unlit");
    
    std::vector<Mesh> meshes; std::vector<Image> images;
    float model_scale = 1.0;
@@ -111,9 +97,6 @@ void vulkan_sample::run()
 
    float time = 0;
    int shademode = 0;
-
-   quad.transform =  mat4x4f::rotated(deg2rad(75), 0, 0)*mat4x4f::translated(1, 0, -2);
-   quad2.transform = mat4x4f::scaled(10, 10, 10)  * mat4x4f::rotated(deg2rad(90), 0, 0) * mat4x4f::translated(0, -1, 0);
    camera cam;
    fw::Light light; light.position = vec3f(-1.0f, 5.0f, 1.0f);
    light.intensity = 0.01;
@@ -148,30 +131,40 @@ void vulkan_sample::run()
       {
 	 if(ImGui::Begin("vulkan_sample"))
 	 {
-	    const char* smode = "default";
+	    const char* smodestr = "default";
+	    const char* cmodestr = "default";
 	    switch(shademode)
 	    {
-	       case 0: smode = "pbr";               break;
-	       case 1: smode = "texture uvs";       break;
-	       case 2: smode = "texture albedo";    break;
-	       case 3: smode = "vertex normals";    break;
-	       case 4: smode = "texture normals";   break;
-	       case 5: smode = "world normals";     break;
-	       case 6: smode = "texture roughness"; break;
-	       case 7: smode = "texture metallic";  break;
-	       case 8: smode = "texture ao";        break;
+	       case 0: smodestr = "pbr";               break;
+	       case 1: smodestr = "texture uvs";       break;
+	       case 2: smodestr = "texture albedo";    break;
+	       case 3: smodestr = "vertex normals";    break;
+	       case 4: smodestr = "texture normals";   break;
+	       case 5: smodestr = "world normals";     break;
+	       case 6: smodestr = "texture roughness"; break;
+	       case 7: smodestr = "texture metallic";  break;
+	       case 8: smodestr = "texture ao";        break;
+	    }
+	    switch(cmode)
+	    {
+	       case 0: cmodestr = "cam_linear"; break;
+	       case 1: cmodestr = "cam_swoop"; break;
+	       case 2: cmodestr = "cam_circle"; break;
+	       case 3: cmodestr = "cam_free"; break;
+	       case 4: cmodestr = "cam_locked"; break;
+	       case 5: cmodestr = "cam_cycle"; break;
 	    }
 	    if (ImGui::Button("next shademode")) wants_shade = true;
 	    ImGui::SameLine();
-	    ImGui::Text("shademode = %s", smode);
+	    ImGui::Text("shademode = %s", smodestr);
 	    if (ImGui::Button("next cammode")) wants_cmode = true;
 	    ImGui::SameLine();
-	    ImGui::Text("cam_mode = %d", cmode);
+	    ImGui::Text("cam_mode = %s", cmodestr);
 	    if (ImGui::Button("next model")) wants_model = true;
 	    ImGui::SameLine();
 	    ImGui::Text("model = %d", model_id);
-	    ImGui::End();
 	 }
+	 ImGui::End();
       }
       ImGui::Render();
       ImDrawData* ui_drawdata = ImGui::GetDrawData();
@@ -186,10 +179,8 @@ void vulkan_sample::run()
 	 time = 0;
       }
       
-
       if (wants_cmode && !cam_toggling)
       {
-
 	 int dir = m_input->isKeyPressed(input::e_shift) ? -1 : 1;
 	 cmode = (cam_mode)((((int)cmode)+dir) % ((int)cam_cycle));
 	 log::debug("user camera mode: {}, {}, {}", cam_num, ((int)cmode+dir), (int)cam_cycle);
@@ -204,7 +195,6 @@ void vulkan_sample::run()
 	 time = 0;
       }
       else if(!wants_cmode && cam_toggling) { cam_toggling = false; }
-
 
       if(!shade_toggling && wants_shade)
       {
@@ -277,22 +267,17 @@ void vulkan_sample::run()
 	    if(m_input->isKeyPressed(input::e_left)) cam_rot_offset -= 0.01;
 	    if(m_input->isKeyPressed(input::e_down)) cam_dist_offset += 0.01;
 	    if(m_input->isKeyPressed(input::e_up)) cam_dist_offset -= 0.01;
-	    // light.position.i = -light.position.i;
-	    // light.position.k = -light.position.k;
-	    // cam.m_pitchDegrees = 15; // todo: this shows that the view matrix is wrong or something.
 	    break;
       }
       // light.intensity = 2.0f*alpha;
       cam.update();
       // todo: you can't isolate model 0.
       for(size_t i = 0; i < meshes.size(); i++) { if(i == (size_t)model_id || !model_id) { m_graphics->getRenderer()->visit(&meshes[i]); } }
-      // m_graphics->getRenderer()->visit(&meshes[0]);
-      // m_graphics->getRenderer()->visit(&quad);
-      // m_graphics->getRenderer()->visit(&quad2);
       m_graphics->getRenderer()->visit(&cam);
       m_graphics->getRenderer()->visit(&light);
-      m_graphics->getRenderer()->visit(&tri);
       m_graphics->getRenderer()->visit(ui_drawdata);
+      m_graphics->getRenderer()->visit(&swapchain_mesh);
+
       m_graphics->render();
       std::this_thread::sleep_for(std::chrono::milliseconds(16));
       time += (1.0f/60.0f);
