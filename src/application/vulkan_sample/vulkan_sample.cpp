@@ -58,6 +58,7 @@ void vulkan_sample::init()
 
 // todo: add pass dependencies.
 // todo: add pass framebuffer blending/compositing.
+// todo: move all imgui related init out of this sample and into framework proper
 void vulkan_sample::run()
 {
    commandline::parse();
@@ -97,8 +98,8 @@ void vulkan_sample::run()
    
    std::vector<Mesh> meshes; std::vector<Image> images;
    float model_scale = 1.0;
-   // loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images); model_scale = 0.02;
-   loadmodel("../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", meshes, images);
+   loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images); model_scale = 0.02;
+   // loadmodel("../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", meshes, images);
    
    for(Mesh& mesh : meshes)
    {
@@ -116,7 +117,7 @@ void vulkan_sample::run()
    camera cam;
    fw::Light light; light.position = vec3f(-1.0f, 5.0f, 1.0f);
    light.intensity = 0.01;
-   enum cam_mode {cam_linear, cam_swoop, cam_circle, cam_free, cam_cycle} cmode = cam_cycle;
+   enum cam_mode {cam_linear, cam_swoop, cam_circle, cam_free, cam_locked, cam_cycle} cmode = cam_cycle;
    int cam_num = 0;
    float cam_rot_offset = 0;
    float cam_dist_offset = 0;
@@ -195,8 +196,11 @@ void vulkan_sample::run()
 	 cam_toggling = true;
 	 // todo: make this loop going backwards.
 	 cam_num = cmode % cam_cycle;
-	 cam.m_pitchDegrees = 0;
-	 cam.m_headingDegrees = 0;
+	 if(cmode != cam_locked && cmode != cam_free)
+	 {
+	    cam.m_pitchDegrees = 0;
+	    cam.m_headingDegrees = 0;
+	 }
 	 time = 0;
       }
       else if(!wants_cmode && cam_toggling) { cam_toggling = false; }
@@ -251,6 +255,7 @@ void vulkan_sample::run()
 
 	    break;
 	 }
+	 case cam_locked: break; // don't do anything.
 	 case cam_linear: // note: this is to verify fixing below doesn't break linear view normals.
 	    cam.setPosition({0, 1+50*(1.0f-alpha), 0});
 	    cam.m_pitchDegrees = 90;

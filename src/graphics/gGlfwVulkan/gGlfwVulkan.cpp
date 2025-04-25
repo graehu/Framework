@@ -1341,10 +1341,12 @@ namespace fwvulkan
       }
       void CleanupSwapChain()
       {
+
 	 log::debug("CleanupSwapChain");
 	 assert(g_swap_chain != VK_NULL_HANDLE);
 	 // todo: not all passes are going to want to be cleaned up when the swapchain is.
 	 // todo: with dynamic rendering, we're not going to need framebuffers.
+	 // todo: add a "cleanup passes" and have a pass list.
 	 for (auto pass : g_pass_map)
 	 {
 #if !USE_DYNAMIC_RENDERING
@@ -2134,6 +2136,8 @@ namespace fwvulkan
 	 render_info.pColorAttachments = &colour_info;
 	 render_info.pDepthAttachment = &depth_info;
 	 render_info.pStencilAttachment = VK_NULL_HANDLE;
+	 // todo: make a GetRenderInfo function for passes?
+	 // ----: this isn't ideal
 	 if(passname == hash::string("ui") || passname == hash::string("pbr"))
 	 {
 	    colour_info.clearValue = {{{0.0f, 0.0f, 0.0f, 0.0f}}};
@@ -2161,6 +2165,7 @@ namespace fwvulkan
 	 {
 	    if(pass_gui != nullptr)
 	    {
+	       // todo: make a "record commands" style function for each pass.
 	       ImGui_ImplVulkan_RenderDrawData(pass_gui, pass.cmd_buffer);
 	    }
 	 }
@@ -2414,6 +2419,7 @@ int gGlfwVulkan::init()
    swapchain::CreateSwapchainImageViews();
    swapchain::CreateSwapchainFrameBuffers();
    barriers::CreatePassSemaphores("swapchain");
+   // todo: add a "init passes" and have a pass list
    InitIMGUI();
    register_pass("ui");
    register_pass("pbr");
@@ -2454,6 +2460,7 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
       log::debug("draw descriptors: {}/{}", g_used_pbr_descriptors, g_pbr_descriptor_sets.size());
       if(_mesh->passes[0] == hash::string("pbr"))
       {
+	 drawhandle.ds_handle = g_used_pbr_descriptors++;
 	 assert(size_t(g_used_pbr_descriptors) <  g_pbr_descriptor_sets.size());
 	 std::vector<VkDescriptorSet> set(1, {g_pbr_descriptor_sets[drawhandle.ds_handle]});
 	 for(unsigned int i = 0; i < Mesh::max_images; i++)
@@ -2468,17 +2475,19 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
 	    else if(i == 2) buffers::SetPBRDescriptorNormal(g_im_map[drawhandle.im_handles[2]].view, set);
 	    else if(i == 3) buffers::SetPBRDescriptorAO(g_im_map[drawhandle.im_handles[3]].view, set);
 	 }
-	 drawhandle.ds_handle = g_used_pbr_descriptors++;
       }
+      // todo: shouldn't really have meshes that render with the "swapchain" pass
+      // ----: this should be an internal pass, as should the triangle used to render.
+      // ----: and the fullscreen/unlit/composite shaders.
       else if(_mesh->passes[0] == hash::string("swapchain"))
       {
+	 drawhandle.ds_handle = g_used_fullscreen_descriptors++;
 	 assert(size_t(g_used_fullscreen_descriptors) <  g_fullscreen_descriptor_sets.size());
 	 std::vector<VkDescriptorSet> set(1, {g_fullscreen_descriptor_sets[drawhandle.ds_handle]});
 	 buffers::SetPBRDescriptorAlbedo(g_pass_map["ui"].image_views[0], set);
 	 buffers::SetPBRDescriptorMetallicRoughness(g_pass_map["pbr"].image_views[0], set);
 	 buffers::SetPBRDescriptorNormal(g_pass_map["pbr"].image_views[0], set);
 	 buffers::SetPBRDescriptorAO(g_pass_map["pbr"].image_views[0], set);
-	 drawhandle.ds_handle = g_used_fullscreen_descriptors++;
       }
       g_drawhandles[_mesh] = drawhandle;
    }
@@ -2496,6 +2505,7 @@ void gGlfwVulkan::visit(fw::Light* _light)
 
 int gGlfwVulkan::shutdown()
 {
+   // todo: add a "shutdown passes" and have a pass list
    using namespace fwvulkan;
    log::scope topic("gGlfwVulkan");
    log::debug("shutdown");
