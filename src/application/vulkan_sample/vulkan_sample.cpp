@@ -65,6 +65,7 @@ void vulkan_sample::run()
    log::scope vulkan_sample("vulkan_sample", true);
 
    m_graphics->register_shader("shared", "shaders/spv/shared.vert.spv", shader::e_vertex);
+   m_graphics->register_shader("fullscreen", "shaders/spv/fullscreen.vert.spv", shader::e_vertex);
    m_graphics->register_shader("pbr", "shaders/spv/pbr.frag.spv", shader::e_fragment);
    m_graphics->register_shader("unlit", "shaders/spv/unlit.frag.spv", shader::e_fragment);
 
@@ -90,9 +91,8 @@ void vulkan_sample::run()
    auto* tri_indices = initdata::geometry::tri_indices.data();
    unsigned int tri_indices_count = initdata::geometry::tri_indices.size();
 
-   Mesh tri = {{{tri_verts, tri_verts_count}, {tri_indices, tri_indices_count}}, {}, {}, {"fullscreen"}, {}};;
-   tri.passes = {"swapchain"};
-   tri.material[fw::shader::e_vertex] = fw::hash::string("shared");
+   Mesh tri = {{{tri_verts, tri_verts_count}, {tri_indices, tri_indices_count}}, {}, {}, {"swapchain"}, {}};;
+   tri.material[fw::shader::e_vertex] = fw::hash::string("fullscreen");
    tri.material[fw::shader::e_fragment] = fw::hash::string("unlit");
    
    std::vector<Mesh> meshes; std::vector<Image> images;

@@ -64,8 +64,8 @@ namespace fwvulkan
             throw std::runtime_error("failed to allocate descriptor sets!");
 	 }
 	 std::vector<VkDescriptorSetLayout> fullscreen_layouts(DrawHandle::max_draws, g_fullscreen_descriptor_set_layout);
-	 alloc_info.pSetLayouts = fullscreen_layouts.data();
 	 alloc_info.descriptorPool = g_fullscreen_descriptor_pool;
+	 alloc_info.pSetLayouts = fullscreen_layouts.data();
 	 if (vkAllocateDescriptorSets(g_logical_device, &alloc_info, g_fullscreen_descriptor_sets.data()) != VK_SUCCESS)
 	 {
             throw std::runtime_error("failed to allocate descriptor sets!");

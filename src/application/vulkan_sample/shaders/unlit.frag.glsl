@@ -14,5 +14,6 @@ layout(location = 0) out vec4 out_color;
 void main()
 {
    out_color = texture(sampler2D(albedo, tex_sampler), in_uv);
-   out_color = mix(out_color, vec4(in_uv,0,1), 0.5);
+   out_color = mix(texture(sampler2D(roughness, tex_sampler), in_uv), out_color, 0.5);
+   // out_color = mix(out_color, vec4(in_uv,0,1), 0.5);
 }
