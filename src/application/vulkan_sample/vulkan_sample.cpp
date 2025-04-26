@@ -58,7 +58,6 @@ void vulkan_sample::init()
 // todo: move the swapchain mesh into framework.
 // todo: move all imgui related init out of this sample and into framework.
 // todo: lock the mouse center in freecam.
-// todo: fix window resizing.
 // todo: fix resource transition validation errors.
 
 void vulkan_sample::run()
@@ -84,8 +83,8 @@ void vulkan_sample::run()
    
    std::vector<Mesh> meshes; std::vector<Image> images;
    float model_scale = 1.0;
-   loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images); model_scale = 0.02;
-   // loadmodel("../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", meshes, images);
+   // loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images); model_scale = 0.02;
+   loadmodel("../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", meshes, images);
    
    for(Mesh& mesh : meshes)
    {

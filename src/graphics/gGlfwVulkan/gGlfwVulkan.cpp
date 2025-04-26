@@ -1418,6 +1418,8 @@ namespace fwvulkan
 	 g_rt_map.erase("depth");
 	 
 	 g_pass_map.clear();
+	 // todo: make sure this doesn't cause unwanted vb/ib/im recreation.
+	 g_drawhandles.clear();
 	 g_swap_chain = VK_NULL_HANDLE;
       }
       void CreateSwapchainImageViews()
@@ -2599,6 +2601,9 @@ int gGlfwVulkan::render()
       {
 	 g_resized = false;
 	 swapchain::RecreateSwapChain();
+	 // todo: passes should handle swapchain recreate internally.
+	 register_pass("ui");
+	 register_pass("pbr");
 	 return 0;
       }
       else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
