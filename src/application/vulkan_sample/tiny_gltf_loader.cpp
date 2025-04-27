@@ -50,8 +50,8 @@ void loadmodel(const char* modelpath, std::vector<Mesh>& out_meshes, std::vector
       log::debug("image info: {}/{}: {}, {}x{}, comp: {}, bits: {}, type: {}", (void*)image.image.data(), image.image.size(), image.name.c_str(), image.width, image.height, image.component, image.bits, image.pixel_type);
       unsigned int* image_data = new unsigned int[image.image.size()];
       memcpy(image_data, image.image.data(), image.image.size());
-      out_images[i] = {(const unsigned int*)image_data, image.width, image.height, image.component*image.bits};
-      // out_images.push_back({(const unsigned int*)image_data, image.width, image.height, image.component*image.bits});
+      out_images[i] = {(const unsigned int*)image_data, image.width, image.height, image.component*image.bits, 0};
+      fw::hash_image(out_images[i]);
    }
 
    log::debug("meshes: {}", model.meshes.size());

@@ -38,6 +38,15 @@ namespace fw
       vec3f position;
       float intensity = 1.0f;
    };
+   inline bool hash_image(Image& image)
+   {
+      if (image.hash == 0)
+      {
+	 image.hash = hash::hash_buffer((const char*)image.data, image.width*image.height*(image.bits/8));
+	 return true;
+      }
+      return false;
+   }
 }
 class graphics
 {

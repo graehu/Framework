@@ -678,7 +678,6 @@ namespace fwvulkan
 	 }
       }
       
-      int CreateImageHandle(const unsigned int* image, size_t width, size_t height);
       int CreateSamplerHandle(VkFilter filtering, VkSamplerAddressMode uv_mode, bool enable_aniso);
       // these are bound to descriptor pool and descriptor_set_layout
       void CreateSharedDescriptorSets()
@@ -769,17 +768,13 @@ namespace fwvulkan
 	 size_t width = image.width;
 	 size_t height = image.height;
 	 size_t bits = image.bits;
-	 uint32_t hash = image.hash;
 	 
 	 log::debug("CreateImageHandle: {} x {} ({}bit)", width, height, bits);
 	 if (image_buffer == nullptr) return 0;
 	 size_t image_size = width * height * (bits/8);
-	 if(hash == 0)
-	 {
-	    hash = hash::hash_buffer((const char*)image_buffer, image_size);
-	    image.hash = hash;
-	 }
-	 if (g_im_map.find(hash) == g_im_map.end())
+	 bool first_use = fw::hash_image(image);
+	 
+	 if (g_im_map.find(image.hash) == g_im_map.end())
 	 {
 	    VkBuffer copy_buffer = VK_NULL_HANDLE;
 	    VkDeviceMemory copy_memory = VK_NULL_HANDLE;
@@ -809,33 +804,34 @@ namespace fwvulkan
 	       // }
 	       // vkUnmapMemory(g_logical_device, copy_memory);
 	    }
-	    VkImage image = VK_NULL_HANDLE;
+	    VkImage vkimage = VK_NULL_HANDLE;
 	    VkDeviceMemory image_memory = VK_NULL_HANDLE;
 	    {
 	       // todo: this will be wrong if the bits aren't 32 / non 8888.
 	       const VkImageUsageFlags usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-	       CreateImage(width, height, VK_FORMAT_R8G8B8A8_SRGB, usage, image, image_memory);
+	       CreateImage(width, height, VK_FORMAT_R8G8B8A8_SRGB, usage, vkimage, image_memory);
 	    }
 	    // todo: this will be wrong if the bits aren't 32 / non 8888.
-	    utils::TransitionImageLayout(image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	    utils::CopyBufferToImage(copy_buffer, image, width, height);
+	    utils::TransitionImageLayout(vkimage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	    utils::CopyBufferToImage(copy_buffer, vkimage, width, height);
 	    // todo: this will be wrong if the bits aren't 32 / non 8888.
-	    utils::TransitionImageLayout(image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	    utils::TransitionImageLayout(vkimage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	    
 	    vkDestroyBuffer(g_logical_device, copy_buffer, nullptr);
 	    vkFreeMemory(g_logical_device, copy_memory, nullptr);
 	    
 	    // todo: this will be wrong if the bits aren't 32 / non 8888.
-	    VkImageView view = CreateImageView(image, VK_FORMAT_R8G8B8A8_SRGB);
+	    VkImageView view = CreateImageView(vkimage, VK_FORMAT_R8G8B8A8_SRGB);
 	    
-	    g_im_map[hash] = {image, view, image_memory, width, height};
-	    log::debug("Created IMHandle: {}", hash);
+	    g_im_map[image.hash] = {vkimage, view, image_memory, width, height};
+	    log::debug("Created IMHandle: {}", image.hash);
 	 }
 	 else
 	 {
-	    log::debug("Reusing IMHandle: {}", hash);
+	    if (first_use) log::warn("Reusing IMHandle unexpectedly {}", image.hash);
+	    else log::debug("Reusing IMHandle: {}", image.hash);
 	 }
-	 return hash;
+	 return image.hash;
       }
       int CreateVertexBufferHandle(const fw::Vertex* vertices, int num_vertices)
       {
@@ -1430,6 +1426,8 @@ namespace fwvulkan
 	 g_pass_map.clear();
 	 // todo: make sure this doesn't cause unwanted vb/ib/im recreation.
 	 g_drawhandles.clear();
+	 g_used_pbr_descriptors = 0;
+	 g_used_fullscreen_descriptors = 0;
 	 g_swap_chain = VK_NULL_HANDLE;
       }
       void CreateSwapchainImageViews()
@@ -2447,6 +2445,8 @@ void gGlfwVulkan::visit(camera* _camera)
 // ----: add "last visit" frame to drawhandles.
 // ----: add dh refs to resources if "last visit" is within "inflight frames"
 // ----: cleanup resource if refs hit zero.
+// ----: will need to move to pools/handles for descriptor ids.
+// ----: g_used_pbr_descriptors generates a direct lookup into a array atm.
 
 void gGlfwVulkan::visit(fw::Mesh* _mesh)
 {
