@@ -6,6 +6,7 @@ namespace fwvulkan
    struct DrawHandle
    {
       static const int max_draws = 128;
+      // todo: owner should also be a handle.
       fw::Mesh* owner = nullptr;
       int vb_handle = -1;
       int ib_handle = -1;
@@ -37,8 +38,7 @@ namespace fwvulkan
    {
       VkSampler sampler;
    };
-   // todo: consider renaming to shared.
-   struct DefaultUniforms
+   struct SharedUniforms
    {
       mat4x4f model[DrawHandle::max_draws];
       mat4x4f view;
@@ -49,7 +49,7 @@ namespace fwvulkan
       unsigned int shademode;
    };
    // todo: consider renaming to shared.
-   struct DefaultPushConstants
+   struct SharedPushConstants
    {
       uint32_t id;
    };

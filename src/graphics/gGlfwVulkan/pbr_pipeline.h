@@ -1,6 +1,6 @@
 // todo fill.
 #pragma once
-
+namespace fw { struct Image; };
 namespace fwvulkan
 {
    // todo: we shouldn't expose these, but have destruction calls inside the pbr layer.
@@ -15,7 +15,8 @@ namespace fwvulkan
    {
       // fwd dec
       void SetDescriptorImage(VkImageView image_view, std::vector<VkDescriptorSet> image_sets, unsigned int dst_binding);
-      int CreateImageHandle(const unsigned int* image, size_t width, size_t height, size_t bits);
+      // int CreateImageHandle(const unsigned int* image, size_t width, size_t height, size_t bits);
+      int CreateImageHandle(fw::Image& image);
       void InitPBRDescriptors();
       
       namespace descriptor_binds {

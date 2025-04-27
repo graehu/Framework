@@ -77,6 +77,7 @@ namespace fwvulkan
    }
    // instance
    VkInstance g_instance;
+   const uint32_t g_vulkan_version = VK_API_VERSION_1_3;
    VkSurfaceKHR g_surface = VK_NULL_HANDLE;
    VkDebugUtilsMessengerEXT g_debug_messenger;
    extern GLFWwindow* g_window;
@@ -104,7 +105,7 @@ namespace fwvulkan
    
 
    
-   DefaultUniforms ubo = {};
+   SharedUniforms ubo = {};
    VkDescriptorSetLayout g_shared_descriptor_set_layout;
    std::vector<VkBuffer> g_uniformBuffers;
    std::vector<VkDeviceMemory> g_uniformBuffersMemory;
@@ -131,7 +132,6 @@ namespace fwvulkan
       std::vector<DrawHandle> draws;
       std::vector<fw::hash::string> wait_passes;
    };
-   PassHandle g_swapchain_pass;
    std::map<fw::hash::string, PassHandle> g_pass_map;
    struct SemaphoreHandle
    {
@@ -561,9 +561,9 @@ namespace fwvulkan
 	 vkMapMemory(g_logical_device, mem, 0, buffer_size, 0, &mapping);
       }
       
-      void CreateDefaultUniformBuffers()
+      void CreateSharedUniformBuffers()
       {
-	 VkDeviceSize buffer_size = sizeof(DefaultUniforms);
+	 VkDeviceSize buffer_size = sizeof(SharedUniforms);
 	 g_uniformBuffers.resize(g_max_frames_in_flight);
 	 g_uniformBuffersMemory.resize(g_max_frames_in_flight);
 	 g_uniformBuffersMapped.resize(g_max_frames_in_flight);
@@ -582,7 +582,7 @@ namespace fwvulkan
             VkDescriptorBufferInfo buffer_info{};
             buffer_info.buffer = g_uniformBuffers[i];
             buffer_info.offset = 0;
-            buffer_info.range = sizeof(DefaultUniforms);
+            buffer_info.range = sizeof(SharedUniforms);
 
             VkWriteDescriptorSet descriptorWrites[1] = {{}};
             descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -653,7 +653,7 @@ namespace fwvulkan
             VkDescriptorBufferInfo buffer_info{};
             buffer_info.buffer = g_uniformBuffers[i];
             buffer_info.offset = 0;
-            buffer_info.range = sizeof(DefaultUniforms);
+            buffer_info.range = sizeof(SharedUniforms);
 
 	    VkDescriptorImageInfo sampler_info{};
 	    sampler_info.sampler = sampler;
@@ -681,9 +681,9 @@ namespace fwvulkan
       int CreateImageHandle(const unsigned int* image, size_t width, size_t height);
       int CreateSamplerHandle(VkFilter filtering, VkSamplerAddressMode uv_mode, bool enable_aniso);
       // these are bound to descriptor pool and descriptor_set_layout
-      void CreateDescriptorSets()
+      void CreateSharedDescriptorSets()
       {
-	 log::debug("CreateDescriptorSets");
+	 log::debug("CreateSharedDescriptorSets");
 	 std::vector<VkDescriptorSetLayout> layouts(g_max_frames_in_flight, g_shared_descriptor_set_layout);
 	 VkDescriptorSetAllocateInfo alloc_info{};
 	 alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -763,12 +763,22 @@ namespace fwvulkan
 	 }
 	 return hash;
       }
-      int CreateImageHandle(const unsigned int* image_buffer, size_t width, size_t height, size_t bits)
+      int CreateImageHandle(fw::Image& image)
       {
+	 const unsigned int* image_buffer = image.data;
+	 size_t width = image.width;
+	 size_t height = image.height;
+	 size_t bits = image.bits;
+	 uint32_t hash = image.hash;
+	 
 	 log::debug("CreateImageHandle: {} x {} ({}bit)", width, height, bits);
 	 if (image_buffer == nullptr) return 0;
-	 size_t image_size = width * height * (bits/8); 
-	 uint32_t hash = hash::hash_buffer((const char*)image_buffer, image_size);
+	 size_t image_size = width * height * (bits/8);
+	 if(hash == 0)
+	 {
+	    hash = hash::hash_buffer((const char*)image_buffer, image_size);
+	    image.hash = hash;
+	 }
 	 if (g_im_map.find(hash) == g_im_map.end())
 	 {
 	    VkBuffer copy_buffer = VK_NULL_HANDLE;
@@ -980,7 +990,7 @@ namespace fwvulkan
 	 app_info.applicationVersion = VK_MAKE_VERSION(0, 0, 1);
 	 app_info.pEngineName = "Framework";
 	 app_info.engineVersion = VK_MAKE_VERSION(0, 0, 1);
-	 app_info.apiVersion = VK_API_VERSION_1_3;
+	 app_info.apiVersion = g_vulkan_version;
 	 // create info
 	 VkInstanceCreateInfo create_info = {};
 	 create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -2193,12 +2203,12 @@ namespace fwvulkan
 	    
 	       VkBuffer vertex_buffers[] = {g_vb_map[dh.vb_handle].vb};
 	       VkDeviceSize offsets[] = {0};
-	       DefaultPushConstants constants = {id};
+	       SharedPushConstants constants = {id};
 	       // todo: make this happen once per draw before depth when recording depth
 	       memcpy(&ubo.model[id], &dh.owner->transform, sizeof(mat4x4f));
 	       // this needs to happen every time we setup a draw.
 	    
-	       vkCmdPushConstants(pass.cmd_buffer, g_pipe_map[pipeline_hash].layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(DefaultPushConstants), &constants);
+	       vkCmdPushConstants(pass.cmd_buffer, g_pipe_map[pipeline_hash].layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(SharedPushConstants), &constants);
 	       vkCmdBindVertexBuffers(pass.cmd_buffer, 0, 1, vertex_buffers, offsets);
 	       auto ibh = g_ib_map[dh.ib_handle];
 	       vkCmdBindIndexBuffer(pass.cmd_buffer, ibh.ib, 0, VK_INDEX_TYPE_UINT32);
@@ -2331,7 +2341,7 @@ static void check_vk_result(VkResult err)
 void InitIMGUI()
 {
    ImGui_ImplVulkan_InitInfo init_info = {};
-   init_info.ApiVersion = VK_API_VERSION_1_3;              // Pass in your value of VkApplicationInfo::apiVersion, otherwise will default to header version.
+   init_info.ApiVersion = fwvulkan::g_vulkan_version;
    init_info.Instance = fwvulkan::g_instance;
    init_info.PhysicalDevice = fwvulkan::g_physical_device;
    init_info.Device = fwvulkan::g_logical_device;
@@ -2341,18 +2351,18 @@ void InitIMGUI()
    init_info.PipelineCache = VK_NULL_HANDLE; 
    init_info.DescriptorPool = VK_NULL_HANDLE;
    init_info.UseDynamicRendering = true;
-   // todo: this is a magix number
+   // todo: investigate why you might want more MinImageCount.
+   // ----: they use 2 as the MinImageCount in the examples.
+   // ----: it asserts if you don't use at least 2.
    init_info.MinImageCount = 2;
-   // todo: this might be wrong
-   init_info.ImageCount = fwvulkan::g_max_frames_in_flight; 
+   // note: this asserts if it's <= to MinImageCount, so just use that.
+   init_info.ImageCount = init_info.MinImageCount;
    init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
    init_info.Allocator = VK_NULL_HANDLE;      
    init_info.CheckVkResultFn = check_vk_result;
 
    VkPipelineRenderingCreateInfo rendering_ci = {};
-   // VkPipelineRenderingCreateInfoKHR
    rendering_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-   // rendering_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
    rendering_ci.pNext = VK_NULL_HANDLE;
    rendering_ci.colorAttachmentCount = 1;
    VkFormat depth_format = fwvulkan::utils::FindDepthFormat();
@@ -2386,13 +2396,6 @@ int gGlfwVulkan::init()
       instance::CreateSurface();
    }
    device::PickPhysicalDevice();
-
-   // SwapChainSupportDetails swap_chain_support = device::QuerySwapChainSupport(g_physical_device, g_surface);
-   // VkSurfaceFormatKHR surface_format = swapchain::ChooseSwapSurfaceFormat(swap_chain_support.formats);
-   // swapchain::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities, int *window);
-   // VkPresentModeKHR present_mode = ChooseSwapPresentMode(swap_chain_support.present_modes);
-   // VkExtent2D extent = ChooseSwapExtent(swap_chain_support.capabilites, g_window);
-   
    device::CreateLogicalDevice();
    swapchain::CreateCommandPool();
 
@@ -2402,15 +2405,15 @@ int gGlfwVulkan::init()
    // ----: store descriptor sets / layouts / pools with the pipelines
    // ----: have them in a hashed map for reuse.
    {
-      buffers::CreateDefaultUniformBuffers();
+      buffers::CreateSharedUniformBuffers();
       {
-	 // todo: This is a bit awkward, the DefaultUniforms aren't bound for shaders which is making me export
+	 // todo: This is a bit awkward, the SharedUniforms aren't bound for shaders which is making me export
 	 // ----: them in glsl. Probably want to bind them for frag stage too?
 	 VkDescriptorType types[] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_SAMPLER };
 	 VkShaderStageFlags stages[] = { VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
 	 g_shared_descriptor_set_layout = buffers::CreateDescriptorSetLayout(types, stages, 2);
 	 g_shared_descriptor_pool = buffers::CreateDescriptorPool();
-	 buffers::CreateDescriptorSets();
+	 buffers::CreateSharedDescriptorSets();
       }
       buffers::InitPBRDescriptors();
    }
@@ -2439,6 +2442,11 @@ void gGlfwVulkan::visit(camera* _camera)
    g_view = _camera->getView();
    g_cam_pos = _camera->getPosition();
 }
+
+// todo: this should pass back a handle which is just a hash of the ptr.
+// ----: add "last visit" frame to drawhandles.
+// ----: add dh refs to resources if "last visit" is within "inflight frames"
+// ----: cleanup resource if refs hit zero.
 
 void gGlfwVulkan::visit(fw::Mesh* _mesh)
 {
@@ -2469,9 +2477,10 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
 	 {
 	    if(_mesh->images[i].data == nullptr) continue;
 	    // todo: add image type field to fw::Image so we can assign more dynamically than below.
-	    // ....: their order inside _mesh->images[i] should be arbitrary.
+	    // ----: their order inside _mesh->images[i] should be arbitrary.
 	    // todo: handle non pbr textures.
-	    drawhandle.im_handles[i] = buffers::CreateImageHandle(_mesh->images[i].data, _mesh->images[i].width, _mesh->images[i].height, _mesh->images[i].bits);
+	    drawhandle.im_handles[i] = buffers::CreateImageHandle(_mesh->images[i]);
+	    // drawhandle.im_handles[i] = buffers::CreateImageHandle(_mesh->images[i].data, _mesh->images[i].width, _mesh->images[i].height, _mesh->images[i].bits);
 	    if(i == 0) buffers::SetPBRDescriptorAlbedo(g_im_map[drawhandle.im_handles[0]].view, set);
 	    else if(i == 1) buffers::SetPBRDescriptorMetallicRoughness(g_im_map[drawhandle.im_handles[1]].view, set);
 	    else if(i == 2) buffers::SetPBRDescriptorNormal(g_im_map[drawhandle.im_handles[2]].view, set);

@@ -70,21 +70,22 @@ namespace fwvulkan
 	 {
             throw std::runtime_error("failed to allocate descriptor sets!");
 	 }
+	 fw::Image white = initdata::images::white;
+	 fw::Image grey = initdata::images::grey;
+	 fw::Image black = initdata::images::black;
+	 CreateImageHandle(white);
+	 CreateImageHandle(grey);
+	 CreateImageHandle(black);
 	 
-	 auto white = CreateImageHandle(initdata::images::white.data(), 4, 4, 32);
-	 auto grey = CreateImageHandle(initdata::images::grey.data(), 4, 4, 32);
-	 auto black = CreateImageHandle(initdata::images::black.data(), 4, 4, 32);
-	 
-	 buffers::SetPBRDescriptorAlbedo(g_im_map[white].view, g_pbr_descriptor_sets);
-	 buffers::SetPBRDescriptorMetallicRoughness(g_im_map[white].view, g_pbr_descriptor_sets);
-	 buffers::SetPBRDescriptorNormal(g_im_map[black].view, g_pbr_descriptor_sets);
-	 buffers::SetPBRDescriptorAO(g_im_map[grey].view, g_pbr_descriptor_sets);
+	 buffers::SetPBRDescriptorAlbedo(g_im_map[white.hash].view, g_pbr_descriptor_sets);
+	 buffers::SetPBRDescriptorMetallicRoughness(g_im_map[white.hash].view, g_pbr_descriptor_sets);
+	 buffers::SetPBRDescriptorNormal(g_im_map[black.hash].view, g_pbr_descriptor_sets);
+	 buffers::SetPBRDescriptorAO(g_im_map[grey.hash].view, g_pbr_descriptor_sets);
 
-
-	 buffers::SetPBRDescriptorAlbedo(g_im_map[white].view, g_fullscreen_descriptor_sets);
-	 buffers::SetPBRDescriptorMetallicRoughness(g_im_map[white].view, g_fullscreen_descriptor_sets);
-	 buffers::SetPBRDescriptorNormal(g_im_map[black].view, g_fullscreen_descriptor_sets);
-	 buffers::SetPBRDescriptorAO(g_im_map[grey].view, g_fullscreen_descriptor_sets);
+	 buffers::SetPBRDescriptorAlbedo(g_im_map[white.hash].view, g_fullscreen_descriptor_sets);
+	 buffers::SetPBRDescriptorMetallicRoughness(g_im_map[white.hash].view, g_fullscreen_descriptor_sets);
+	 buffers::SetPBRDescriptorNormal(g_im_map[black.hash].view, g_fullscreen_descriptor_sets);
+	 buffers::SetPBRDescriptorAO(g_im_map[grey.hash].view, g_fullscreen_descriptor_sets);
       }
       VkDescriptorPool CreatePBRDescriptorPool()
       {
@@ -133,7 +134,7 @@ namespace fwvulkan
 	 
 	 static VkPushConstantRange push_constant = {};
 	 push_constant.offset = 0;
-	 push_constant.size = sizeof(DefaultPushConstants);
+	 push_constant.size = sizeof(SharedPushConstants);
 	 push_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
 	 pipeline_layout_ci.pPushConstantRanges = &push_constant;
