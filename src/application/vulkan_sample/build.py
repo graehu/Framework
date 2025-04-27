@@ -48,8 +48,8 @@ config.library_paths = [libs]
 config.warnings = ["all", "extra", "pedantic"]
 config.debug_info = True
 config.rebuild_on_change = True
-config.link_libraries = ["fwcore", "stdc++", "glfwstatic", "vulkan"]
-config.standard = "c++17"
+config.link_libraries = ["fwcore", "stdc++", "tbb", "glfwstatic", "vulkan"]
+config.standard = options.standard.cpp20
 config.output_file = "vulkan_sample.bin"
 config.compile_commands = True
 

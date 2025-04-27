@@ -1,7 +1,12 @@
+#include <algorithm>
 #include <cassert>
+#include <cstddef>
+#include <mutex>
 #include <vector>
 #include "../../utils/log/log.h"
 #include "../../graphics/graphics.h"
+#include <execution>
+// note: this requires linking ttb (i.e. -lttb) on linux.
 
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
@@ -12,6 +17,7 @@
 using namespace fw;
 void loadmodel(const char* modelpath, std::vector<Mesh>& out_meshes, std::vector<Image>& out_images)
 {
+   log::scope topic("importer", true);
    log::debug("loading model: {}", modelpath);
    using namespace tinygltf;
 
@@ -19,7 +25,6 @@ void loadmodel(const char* modelpath, std::vector<Mesh>& out_meshes, std::vector
    TinyGLTF loader;
    std::string err;
    std::string warn;
-   const float scale = 1.0f;
 
    bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, modelpath);
    //bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, argv[1]); // for binary glTF(.glb)
@@ -42,20 +47,38 @@ void loadmodel(const char* modelpath, std::vector<Mesh>& out_meshes, std::vector
    }
 
    log::debug("images: {}", model.images.size());
+
    out_images.resize(model.images.size());
-   for(int i = 0; i < model.images.size(); i++)
-   // for(auto& image : model.images)
+   struct ImageCpStruct
+   {
+      fw::Image* image = nullptr;
+      unsigned char* source = nullptr;
+      size_t size = 0;
+   };
+   std::vector<ImageCpStruct> CpImages(model.images.size());
+   
+   for(unsigned int i = 0; i < model.images.size(); i++)
    {
       auto& image = model.images[i];
+      CpImages[i].image = &out_images[i];
+      CpImages[i].source = image.image.data();
+      CpImages[i].size = image.image.size();
+      out_images[i] = {nullptr, image.width, image.height, image.component*image.bits, 0};
       log::debug("image info: {}/{}: {}, {}x{}, comp: {}, bits: {}, type: {}", (void*)image.image.data(), image.image.size(), image.name.c_str(), image.width, image.height, image.component, image.bits, image.pixel_type);
-      unsigned int* image_data = new unsigned int[image.image.size()];
-      memcpy(image_data, image.image.data(), image.image.size());
-      out_images[i] = {(const unsigned int*)image_data, image.width, image.height, image.component*image.bits, 0};
-      fw::hash_image(out_images[i]);
    }
-
+   std::for_each(std::execution::par, std::begin(CpImages), std::end(CpImages), [](ImageCpStruct& in)
+   {
+      unsigned int* image_data = new unsigned int[in.size];
+      memcpy(image_data, in.source, in.size);
+      in.image->data = image_data;
+      fw::hash_image(*in.image);
+   });
    log::debug("meshes: {}", model.meshes.size());
-   for (auto& mesh : model.meshes)
+   out_meshes.reserve(model.meshes.size());
+   std::mutex m;
+   // todo: this isn't safe to do in std::execution::par for some reason, look into it.
+   std::for_each(std::execution::seq, std::begin(model.meshes), std::end(model.meshes), [&](auto& mesh)
+   // for (auto& mesh : model.meshes)
    {
       log::debug("primatives: {}", mesh.primitives.size());
       for (auto& primitive : mesh.primitives)
@@ -189,7 +212,8 @@ void loadmodel(const char* modelpath, std::vector<Mesh>& out_meshes, std::vector
 	       out_mesh.images[3] = out_images[model.textures[tex_id].source];
 	    }
 	 }
+	 std::lock_guard<std::mutex> guard(m);
 	 out_meshes.push_back(out_mesh);
       }
-   }
+   });
 }
