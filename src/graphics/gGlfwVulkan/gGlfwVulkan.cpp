@@ -26,7 +26,9 @@
 #include "vulkan_types.h"
 
 #include "../../../libs/imgui/imgui.h"
+#include "../../../libs/imgui/backends/imgui_impl_glfw.h"
 #include "../../../libs/imgui/backends/imgui_impl_vulkan.h"
+
 
 
 using namespace fw;
@@ -2338,6 +2340,10 @@ static void check_vk_result(VkResult err)
 }
 void InitIMGUI()
 {
+   IMGUI_CHECKVERSION();
+   ImGui::CreateContext();
+   ImGui_ImplGlfw_InitForVulkan(fwvulkan::g_window, true);
+   
    ImGui_ImplVulkan_InitInfo init_info = {};
    init_info.ApiVersion = fwvulkan::g_vulkan_version;
    init_info.Instance = fwvulkan::g_instance;
@@ -2374,6 +2380,8 @@ void InitIMGUI()
    // todo: this might be wrong
    init_info.DescriptorPoolSize = fwvulkan::g_max_frames_in_flight;
    ImGui_ImplVulkan_Init(&init_info);
+   ImGui_ImplVulkan_NewFrame();
+   ImGui_ImplGlfw_NewFrame();
 }
 
 int gGlfwVulkan::init()
@@ -2520,6 +2528,8 @@ int gGlfwVulkan::shutdown()
    using namespace fwvulkan;
    log::scope topic("gGlfwVulkan");
    log::debug("shutdown");
+   ImGui_ImplGlfw_Shutdown();
+   ImGui_ImplVulkan_Shutdown();
    swapchain::CleanupSwapChain();
    for(auto vb : g_vb_map)
    {
@@ -2588,12 +2598,14 @@ int gGlfwVulkan::shutdown()
    {
       vkDestroySurfaceKHR(g_instance, g_surface, nullptr);
    }
-
+   ImGui::DestroyContext();
    return 0;
 }
 int gGlfwVulkan::update() { return 0; }
 int gGlfwVulkan::render()
 {
+   ImGui_ImplVulkan_NewFrame();
+   ImGui_ImplGlfw_NewFrame();
    using namespace fwvulkan;
    for(auto pass : g_pass_map)
    {

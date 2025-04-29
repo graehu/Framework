@@ -11,8 +11,6 @@
 #include "../../graphics/camera/camera.h"
 #include "../../input/input.h"
 #include "../../../libs/imgui/imgui.h"
-#include "../../../libs/imgui/backends/imgui_impl_glfw.h"
-#include "../../../libs/imgui/backends/imgui_impl_vulkan.h"
 
 // todo: we don't want to have this as an explicit file like this I don't think.
 #include "tiny_gltf_loader.h"
@@ -37,21 +35,15 @@ void vulkan_sample::init()
    m_window = window::windowFactory();
    m_width = 1920; m_height = 1080;
    m_window->init(m_width, m_height, m_name);
+   
+   fw::log::topics::add("graphics");
+   m_graphics = graphics::graphicsFactory();
+   m_graphics->init();
 
    fw::log::topics::add("input");
    m_input = input::inputFactory();
    m_input->init();
    
-   IMGUI_CHECKVERSION();
-   ImGui::CreateContext();
-   ImGuiIO& io = ImGui::GetIO(); (void)io;
-   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-   io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-   ImGui_ImplGlfw_InitForVulkan(fwvulkan::g_window, true);
-   
-   fw::log::topics::add("graphics");
-   m_graphics = graphics::graphicsFactory();
-   m_graphics->init();
 }
 
 // todo: add pass dependencies.
@@ -118,7 +110,7 @@ void vulkan_sample::run()
    int model_id = 0;
    
    ImGui::StyleColorsDark();
-
+   
    auto io = ImGui::GetIO();
    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
@@ -128,8 +120,8 @@ void vulkan_sample::run()
       bool wants_shade = m_input->isKeyPressed(input::e_shademode);
       bool wants_cmode = m_input->isKeyPressed(input::e_respawn);
       bool wants_model = m_input->isKeyPressed(input::e_nextmodel);
-      ImGui_ImplVulkan_NewFrame();
-      ImGui_ImplGlfw_NewFrame();
+
+
       ImGui::NewFrame();
       {
 	 if(ImGui::Begin("vulkan_sample"))
@@ -295,10 +287,8 @@ void vulkan_sample::run()
 void vulkan_sample::shutdown()
 {
    log::scope vulkan_sample("vulkan_sample");
-   ImGui_ImplGlfw_Shutdown();
-   ImGui_ImplVulkan_Shutdown();
+
    m_graphics->shutdown();
-   ImGui::DestroyContext();
    m_window->shutdown();
    log::debug("vulkan_sample finished.");
 }
