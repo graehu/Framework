@@ -35,15 +35,14 @@ void vulkan_sample::init()
    m_window = window::windowFactory();
    m_width = 1920; m_height = 1080;
    m_window->init(m_width, m_height, m_name);
-   
-   fw::log::topics::add("graphics");
-   m_graphics = graphics::graphicsFactory();
-   m_graphics->init();
 
    fw::log::topics::add("input");
    m_input = input::inputFactory();
    m_input->init();
    
+   fw::log::topics::add("graphics");
+   m_graphics = graphics::graphicsFactory();
+   m_graphics->init();
 }
 
 // todo: add pass dependencies.
@@ -120,8 +119,6 @@ void vulkan_sample::run()
       bool wants_shade = m_input->isKeyPressed(input::e_shademode);
       bool wants_cmode = m_input->isKeyPressed(input::e_respawn);
       bool wants_model = m_input->isKeyPressed(input::e_nextmodel);
-
-
       ImGui::NewFrame();
       {
 	 if(ImGui::Begin("vulkan_sample"))

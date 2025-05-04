@@ -1428,9 +1428,9 @@ namespace fwvulkan
 	 g_pass_map.clear();
 	 // todo: make sure this doesn't cause unwanted vb/ib/im recreation.
 	 g_drawhandles.clear();
-	 g_used_pbr_descriptors = 0;
-	 g_used_fullscreen_descriptors = 0;
 	 g_swap_chain = VK_NULL_HANDLE;
+	 pbr::Reset();
+	 fullscreen::Reset();
       }
       void CreateSwapchainImageViews()
       {
@@ -1563,6 +1563,11 @@ namespace fwvulkan
    }
    namespace renderpass
    {
+      VkImageView GetPassImageView(hash::string passname)
+      {
+	auto& pass =  g_pass_map[passname];
+	return pass.image_views[0];
+      };
       void CreatePassImages(fw::hash::string passname, int count)
       {
 	 auto& pass = g_pass_map[passname];
@@ -2215,18 +2220,18 @@ namespace fwvulkan
 
 	       assert(dh.ds_handle != -1);
 	    
-	       // std::array<VkDescriptorSet, 2> desc_sets = {g_descriptor_sets[g_flight_frame], g_drawdescriptor_sets[dh.ds_handle] };
+	       // std::array<VkDescriptorSet, 2> desc_sets = { g_descriptor_sets[g_flight_frame], g_drawdescriptor_sets[dh.ds_handle] };
 
 	       // note: the firstSet value is 1, because we're binding from that set number. I.e. we're binding set 1, which has our per-draw descriptor layout. (image, image)
 	       // ----: vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 0, 2, desc_sets.data(), 0, nullptr);
 	       if(passname == hash::string("swapchain"))
 	       {
 		  // setup the "fullscreen" descriptors - they should bind the PBR pass and the UI pass.
-		  vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 1, 1, &g_fullscreen_descriptor_sets[dh.ds_handle], 0, nullptr);
+		  vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 1, 1, &fullscreen::GetDescriptorSet(dh.ds_handle), 0, nullptr);
 	       }
 	       else if(passname == hash::string("pbr"))
 	       {
-		  vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 1, 1, &g_pbr_descriptor_sets[dh.ds_handle], 0, nullptr);
+		  vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 1, 1, &pbr::GetDescriptorSet(dh.ds_handle), 0, nullptr);
 	       }
 	       else
 	       {
@@ -2421,7 +2426,8 @@ int gGlfwVulkan::init()
 	 g_shared_descriptor_pool = buffers::CreateDescriptorPool();
 	 buffers::CreateSharedDescriptorSets();
       }
-      buffers::InitPBRDescriptors();
+      pbr::Init();
+      
    }
    // todo: swapchain pass extent is set here, kinda gross.
    swapchain::CreateSwapChain();
@@ -2465,48 +2471,16 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
    if(handles_iter == g_drawhandles.end())
    {
       log::debug("Visitor Mesh: {}", (void*)_mesh);
-      drawhandle = { _mesh,
-	 buffers::CreateVertexBufferHandle(_mesh->geometry.vbo.data, _mesh->geometry.vbo.len),
-	 buffers::CreateIndexBufferHandle(_mesh->geometry.ibo.data, _mesh->geometry.ibo.len),
-	 {},
-	 // todo: this should be "create all pipeline variants"
-	 // ----: then we store draws against pipelines / passes, or something. :)
-	 // todo: have this read the material to decide the pipeline layout.
-	 pipeline::CreatePipelineVariants(_mesh->material, pipeline::GetPBRPipelineLayout()),
-	 0
-      };
-      log::debug("draw descriptors: {}/{}", g_used_pbr_descriptors, g_pbr_descriptor_sets.size());
       if(_mesh->passes[0] == hash::string("pbr"))
       {
-	 drawhandle.ds_handle = g_used_pbr_descriptors++;
-	 assert(size_t(g_used_pbr_descriptors) <  g_pbr_descriptor_sets.size());
-	 std::vector<VkDescriptorSet> set(1, {g_pbr_descriptor_sets[drawhandle.ds_handle]});
-	 for(unsigned int i = 0; i < Mesh::max_images; i++)
-	 {
-	    if(_mesh->images[i].data == nullptr) continue;
-	    // todo: add image type field to fw::Image so we can assign more dynamically than below.
-	    // ----: their order inside _mesh->images[i] should be arbitrary.
-	    // todo: handle non pbr textures.
-	    drawhandle.im_handles[i] = buffers::CreateImageHandle(_mesh->images[i]);
-	    // drawhandle.im_handles[i] = buffers::CreateImageHandle(_mesh->images[i].data, _mesh->images[i].width, _mesh->images[i].height, _mesh->images[i].bits);
-	    if(i == 0) buffers::SetPBRDescriptorAlbedo(g_im_map[drawhandle.im_handles[0]].view, set);
-	    else if(i == 1) buffers::SetPBRDescriptorMetallicRoughness(g_im_map[drawhandle.im_handles[1]].view, set);
-	    else if(i == 2) buffers::SetPBRDescriptorNormal(g_im_map[drawhandle.im_handles[2]].view, set);
-	    else if(i == 3) buffers::SetPBRDescriptorAO(g_im_map[drawhandle.im_handles[3]].view, set);
-	 }
+	 drawhandle = pbr::visit(_mesh);
       }
       // todo: shouldn't really have meshes that render with the "swapchain" pass
       // ----: this should be an internal pass, as should the triangle used to render.
       // ----: and the fullscreen/unlit/composite shaders.
       else if(_mesh->passes[0] == hash::string("swapchain"))
       {
-	 drawhandle.ds_handle = g_used_fullscreen_descriptors++;
-	 assert(size_t(g_used_fullscreen_descriptors) <  g_fullscreen_descriptor_sets.size());
-	 std::vector<VkDescriptorSet> set(1, {g_fullscreen_descriptor_sets[drawhandle.ds_handle]});
-	 buffers::SetPBRDescriptorAlbedo(g_pass_map["ui"].image_views[0], set);
-	 buffers::SetPBRDescriptorMetallicRoughness(g_pass_map["pbr"].image_views[0], set);
-	 buffers::SetPBRDescriptorNormal(g_pass_map["pbr"].image_views[0], set);
-	 buffers::SetPBRDescriptorAO(g_pass_map["pbr"].image_views[0], set);
+	 drawhandle = fullscreen::visit(_mesh);
       }
       g_drawhandles[_mesh] = drawhandle;
    }
@@ -2531,6 +2505,8 @@ int gGlfwVulkan::shutdown()
    ImGui_ImplGlfw_Shutdown();
    ImGui_ImplVulkan_Shutdown();
    swapchain::CleanupSwapChain();
+   pbr::Shutdown();
+   fullscreen::Shutdown();
    for(auto vb : g_vb_map)
    {
       vkDestroyBuffer(g_logical_device, vb.second.vb, nullptr);
@@ -2585,10 +2561,7 @@ int gGlfwVulkan::shutdown()
    g_sam_map.clear();
    
    vkDestroyDescriptorPool(g_logical_device, g_shared_descriptor_pool, nullptr);
-   vkDestroyDescriptorPool(g_logical_device, g_pbr_descriptor_pool, nullptr);
    vkDestroyDescriptorSetLayout(g_logical_device, g_shared_descriptor_set_layout, nullptr);
-   vkDestroyDescriptorSetLayout(g_logical_device, g_pbr_descriptor_set_layout, nullptr);
-   
    vkDestroyDevice(g_logical_device, nullptr);
    if (g_enable_validation_layers)
    {
