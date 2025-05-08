@@ -22,6 +22,7 @@ config.source_files = [
     "../../window/wGlfwVulkan/wGlfwVulkan.cpp",
     "../../graphics/gGlfwVulkan/gGlfwVulkan.cpp",
     "../../graphics/gGlfwVulkan/pbr_pipeline.cpp",
+    "../../graphics/gGlfwVulkan/fullscreen_pipeline.cpp",
     "../../input/inGlfw/inGlfw.cpp",
 ]
 libs = "../../../libs"
