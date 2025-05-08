@@ -24,6 +24,7 @@ namespace fwvulkan
    // extern std::map<hash::string, struct PassHandle> g_pass_map;
    extern std::map<fw::hash::string, struct PassHandle> g_pass_map;
    const unsigned int g_pbr_num_textures = 4;
+   const unsigned int g_fullscreen_num_textures = 4;
    namespace descriptor_binds {
       const unsigned int albedo = 0;
       const unsigned int roughness = 1;
@@ -77,19 +78,12 @@ namespace fwvulkan
 	    alloc_info.descriptorSetCount = DrawHandle::max_draws;
 	    alloc_info.pSetLayouts = layouts.data();
 	    g_pbr_descriptor_sets.resize(DrawHandle::max_draws);
-	    g_fullscreen_descriptor_sets.resize(DrawHandle::max_draws);
 	 
 	    if (vkAllocateDescriptorSets(g_logical_device, &alloc_info, g_pbr_descriptor_sets.data()) != VK_SUCCESS)
 	    {
 	       throw std::runtime_error("failed to allocate descriptor sets!");
 	    }
-	    std::vector<VkDescriptorSetLayout> fullscreen_layouts(DrawHandle::max_draws, g_fullscreen_descriptor_set_layout);
-	    alloc_info.descriptorPool = g_fullscreen_descriptor_pool;
-	    alloc_info.pSetLayouts = fullscreen_layouts.data();
-	    if (vkAllocateDescriptorSets(g_logical_device, &alloc_info, g_fullscreen_descriptor_sets.data()) != VK_SUCCESS)
-	    {
-	       throw std::runtime_error("failed to allocate descriptor sets!");
-	    }
+
 	    fw::Image white = initdata::images::white;
 	    fw::Image grey = initdata::images::grey;
 	    fw::Image black = initdata::images::black;
@@ -102,10 +96,6 @@ namespace fwvulkan
 	    SetDescriptorNormal(g_im_map[black.hash].view, g_pbr_descriptor_sets);
 	    SetDescriptorAO(g_im_map[grey.hash].view, g_pbr_descriptor_sets);
 
-	    SetDescriptorAlbedo(g_im_map[white.hash].view, g_fullscreen_descriptor_sets);
-	    SetDescriptorMetallicRoughness(g_im_map[white.hash].view, g_fullscreen_descriptor_sets);
-	    SetDescriptorNormal(g_im_map[black.hash].view, g_fullscreen_descriptor_sets);
-	    SetDescriptorAO(g_im_map[grey.hash].view, g_fullscreen_descriptor_sets);
 	 }
 
       VkDescriptorPool CreatePBRDescriptorPool()
@@ -130,17 +120,14 @@ namespace fwvulkan
 	 return pool;
       }
       }
-      void InitPBRDescriptors()
+      void InitDescriptors()
       {
 	 VkDescriptorType types[g_pbr_num_textures] = { };
 	 VkShaderStageFlags stages[g_pbr_num_textures] = { };
 	 for(unsigned int i = 0; i < g_pbr_num_textures; i++) { types[i] = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE; }
 	 for(unsigned int i = 0; i < g_pbr_num_textures; i++) { stages[i] = VK_SHADER_STAGE_FRAGMENT_BIT; }
 	 g_pbr_descriptor_set_layout = buffers::CreateDescriptorSetLayout(types, stages, g_pbr_num_textures);
-	 g_fullscreen_descriptor_set_layout = buffers::CreateDescriptorSetLayout(types, stages, g_pbr_num_textures);
-	 
 	 g_pbr_descriptor_pool = buffers::pbr::CreatePBRDescriptorPool();
-	 g_fullscreen_descriptor_pool = buffers::pbr::CreatePBRDescriptorPool();
 	 
 	 buffers::pbr::CreateDescriptorSets();
       }
@@ -175,7 +162,7 @@ namespace fwvulkan
    {
       void Init()
       {
-	 buffers::InitPBRDescriptors();
+	 buffers::InitDescriptors();
       }
       DrawHandle visit(fw::Mesh *_mesh)
       {
@@ -225,9 +212,95 @@ namespace fwvulkan
    }
    namespace fullscreen
    {
+      	 void SetDescriptorAlbedo(VkImageView image_view, std::vector<VkDescriptorSet> albedo_sets)
+	 {
+	    log::debug("SetFullscreenDescriptorAlbedo: {}", size_t(image_view));
+	    buffers::SetDescriptorImage(image_view, albedo_sets, descriptor_binds::albedo);
+	 }
+	 void SetDescriptorMetallicRoughness(VkImageView image_view, std::vector<VkDescriptorSet> rough_sets)
+	 {
+	    log::debug("SetFullscreenDescriptorMetallicRoughness: {}", size_t(image_view));
+	    buffers::SetDescriptorImage(image_view, rough_sets, descriptor_binds::roughness);
+	 }
+	 void SetDescriptorNormal(VkImageView image_view, std::vector<VkDescriptorSet> normal_sets)
+	 {
+	    log::debug("SetFullscreenDescriptorNormal: {}", size_t(image_view));
+	    buffers::SetDescriptorImage(image_view, normal_sets, descriptor_binds::normal);
+	 }
+	 void SetDescriptorAO(VkImageView image_view, std::vector<VkDescriptorSet> ao_sets)
+	 {
+	    log::debug("SetFullscreenDescriptorAO: {}", size_t(image_view));
+	    buffers::SetDescriptorImage(image_view, ao_sets, descriptor_binds::ao);
+	 }
+      	 void CreateDescriptorSets()
+	 {
+	    log::debug("CreateFullscreenDescriptorSets");
+	 
+	    std::vector<VkDescriptorSetLayout> layouts(DrawHandle::max_draws, g_fullscreen_descriptor_set_layout);
+	    VkDescriptorSetAllocateInfo alloc_info{};
+	 
+	    alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	    alloc_info.descriptorPool = g_fullscreen_descriptor_pool;
+	    alloc_info.descriptorSetCount = DrawHandle::max_draws;
+	    alloc_info.pSetLayouts = layouts.data();
+	    g_fullscreen_descriptor_sets.resize(DrawHandle::max_draws);
+	 
+	    if (vkAllocateDescriptorSets(g_logical_device, &alloc_info, g_fullscreen_descriptor_sets.data()) != VK_SUCCESS)
+	    {
+	       throw std::runtime_error("failed to allocate descriptor sets!");
+	    }
+
+	    fw::Image white = initdata::images::white;
+	    fw::Image grey = initdata::images::grey;
+	    fw::Image black = initdata::images::black;
+	    buffers::CreateImageHandle(white);
+	    buffers::CreateImageHandle(grey);
+	    buffers::CreateImageHandle(black);
+	    
+	    SetDescriptorAlbedo(g_im_map[white.hash].view, g_fullscreen_descriptor_sets);
+	    SetDescriptorMetallicRoughness(g_im_map[white.hash].view, g_fullscreen_descriptor_sets);
+	    SetDescriptorNormal(g_im_map[black.hash].view, g_fullscreen_descriptor_sets);
+	    SetDescriptorAO(g_im_map[grey.hash].view, g_fullscreen_descriptor_sets);
+	 }
+      VkDescriptorPool CreateDescriptorPool()
+      {
+	 VkDescriptorPoolSize pool_sizes[g_fullscreen_num_textures] = {};
+	 for(unsigned int i = 0; i < g_fullscreen_num_textures; i++)
+	 {
+	    pool_sizes[i].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	    pool_sizes[i].descriptorCount = DrawHandle::max_draws;
+	 }
+
+	 VkDescriptorPoolCreateInfo pool_ci{};
+	 pool_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	 pool_ci.poolSizeCount = g_fullscreen_num_textures;
+	 pool_ci.pPoolSizes = &pool_sizes[0];
+	 pool_ci.maxSets = DrawHandle::max_draws;
+
+	 VkDescriptorPool pool;
+	 if (vkCreateDescriptorPool(g_logical_device, &pool_ci, nullptr, &pool) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create descriptor pool!");
+	 }
+	 return pool;
+      }
+      void InitDescriptors()
+      {
+	 VkDescriptorType types[g_fullscreen_num_textures] = { };
+	 VkShaderStageFlags stages[g_fullscreen_num_textures] = { };
+	 for(unsigned int i = 0; i < g_fullscreen_num_textures; i++) { types[i] = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE; }
+	 for(unsigned int i = 0; i < g_fullscreen_num_textures; i++) { stages[i] = VK_SHADER_STAGE_FRAGMENT_BIT; }
+	 g_fullscreen_descriptor_set_layout = buffers::CreateDescriptorSetLayout(types, stages, g_fullscreen_num_textures);
+	 g_fullscreen_descriptor_pool = CreateDescriptorPool();
+	 
+	 CreateDescriptorSets();
+      }
       VkDescriptorSet& GetDescriptorSet(unsigned int handle)
       {
 	 return g_fullscreen_descriptor_sets[handle];
+      }
+      void Init()
+      {
+	 InitDescriptors();
       }
       void Reset()
       {

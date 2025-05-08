@@ -2426,8 +2426,8 @@ int gGlfwVulkan::init()
 	 g_shared_descriptor_pool = buffers::CreateDescriptorPool();
 	 buffers::CreateSharedDescriptorSets();
       }
+      fullscreen::Init();
       pbr::Init();
-      
    }
    // todo: swapchain pass extent is set here, kinda gross.
    swapchain::CreateSwapChain();

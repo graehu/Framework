@@ -19,6 +19,7 @@ namespace fwvulkan
    }
    namespace fullscreen
    {
+      void Init();
       VkDescriptorSet& GetDescriptorSet(unsigned int handle);
       DrawHandle visit(fw::Mesh* _mesh);
       void Reset();
