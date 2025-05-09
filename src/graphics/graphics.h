@@ -15,7 +15,12 @@ namespace fw
    {
       enum type {  e_vertex, e_hull, e_domain, e_geomtry, e_fragment, e_task, e_mesh, e_compute, e_count };
    }
-   typedef std::array<hash::string, shader::e_count> Material;
+   // typedef std::array<hash::string, shader::e_count> Material;
+   struct Material
+   {
+      std::array<hash::string, shader::e_count> shaders;
+      bool alpha = false;
+   };
    typedef std::vector<hash::string> PassList;
    struct Vertex { vec3f position; vec3f normal; vec3f color; vec2f uv; };
    struct VertexArray { const Vertex* data; size_t len; };

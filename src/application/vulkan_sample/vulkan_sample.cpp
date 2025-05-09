@@ -50,6 +50,7 @@ void vulkan_sample::init()
 // todo: move all imgui related init out of this sample and into framework.
 // todo: lock the mouse center in freecam.
 // todo: fix resource transition validation errors.
+// todo: add pbr alpha support
 
 void vulkan_sample::run()
 {
@@ -69,23 +70,24 @@ void vulkan_sample::run()
    unsigned int tri_indices_count = initdata::geometry::tri_indices.size();
 
    Mesh swapchain_mesh = {{{tri_verts, tri_verts_count}, {tri_indices, tri_indices_count}}, {}, {}, {"swapchain"}, {}};;
-   swapchain_mesh.material[fw::shader::e_vertex] = fw::hash::string("fullscreen");
-   swapchain_mesh.material[fw::shader::e_fragment] = fw::hash::string("unlit");
+   swapchain_mesh.material.shaders[fw::shader::e_vertex] = fw::hash::string("fullscreen");
+   swapchain_mesh.material.shaders[fw::shader::e_fragment] = fw::hash::string("unlit");
    
    std::vector<Mesh> meshes; std::vector<Image> images;
    float model_scale = 1.0;
    {
       log::scope topic("timer", true);
       log::timer timer("load model");
-      // loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images); model_scale = 0.02;
-      loadmodel("../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", meshes, images);
+      loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images); model_scale = 0.02;
+      // loadmodel("../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", meshes, images);
    }
 
    for(Mesh& mesh : meshes)
    {
       mesh.passes = {"pbr"};
-      mesh.material[fw::shader::e_vertex] = fw::hash::string("shared");
-      mesh.material[fw::shader::e_fragment] = fw::hash::string("pbr");
+      mesh.material.shaders[fw::shader::e_vertex] = fw::hash::string("shared");
+      mesh.material.shaders[fw::shader::e_fragment] = fw::hash::string("pbr");
+      mesh.material.alpha = false;
       mesh.transform = mat4x4f::scaled(model_scale, model_scale, model_scale);
    }
 

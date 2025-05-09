@@ -1,5 +1,7 @@
 #include "gGlfwVulkan.h"
 #include "vulkan/vulkan.hpp"
+// todo: take all the glfw calls and put them in a different file.
+// ----: then this file can become vulkan only and be shared by other window systems.
 #include "GLFW/glfw3.h"
 #include <cassert>
 #include <cstddef>
@@ -25,11 +27,11 @@
 #include "../../types/mat4x4f.h"
 #include "vulkan_types.h"
 
+// todo: these can probably move into separate files like fullscreen and pbr
+
 #include "../../../libs/imgui/imgui.h"
 #include "../../../libs/imgui/backends/imgui_impl_glfw.h"
 #include "../../../libs/imgui/backends/imgui_impl_vulkan.h"
-
-
 
 using namespace fw;
 struct vkVertex : public fw::Vertex
@@ -1906,20 +1908,34 @@ namespace fwvulkan
 	 input_create_info.primitiveRestartEnable = VK_FALSE;
 	 return input_create_info;
       }
-      VkPipelineColorBlendStateCreateInfo GetDefaultBlendState()
+      VkPipelineColorBlendStateCreateInfo GetDefaultBlendState(bool alpha = false)
       {
 	 static VkPipelineColorBlendAttachmentState color_blend_attachment_state = {};
 	 color_blend_attachment_state.colorWriteMask =
 	    VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	 color_blend_attachment_state.blendEnable = VK_FALSE;
+
 	 // blend is disabled so these options do nothing
 	 // they're just an example of some simple blending parameters.
-	 color_blend_attachment_state.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-	 color_blend_attachment_state.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-	 color_blend_attachment_state.colorBlendOp = VK_BLEND_OP_ADD;
-	 color_blend_attachment_state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-	 color_blend_attachment_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-	 color_blend_attachment_state.alphaBlendOp = VK_BLEND_OP_ADD;
+	 if (alpha)
+	 {
+	    color_blend_attachment_state.blendEnable = VK_TRUE;
+	    color_blend_attachment_state.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	    color_blend_attachment_state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	    color_blend_attachment_state.colorBlendOp = VK_BLEND_OP_ADD;
+	    color_blend_attachment_state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	    color_blend_attachment_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	    color_blend_attachment_state.alphaBlendOp = VK_BLEND_OP_ADD;
+	 }
+	 else
+	 {
+	    color_blend_attachment_state.blendEnable = VK_FALSE;
+	    color_blend_attachment_state.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	    color_blend_attachment_state.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+	    color_blend_attachment_state.colorBlendOp = VK_BLEND_OP_ADD;
+	    color_blend_attachment_state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	    color_blend_attachment_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	    color_blend_attachment_state.alphaBlendOp = VK_BLEND_OP_ADD;
+	 }
 	 
 	 VkPipelineColorBlendStateCreateInfo color_blend_state_ci = {};
 	 color_blend_state_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -1953,9 +1969,9 @@ namespace fwvulkan
 	    VkShaderModule vertex_shader = {};
 	    for(int i = 0; i < fw::shader::e_count; i++)
 	    {
-	       if(mat[i].is_valid())
+	       if(mat.shaders[i].is_valid())
 	       {
-		  if(auto module = g_shaders[i].find(mat[i]); module != g_shaders[i].end())
+		  if(auto module = g_shaders[i].find(mat.shaders[i]); module != g_shaders[i].end())
 		  {
 
 		     VkPipelineShaderStageCreateInfo& stage_ci = shader_stage_ci[shader_count++];
@@ -1974,7 +1990,8 @@ namespace fwvulkan
 	    auto viewport_state_ci = GetDefaultViewportState();
 	    auto raster_state_ci = GetDefaultRasterState();
 	    auto multisample_state_ci = GetDefaultMultisampleState();
-	    auto blend_state_ci = GetDefaultBlendState();
+	    auto blend_state_ci = GetDefaultBlendState(mat.alpha);
+	    
 
 	    // Setting any of these means parts of the associated create info is ignored.
 	    // The related parts must be recorded in commands, listing related commands below

@@ -237,7 +237,7 @@ void main()
 
    switch(in_shademode)
    {
-      case 0: out_color = vec4(color, 1.0); break;
+      case 0: out_color = vec4(color, clamp(albedo.a,0.0,1.0)); break;
       //  Debugging modes
       case 1: out_color = vec4(in_uv, 1.0, 1.0); break;        // show uvs
       case 2: out_color = pow(albedo, vec4(1.0/2.2)); break;   // show texture albedo
