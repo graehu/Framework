@@ -87,7 +87,6 @@ void vulkan_sample::run()
       mesh.passes = {"pbr"};
       mesh.material.shaders[fw::shader::e_vertex] = fw::hash::string("shared");
       mesh.material.shaders[fw::shader::e_fragment] = fw::hash::string("pbr");
-      mesh.material.alpha = false;
       mesh.transform = mat4x4f::scaled(model_scale, model_scale, model_scale);
    }
 

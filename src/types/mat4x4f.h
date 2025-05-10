@@ -17,7 +17,9 @@ public:
  
    void perspective(float fovy, float aspect, float zNear, float zFar);
    mat4x4f transpose();
-
+   
+   vec3f get_position() const { return {elem[3][0], elem[3][1], elem[3][2]}; }
+   
    void translate(float X, float Y, float Z);
    void scale(float X, float Y, float Z);
    void rotate(float _x, float _y, float z);

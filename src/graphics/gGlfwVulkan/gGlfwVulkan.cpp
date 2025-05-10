@@ -34,6 +34,12 @@
 #include "../../../libs/imgui/backends/imgui_impl_vulkan.h"
 
 using namespace fw;
+
+mat4x4f g_view;
+vec3f g_cam_pos;
+fw::Light g_light;
+int g_shademode = 0;
+
 struct vkVertex : public fw::Vertex
 {
    static VkVertexInputBindingDescription GetBindingDescription()
@@ -2207,6 +2213,17 @@ namespace fwvulkan
 	 {
 	    uint32_t pipeline_hash = 0;
 	    uint32_t id = 0;
+	    // todo: render alpha as a separate pass so we have to do less sorting / have less chance for error.
+	    // ----: all alpha should be at the end of the array so context rolls should be fine atm. Check.
+	    std::sort (pass.draws.begin(), pass.draws.end(), [](auto& a, auto& b)
+	    {
+	       if (a.owner->material.alpha && !b.owner->material.alpha) return false;
+	       else if (!a.owner->material.alpha && b.owner->material.alpha) return true;
+	       float dist1 = (g_cam_pos-a.owner->transform.get_position()).length_squared();
+	       float dist2 = (g_cam_pos-b.owner->transform.get_position()).length_squared();
+	       return dist1 < dist2;
+	    });
+	    
 	    for(auto dh : pass.draws)
 	    {
 	       // todo: push constants have limited mat4x4s atm, fix it.
@@ -2333,10 +2350,7 @@ namespace fwvulkan
       }
    }
 } // namespace fwvulkan
-mat4x4f g_view;
-vec3f g_cam_pos;
-fw::Light g_light;
-int g_shademode = 0;
+
 void UpdateUniformBuffer(uint32_t currentImage)
 {
    using namespace fwvulkan;
