@@ -63,16 +63,14 @@ namespace fwvulkan
 	 }
 
 	 fw::Image white = initdata::images::white;
-	 fw::Image grey = initdata::images::grey;
 	 fw::Image black = initdata::images::black;
 	 buffers::CreateImageHandle(white);
-	 buffers::CreateImageHandle(grey);
 	 buffers::CreateImageHandle(black);
 	    
 	 SetDescriptorAlbedo(g_im_map[white.hash].view, g_descriptor_sets);
 	 SetDescriptorMetallicRoughness(g_im_map[white.hash].view, g_descriptor_sets);
 	 SetDescriptorNormal(g_im_map[black.hash].view, g_descriptor_sets);
-	 SetDescriptorAO(g_im_map[grey.hash].view, g_descriptor_sets);
+	 SetDescriptorAO(g_im_map[white.hash].view, g_descriptor_sets);
       }
       VkPipelineLayoutCreateInfo GetPipelineLayout()
       {
