@@ -173,7 +173,8 @@ void loadmodel(const char* modelpath, std::vector<Mesh>& out_meshes, std::vector
 	 if(material_id != -1)
 	 {
 	    tinygltf::Material& mat = model.materials[material_id];
-	    out_mesh.material.alpha = std::strcmp(mat.alphaMode.c_str(), "OPAQUE") != 0;
+	    out_mesh.material.flags.alpha = std::strcmp(mat.alphaMode.c_str(), "OPAQUE") != 0;
+	    
 	    const char* name = model.materials[material_id].name.c_str();
 	    log::debug("material: {}, {}", material_id, name);
 	    

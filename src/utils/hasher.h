@@ -18,6 +18,11 @@ namespace fw
 	 }
 	 return (hashout & 0x7FFFFFFF);
       }
+      template <typename T>
+      constexpr std::uint32_t hash32(T&& s)
+      {
+	 return hash_buffer((const char*)&s, sizeof(T));
+      }
       // todo: add 64 bit variant
       // origin: https://gist.github.com/Lee-R/3839813
       // FNV-1a 32bit hashing algorithm.
@@ -26,6 +31,9 @@ namespace fw
 	 // potentially large iteration time here.
 	 return ((count ? i32(s, count - 1) : 2166136261u) ^ s[count]) * 16777619u;
       }
+      // todo: try to make this always work.
+      // todo: make alignment check compile time assert.
+      // todo: why have I removed a single byte. that seems dumb.
       template <typename T>
       constexpr std::uint32_t i32(T&& s)
       {

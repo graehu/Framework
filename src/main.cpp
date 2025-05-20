@@ -8,9 +8,12 @@ int main(int argc, char *argv[])
    fw::commandline::arg_count = argc;
    fw::commandline::arg_variables = argv;
    application* app = application::factory();
-   app->init();
-   app->run();
-   app->shutdown();
+   if(app != nullptr)
+   {
+      app->init();
+      app->run();
+      app->shutdown();
+   }
    return 0; 
 }
 

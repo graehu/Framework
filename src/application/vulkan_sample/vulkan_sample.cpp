@@ -81,15 +81,13 @@ void vulkan_sample::run()
       loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images); model_scale = 0.02;
       // loadmodel("../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", meshes, images);
    }
-
    for(Mesh& mesh : meshes)
    {
       mesh.passes = {"pbr"};
-      mesh.material.shaders[fw::shader::e_vertex] = fw::hash::string("shared");
-      mesh.material.shaders[fw::shader::e_fragment] = fw::hash::string("pbr");
+      mesh.material.shaders[fw::shader::e_vertex] = {"shared"};
+      mesh.material.shaders[fw::shader::e_fragment] = {"pbr"};
       mesh.transform = mat4x4f::scaled(model_scale, model_scale, model_scale);
    }
-
    float time = 0;
    int shademode = 0;
    camera cam;

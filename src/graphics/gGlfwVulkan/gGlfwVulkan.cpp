@@ -1962,7 +1962,7 @@ namespace fwvulkan
       int CreatePipelineVariants(Material mat, VkPipelineLayoutCreateInfo pipeline_layout_ci)
       {
 	 log::debug("CreateGraphicsPipeline");
-	 auto hash = hash::i32((const char*)&mat, sizeof(Material));
+	 auto hash = hash::hash32(mat);
 	 if(g_pipe_map.find(hash) == g_pipe_map.end())
 	 {
 	    VkPipelineLayout pipeline_layout;
@@ -1996,7 +1996,7 @@ namespace fwvulkan
 	    auto viewport_state_ci = GetDefaultViewportState();
 	    auto raster_state_ci = GetDefaultRasterState();
 	    auto multisample_state_ci = GetDefaultMultisampleState();
-	    auto blend_state_ci = GetDefaultBlendState(mat.alpha);
+	    auto blend_state_ci = GetDefaultBlendState(mat.flags.alpha);
 	    
 
 	    // Setting any of these means parts of the associated create info is ignored.
@@ -2217,26 +2217,24 @@ namespace fwvulkan
 	    // ----: all alpha should be at the end of the array so context rolls should be fine atm. Check.
 	    std::sort (pass.draws.begin(), pass.draws.end(), [](auto& a, auto& b)
 	    {
-	       if (a.owner->material.alpha && !b.owner->material.alpha) return false;
-	       else if (!a.owner->material.alpha && b.owner->material.alpha) return true;
+	       if (a.owner->material.flags.alpha && !b.owner->material.flags.alpha) return false;
+	       else if (!a.owner->material.flags.alpha && b.owner->material.flags.alpha) return true;
 	       float dist1 = (g_cam_pos-a.owner->transform.get_position()).length_squared();
 	       float dist2 = (g_cam_pos-b.owner->transform.get_position()).length_squared();
 	       return dist1 < dist2;
 	    });
-	    
 	    for(auto dh : pass.draws)
 	    {
 	       // todo: push constants have limited mat4x4s atm, fix it.
 	       assert(id < DrawHandle::max_draws);
 	       // log::debug("Recording Draw vb: {} pi: {} nverts: {}", dh.vb_handle, dh.pi_handle, dh.num_verts);
 	       // log::debug("bind pipeline");
-
 	       if(uint32_t hash = dh.pi_handle; hash != pipeline_hash)
 	       {
-		  // note: setting viewport and scissor when we bind pipeline incase it's changed
 		  // todo: it would be nicer to have this sort of thing covered as a init frame pass or something.
 		  pipeline_hash = hash;
 		  // todo: this works because we only really have 1 pipeline layout.
+		  // ----: future graham, not sure this comment is true?
 		  vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 0, 1, &g_shared_descriptor_sets[g_flight_frame], 0, nullptr);
 	       }
 	    
@@ -2244,6 +2242,7 @@ namespace fwvulkan
 	       VkDeviceSize offsets[] = {0};
 	       SharedPushConstants constants = {id};
 	       // todo: make this happen once per draw before depth when recording depth
+	       // todo: it would be faster to memcpy the whole ubo.model array.
 	       memcpy(&ubo.model[id], &dh.owner->transform, sizeof(mat4x4f));
 	       // this needs to happen every time we setup a draw.
 	    

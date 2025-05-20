@@ -156,6 +156,9 @@ mat3 CalculateTBN( vec3 N, vec3 p, vec2 uv )
    #endif
 }
 
+// note: there's something wrong with the fall off of the normal distribution.
+// ----: the normal distribution / light decay is strong at specific angles / directions.
+
 // do I care about specular ibl and diffuse irradience.
 // not right now?
 void main()
