@@ -2146,6 +2146,7 @@ namespace fwvulkan
 	 return depth_attachment_info;
       }
       ImDrawData* pass_gui = nullptr;
+      uint32_t shared_id = 0;
       void RecordPass(hash::string passname)
       {
 	 PassHandle& pass = g_pass_map[passname];
@@ -2212,7 +2213,6 @@ namespace fwvulkan
 	 else
 	 {
 	    uint32_t pipeline_hash = 0;
-	    uint32_t id = 0;
 	    // todo: render alpha as a separate pass so we have to do less sorting / have less chance for error.
 	    // ----: all alpha should be at the end of the array so context rolls should be fine atm. Check.
 	    std::sort (pass.draws.begin(), pass.draws.end(), [](auto& a, auto& b)
@@ -2226,7 +2226,7 @@ namespace fwvulkan
 	    for(auto dh : pass.draws)
 	    {
 	       // todo: push constants have limited mat4x4s atm, fix it.
-	       assert(id < DrawHandle::max_draws);
+	       assert(shared_id < DrawHandle::max_draws);
 	       // log::debug("Recording Draw vb: {} pi: {} nverts: {}", dh.vb_handle, dh.pi_handle, dh.num_verts);
 	       // log::debug("bind pipeline");
 	       if(uint32_t hash = dh.pi_handle; hash != pipeline_hash)
@@ -2240,10 +2240,10 @@ namespace fwvulkan
 	    
 	       VkBuffer vertex_buffers[] = {g_vb_map[dh.vb_handle].vb};
 	       VkDeviceSize offsets[] = {0};
-	       SharedPushConstants constants = {id};
+	       SharedPushConstants constants = {shared_id};
 	       // todo: make this happen once per draw before depth when recording depth
 	       // todo: it would be faster to memcpy the whole ubo.model array.
-	       memcpy(&ubo.model[id], &dh.owner->transform, sizeof(mat4x4f));
+	       memcpy(&ubo.model[shared_id], &dh.owner->transform, sizeof(mat4x4f));
 	       // this needs to happen every time we setup a draw.
 	    
 	       vkCmdPushConstants(pass.cmd_buffer, g_pipe_map[pipeline_hash].layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(SharedPushConstants), &constants);
@@ -2281,7 +2281,7 @@ namespace fwvulkan
 	       vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].pipeline);
 	       vkCmdDrawIndexed(pass.cmd_buffer, ibh.len, 1, 0, 0, 0);
 
-	       id++;
+	       shared_id++;
 	    }
 	 }
 	 // log::debug("end renderpass");
@@ -2638,6 +2638,7 @@ int gGlfwVulkan::render()
    }
 
    UpdateUniformBuffer(g_flight_frame);
+   fwvulkan::renderpass::shared_id = 0;
    for(auto pass : g_pass_map)
    {
       if (pass.first == hash::string("swapchain")) continue;
