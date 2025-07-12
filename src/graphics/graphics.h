@@ -2,6 +2,7 @@
 
 #include "iRenderVisitor.h"
 #include "../utils/hasher.h"
+#include "../utils/blob.h"
 
 #include "../types/vec2f.h"
 #include "../types/vec3f.h"
@@ -25,9 +26,9 @@ namespace fw
    };
    typedef std::vector<hash::string> PassList;
    struct Vertex { vec3f position; vec3f normal; vec3f color; vec2f uv; };
-   struct VertexArray { const Vertex* data; size_t len; };
-   struct IndexArray { const uint32_t* data; size_t len; };
-   struct Geometry { VertexArray vbo; IndexArray ibo; };
+   typedef blob::Buffer<Vertex> VertexBuffer;
+   typedef blob::Buffer<uint32_t> IndexBuffer;
+   struct Geometry { VertexBuffer vbo; IndexBuffer ibo; };
    struct Image { const unsigned int* data = nullptr; int width = 0; int height = 0; int bits = 0; unsigned int hash = 0; };
    struct Mesh
    {

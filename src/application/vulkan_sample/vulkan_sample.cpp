@@ -2,12 +2,12 @@
 #include "vulkan_sample.h"
 #include "../../utils/log/log.h"
 #include "../../utils/params.h"
+#include "../../utils/blob.h"
 #include "../../window/window.h"
 #include "../../graphics/graphics.h"
 #include <array>
 #include <thread>
 #include <vector>
-#include <vulkan/vulkan_core.h>
 #include "../../graphics/camera/camera.h"
 #include "../../input/input.h"
 #include "../../../libs/imgui/imgui.h"
@@ -43,6 +43,7 @@ void vulkan_sample::init()
    fw::log::topics::add("graphics");
    m_graphics = graphics::graphicsFactory();
    m_graphics->init();
+   blob::init();
 }
 
 // todo: add pass dependencies.
@@ -51,6 +52,20 @@ void vulkan_sample::init()
 // todo: lock the mouse center in freecam.
 // todo: fix resource transition validation errors.
 // todo: add pbr alpha support
+
+
+void save_mesh(fw::Mesh* in_mesh)
+{
+   // explitily serialise each buffer, then load like below.
+   // handle images etc next.
+   blob::save("mesh/ibo.blob", in_mesh->geometry.ibo);
+   blob::save("mesh/vbo.blob", in_mesh->geometry.vbo);
+}
+void load_mesh(fw::Mesh* out_mesh)
+{
+   blob::load("mesh/ibo.blob", out_mesh->geometry.ibo);
+   blob::load("mesh/vbo.blob", out_mesh->geometry.vbo);
+}
 
 void vulkan_sample::run()
 {
@@ -74,6 +89,7 @@ void vulkan_sample::run()
    swapchain_mesh.material.shaders[fw::shader::e_fragment] = fw::hash::string("unlit");
    
    std::vector<Mesh> meshes; std::vector<Image> images;
+   std::vector<Mesh> in_meshes; std::vector<Image> in_images;
    float model_scale = 1.0;
    {
       log::scope topic("timer", true);
@@ -88,6 +104,11 @@ void vulkan_sample::run()
       mesh.material.shaders[fw::shader::e_fragment] = {"pbr"};
       mesh.transform = mat4x4f::scaled(model_scale, model_scale, model_scale);
    }
+   {
+      save_mesh(&meshes[2]);
+      load_mesh(&meshes[2]);
+   }
+   
    float time = 0;
    int shademode = 0;
    camera cam;
@@ -286,5 +307,6 @@ void vulkan_sample::shutdown()
 
    m_graphics->shutdown();
    m_window->shutdown();
+   blob::shutdown();
    log::debug("vulkan_sample finished.");
 }
