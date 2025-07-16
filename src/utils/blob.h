@@ -25,6 +25,7 @@ namespace blob
       if (file == nullptr) { return false; }
       fseek(file, 0, SEEK_END);
       out_buffer.len = ftell(file);
+      assert((out_buffer.len % sizeof(*out_buffer.data)) == 0);
       fseek(file, 0, SEEK_SET);
       out_buffer.data = (decltype(out_buffer.data))allocate(out_buffer.len + 1);
       /* out_buffer.data = (decltype(out_buffer.data)) new char[out_buffer.len + 1]; */
