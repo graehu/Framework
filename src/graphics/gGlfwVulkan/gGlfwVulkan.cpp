@@ -774,7 +774,7 @@ namespace fwvulkan
       }
       int CreateImageHandle(fw::Image& image)
       {
-	 const unsigned int* image_buffer = image.data;
+	 const unsigned int* image_buffer = image.buffer.data;
 	 size_t width = image.width;
 	 size_t height = image.height;
 	 size_t bits = image.bits;

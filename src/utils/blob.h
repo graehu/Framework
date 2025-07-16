@@ -7,6 +7,7 @@ namespace blob
    template<typename T> struct Buffer {const T* data = nullptr; size_t len = 0;};
    void init();
    char* allocate(size_t);
+   bool free(char*);
    void shutdown();
    template<typename T>
    inline bool save(const char* in_filename, T in_buffer)
@@ -32,5 +33,6 @@ namespace blob
       out_buffer.len = out_buffer.len / sizeof(*out_buffer.data);
       return true;
    }
+   template<typename t> bool free(Buffer<t>& in) { if(free((char*)in.data)) {in = {}; return true;} return false; }
 }
 

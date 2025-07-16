@@ -65,6 +65,7 @@ namespace fwvulkan
 
 	 fw::Image white = initdata::images::white;
 	 fw::Image black = initdata::images::black;
+	 
 	 buffers::CreateImageHandle(white);
 	 buffers::CreateImageHandle(black);
 	    
@@ -145,7 +146,7 @@ namespace fwvulkan
 	 std::vector<VkDescriptorSet> set(1, {g_descriptor_sets[drawhandle.ds_handle]});
 	 for(unsigned int i = 0; i < Mesh::max_images; i++)
 	 {
-	    if(_mesh->images[i].data == nullptr) continue;
+	    if(_mesh->images[i].buffer.data == nullptr) continue;
 	    // todo: add image type field to fw::Image so we can assign more dynamically than below.
 	    // ----: their order inside _mesh->images[i] should be arbitrary.
 	    // todo: handle non pbr textures.

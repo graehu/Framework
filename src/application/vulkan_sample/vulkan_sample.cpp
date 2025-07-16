@@ -58,13 +58,25 @@ void save_mesh(fw::Mesh* in_mesh)
 {
    // explitily serialise each buffer, then load like below.
    // handle images etc next.
+   blob::save("mesh/mesh.blob", blob::Buffer<fw::Mesh>({in_mesh, 1}));
    blob::save("mesh/ibo.blob", in_mesh->geometry.ibo);
    blob::save("mesh/vbo.blob", in_mesh->geometry.vbo);
+   blob::save("mesh/image0.blob", in_mesh->images[0].buffer);
+   blob::save("mesh/image1.blob", in_mesh->images[1].buffer);
+   blob::save("mesh/image2.blob", in_mesh->images[2].buffer);
+   blob::save("mesh/image3.blob", in_mesh->images[3].buffer);
 }
 void load_mesh(fw::Mesh* out_mesh)
 {
+   blob::Buffer<fw::Mesh> test = {};
+   blob::load("mesh/mesh.blob", test);
+   *out_mesh = *test.data;
    blob::load("mesh/ibo.blob", out_mesh->geometry.ibo);
    blob::load("mesh/vbo.blob", out_mesh->geometry.vbo);
+   blob::load("mesh/image0.blob", out_mesh->images[0].buffer);
+   blob::load("mesh/image1.blob", out_mesh->images[1].buffer);
+   blob::load("mesh/image2.blob", out_mesh->images[2].buffer);
+   blob::load("mesh/image3.blob", out_mesh->images[3].buffer);
 }
 
 void vulkan_sample::run()
@@ -105,8 +117,16 @@ void vulkan_sample::run()
       mesh.transform = mat4x4f::scaled(model_scale, model_scale, model_scale);
    }
    {
-      save_mesh(&meshes[2]);
-      load_mesh(&meshes[2]);
+      {
+	 log::scope topic("timer", true);
+	 log::timer timer("save mesh");
+	 save_mesh(&meshes[2]);
+      }
+      {
+	 log::scope topic("timer", true);
+	 log::timer timer("load mesh");
+	 load_mesh(&meshes[2]);
+      }
    }
    
    float time = 0;
@@ -298,7 +318,7 @@ void vulkan_sample::run()
       if(m_input->isKeyPressed(input::e_quit)) break;
    }
 
-   for(auto image : images) { delete[] image.data; }
+   for(auto image : images) { delete[] image.buffer.data; }
 }
 
 void vulkan_sample::shutdown()

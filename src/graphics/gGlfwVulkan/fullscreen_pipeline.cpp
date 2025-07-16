@@ -64,6 +64,7 @@ namespace fwvulkan
 
 	 fw::Image white = initdata::images::white;
 	 fw::Image black = initdata::images::black;
+	 
 	 buffers::CreateImageHandle(white);
 	 buffers::CreateImageHandle(black);
 	    
