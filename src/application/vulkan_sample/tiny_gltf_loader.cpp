@@ -12,8 +12,16 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 // #define TINYGLTF_NOEXCEPTION // optional. disable exception handling.
-
+// 
+// todo: this will need different pragmas for windows.
+// #pragma warning (push)
+// #pragma warning (disable : 4200)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #include "tiny_gltf.h"
+#pragma GCC diagnostic pop
+// #pragma warning (pop)
+
 using namespace fw;
 void loadmodel(const char* modelpath, std::vector<Mesh>& out_meshes, std::vector<Image>& out_images)
 {
