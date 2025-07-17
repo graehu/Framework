@@ -24,7 +24,9 @@ namespace fw
 	 size_t pad : 7 = 0;
       } flags;
    };
-   typedef std::vector<hash::u32> PassList;
+   // todo: this would be better as a u32 bit field with bits mapping to predefined pass hashes.
+   static const unsigned int max_passes = 16;
+   typedef std::array<hash::u32, max_passes> PassList;
    struct Vertex { vec3f position; vec3f normal; vec3f color; vec2f uv; };
    typedef blob::Buffer<Vertex> VertexBuffer;
    typedef blob::Buffer<uint32_t> IndexBuffer;
@@ -42,7 +44,7 @@ namespace fw
       PassList passes = {};
       mat4x4f transform = {};
    };
-   static_assert(sizeof(fw::Mesh) == 288, "fw::Mesh is serialisable, the layout matters.");
+   static_assert(sizeof(fw::Mesh) == 328, "fw::Mesh is serialisable, the layout matters.");
    
    struct Light
    {

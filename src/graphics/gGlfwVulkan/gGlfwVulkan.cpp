@@ -2517,6 +2517,7 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
    else { drawhandle = handles_iter->second; }
    for (auto pass : _mesh->passes)
    {
+      if(pass == 0) continue;
       g_pass_map[pass].draws.push_back(drawhandle);
    }
 }

@@ -53,33 +53,44 @@ void vulkan_sample::init()
 // todo: move all imgui related init out of this sample and into framework.
 // todo: lock the mouse center in freecam.
 // todo: fix resource transition validation errors.
-// todo: add pbr alpha support
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
-void save_mesh(fw::Mesh* in_mesh)
+void save_mesh(fw::Mesh* in_mesh, const char* in_name)
 {
    // explitily serialise each buffer, then load like below.
    // handle images etc next.
-   blob::save("mesh/mesh.blob", blob::Buffer<fw::Mesh>({in_mesh, 1}));
-   blob::save("mesh/ibo.blob", in_mesh->geometry.ibo);
-   blob::save("mesh/vbo.blob", in_mesh->geometry.vbo);
-   blob::save("mesh/image0.blob", in_mesh->images[0].buffer);
-   blob::save("mesh/image1.blob", in_mesh->images[1].buffer);
-   blob::save("mesh/image2.blob", in_mesh->images[2].buffer);
-   blob::save("mesh/image3.blob", in_mesh->images[3].buffer);
+   struct stat st = {};
+   #define macro(fmtstr) fmt::format(fmtstr, in_name).c_str()
+   if (stat(macro("mesh/{}"), &st) == -1)
+   {
+      mkdir(macro("mesh/{}"), 0700);
+   }
+   blob::save(macro("mesh/{}/mesh.blob"), blob::Buffer<fw::Mesh>({in_mesh, 1}));
+   blob::save(macro("mesh/{}/ibo.blob"), in_mesh->geometry.ibo);
+   blob::save(macro("mesh/{}/vbo.blob"), in_mesh->geometry.vbo);
+   blob::save(macro("mesh/{}/image0.blob"), in_mesh->images[0].buffer);
+   blob::save(macro("mesh/{}/image1.blob"), in_mesh->images[1].buffer);
+   blob::save(macro("mesh/{}/image2.blob"), in_mesh->images[2].buffer);
+   blob::save(macro("mesh/{}/image3.blob"), in_mesh->images[3].buffer);
+   #undef macro
 }
-void load_mesh(fw::Mesh* out_mesh)
+
+void load_mesh(fw::Mesh* out_mesh, const char* in_name)
 {
-   blob::Buffer<fw::Mesh> test = {};
-   memset(out_mesh, 0, sizeof(fw::Mesh));
-   blob::load("mesh/mesh.blob", test);
-   *out_mesh = *test.data;
-   blob::load("mesh/ibo.blob", out_mesh->geometry.ibo);
-   blob::load("mesh/vbo.blob", out_mesh->geometry.vbo);
-   blob::load("mesh/image0.blob", out_mesh->images[0].buffer);
-   blob::load("mesh/image1.blob", out_mesh->images[1].buffer);
-   blob::load("mesh/image2.blob", out_mesh->images[2].buffer);
-   blob::load("mesh/image3.blob", out_mesh->images[3].buffer);
+   auto temp = blob::Buffer<fw::Mesh>();
+   #define macro(fmtstr) fmt::format(fmtstr, in_name).c_str()
+   blob::load(macro("mesh/{}/mesh.blob"), temp);
+   *out_mesh = *temp.data;
+   blob::load(macro("mesh/{}/ibo.blob"), out_mesh->geometry.ibo);
+   blob::load(macro("mesh/{}/vbo.blob"), out_mesh->geometry.vbo);
+   blob::load(macro("mesh/{}/image0.blob"), out_mesh->images[0].buffer);
+   blob::load(macro("mesh/{}/image1.blob"), out_mesh->images[1].buffer);
+   blob::load(macro("mesh/{}/image2.blob"), out_mesh->images[2].buffer);
+   blob::load(macro("mesh/{}/image3.blob"), out_mesh->images[3].buffer);
+   #undef macro
 }
 
 void vulkan_sample::run()
@@ -123,12 +134,12 @@ void vulkan_sample::run()
       {
 	 log::scope topic("timer", true);
 	 log::timer timer("save mesh");
-	 save_mesh(&meshes[2]);
+	 // save_mesh(&meshes[2], "2");
       }
       {
 	 log::scope topic("timer", true);
 	 log::timer timer("load mesh");
-	 load_mesh(&meshes[2]);
+	 load_mesh(&meshes[2], "2");
       }
    }
    
