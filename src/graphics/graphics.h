@@ -18,13 +18,13 @@ namespace fw
    }
    struct Material
    {
-      std::array<hash::string, shader::e_count> shaders = {};
+      std::array<hash::u32, shader::e_count> shaders = {};
       struct {
 	 bool alpha : 1 = false;
 	 size_t pad : 7 = 0;
       } flags;
    };
-   typedef std::vector<hash::string> PassList;
+   typedef std::vector<hash::u32> PassList;
    struct Vertex { vec3f position; vec3f normal; vec3f color; vec2f uv; };
    typedef blob::Buffer<Vertex> VertexBuffer;
    typedef blob::Buffer<uint32_t> IndexBuffer;
@@ -42,6 +42,8 @@ namespace fw
       PassList passes = {};
       mat4x4f transform = {};
    };
+   static_assert(sizeof(fw::Mesh) == 288, "fw::Mesh is serialisable, the layout matters.");
+   
    struct Light
    {
       vec3f position;

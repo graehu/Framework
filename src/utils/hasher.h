@@ -6,27 +6,28 @@ namespace fw
 {
    namespace hash
    {
-      constexpr std::uint32_t hash_buffer(const char* data, std::size_t len)
+      typedef std::uint32_t u32;
+      constexpr u32 hash_buffer(const char* data, std::size_t len)
       {
-	 std::uint32_t b = 378551;
-	 std::uint32_t a = 63689;
-	 std::uint32_t hashout = 0;
+	 u32 b = 378551;
+	 u32 a = 63689;
+	 u32 hashout = 0;
 	 for(std::size_t i = 0; i < len; i++)
 	 {
-	    hashout = hashout * a + (std::uint32_t)data[i];
+	    hashout = hashout * a + (u32)data[i];
 	    a = a * b;
 	 }
 	 return (hashout & 0x7FFFFFFF);
       }
       template <typename T>
-      constexpr std::uint32_t hash32(T&& s)
+      constexpr u32 hash32(T&& s)
       {
 	 return hash_buffer((const char*)&s, sizeof(T));
       }
       // todo: add 64 bit variant
       // origin: https://gist.github.com/Lee-R/3839813
       // FNV-1a 32bit hashing algorithm.
-      constexpr std::uint32_t i32(char const* s, std::size_t count)
+      constexpr u32 i32(char const* s, std::size_t count)
       {
 	 // potentially large iteration time here.
 	 return ((count ? i32(s, count - 1) : 2166136261u) ^ s[count]) * 16777619u;
@@ -35,7 +36,7 @@ namespace fw
       // todo: make alignment check compile time assert.
       // todo: why have I removed a single byte. that seems dumb.
       template <typename T>
-      constexpr std::uint32_t i32(T&& s)
+      constexpr u32 i32(T&& s)
       {
 	 return i32(s, sizeof(T)-1);
       }
@@ -55,9 +56,15 @@ namespace fw
 	    m_hash(i32(m_literal, m_len-1))
 	 {
 	 }
+	 constexpr string(u32 hash) :
+	    m_literal(nullptr),
+	    m_len(0),
+	    m_hash(hash)
+	 {
+	 }
 	 constexpr string() = default;
-	 constexpr operator uint32_t() const { return m_hash; }
-	 constexpr bool operator< (const string& rhs) const {return uint32_t(*this) < uint32_t(rhs); }
+	 constexpr operator u32() const { return m_hash; }
+	 constexpr bool operator< (const string& rhs) const {return u32(*this) < u32(rhs); }
 	 constexpr bool operator> (const string& rhs) const { return rhs < *this; }
 	 constexpr bool operator<=(const string& rhs) const { return !(*this > rhs); }
 	 constexpr bool operator>=(const string& rhs) const { return !(*this < rhs); }
@@ -66,7 +73,7 @@ namespace fw
 	 
 	 const char* m_literal = nullptr;
 	 std::size_t m_len{0};
-	 std::uint32_t m_hash{0};
+	 u32 m_hash{0};
       };
       struct path
       {
@@ -86,7 +93,7 @@ namespace fw
 	    m_hash = i32(m_path, _len-1);
 	    int starts[path::m_max_names] = {0};
 	    starts[0] = 0;
-	    for(std::uint32_t i = 0; i < _len; i++)
+	    for(u32 i = 0; i < _len; i++)
 	    {
 	       if(m_path[i] == path_separator)
 	       {
@@ -94,7 +101,7 @@ namespace fw
 	       }
 	    }
 	    starts[m_name_count] = _len;
-	    for(std::uint32_t i = 0; i < m_name_count; i++)
+	    for(u32 i = 0; i < m_name_count; i++)
 	    {
 	       auto str_len = ((starts[i+1]-1)-starts[i]);
 	       if(i == m_name_count-1)
@@ -114,7 +121,7 @@ namespace fw
 	    m_hash = i32(m_path, _len-1);
 	    int starts[path::m_max_names] = {0};
 	    starts[0] = 0;
-	    for(std::uint32_t i = 0; i < _len; i++)
+	    for(u32 i = 0; i < _len; i++)
 	    {
 	       if(m_path[i] == path_separator)
 	       {
@@ -122,7 +129,7 @@ namespace fw
 	       }
 	    }
 	    starts[m_name_count] = _len;
-	    for(std::uint32_t i = 0; i < m_name_count; i++)
+	    for(u32 i = 0; i < m_name_count; i++)
 	    {
 	       auto str_len = ((starts[i+1]-1)-starts[i]);
 	       if(i == m_name_count-1)
@@ -137,12 +144,12 @@ namespace fw
 	 }
 
 	 static const int m_max_names = 8;
-	 std::uint32_t m_name_count = 1;
-	 std::uint32_t m_hashes[m_max_names];
-	 std::uint32_t m_hash;
+	 u32 m_name_count = 1;
+	 u32 m_hashes[m_max_names];
+	 u32 m_hash;
 	 //
-	 std::uint32_t m_str_lens[m_max_names];
-	 std::uint32_t m_path_len;
+	 u32 m_str_lens[m_max_names];
+	 u32 m_path_len;
 	 const char* m_names[m_max_names];
 	 const char* m_path;
       };

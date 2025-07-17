@@ -6,6 +6,8 @@
 #include "../../window/window.h"
 #include "../../graphics/graphics.h"
 #include <array>
+#include <cstddef>
+#include <cstring>
 #include <thread>
 #include <vector>
 #include "../../graphics/camera/camera.h"
@@ -69,6 +71,7 @@ void save_mesh(fw::Mesh* in_mesh)
 void load_mesh(fw::Mesh* out_mesh)
 {
    blob::Buffer<fw::Mesh> test = {};
+   memset(out_mesh, 0, sizeof(fw::Mesh));
    blob::load("mesh/mesh.blob", test);
    *out_mesh = *test.data;
    blob::load("mesh/ibo.blob", out_mesh->geometry.ibo);
@@ -96,9 +99,9 @@ void vulkan_sample::run()
    auto* tri_indices = initdata::geometry::tri_indices.data();
    unsigned int tri_indices_count = initdata::geometry::tri_indices.size();
 
-   Mesh swapchain_mesh = {{{tri_verts, tri_verts_count}, {tri_indices, tri_indices_count}}, {}, {}, {"swapchain"}, {}};;
-   swapchain_mesh.material.shaders[fw::shader::e_vertex] = fw::hash::string("fullscreen");
-   swapchain_mesh.material.shaders[fw::shader::e_fragment] = fw::hash::string("unlit");
+   Mesh swapchain_mesh = {{{tri_verts, tri_verts_count}, {tri_indices, tri_indices_count}}, {}, {}, {hash::string("swapchain")}, {}};;
+   swapchain_mesh.material.shaders[fw::shader::e_vertex] = hash::string("fullscreen");
+   swapchain_mesh.material.shaders[fw::shader::e_fragment] = hash::string("unlit");
    
    std::vector<Mesh> meshes; std::vector<Image> images;
    std::vector<Mesh> in_meshes; std::vector<Image> in_images;
@@ -111,9 +114,9 @@ void vulkan_sample::run()
    }
    for(Mesh& mesh : meshes)
    {
-      mesh.passes = {"pbr"};
-      mesh.material.shaders[fw::shader::e_vertex] = {"shared"};
-      mesh.material.shaders[fw::shader::e_fragment] = {"pbr"};
+      mesh.passes = {hash::string("pbr")};
+      mesh.material.shaders[fw::shader::e_vertex] = {hash::string("shared")};
+      mesh.material.shaders[fw::shader::e_fragment] = {hash::string("pbr")};
       mesh.transform = mat4x4f::scaled(model_scale, model_scale, model_scale);
    }
    {

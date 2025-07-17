@@ -1975,7 +1975,7 @@ namespace fwvulkan
 	    VkShaderModule vertex_shader = {};
 	    for(int i = 0; i < fw::shader::e_count; i++)
 	    {
-	       if(mat.shaders[i].is_valid())
+	       if(mat.shaders[i] != 0)
 	       {
 		  if(auto module = g_shaders[i].find(mat.shaders[i]); module != g_shaders[i].end())
 		  {
