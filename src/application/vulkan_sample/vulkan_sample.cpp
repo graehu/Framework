@@ -58,39 +58,54 @@ void vulkan_sample::init()
 #include <sys/stat.h>
 #include <unistd.h>
 
-void save_mesh(fw::Mesh* in_mesh, const char* in_name)
+void save_meshes(blob::Buffer<fw::Mesh> in_meshes, const char* in_name)
 {
    // explitily serialise each buffer, then load like below.
    // handle images etc next.
-   struct stat st = {};
    #define macro(fmtstr) fmt::format(fmtstr, in_name).c_str()
-   if (stat(macro("mesh/{}"), &st) == -1)
+   struct stat st = {};
+   if (stat(macro("{}/"), &st) == -1)
    {
-      mkdir(macro("mesh/{}"), 0700);
+      mkdir(macro("{}/"), 0700);
    }
-   blob::save(macro("mesh/{}/mesh.blob"), blob::Buffer<fw::Mesh>({in_mesh, 1}));
-   blob::save(macro("mesh/{}/ibo.blob"), in_mesh->geometry.ibo);
-   blob::save(macro("mesh/{}/vbo.blob"), in_mesh->geometry.vbo);
-   blob::save(macro("mesh/{}/image0.blob"), in_mesh->images[0].buffer);
-   blob::save(macro("mesh/{}/image1.blob"), in_mesh->images[1].buffer);
-   blob::save(macro("mesh/{}/image2.blob"), in_mesh->images[2].buffer);
-   blob::save(macro("mesh/{}/image3.blob"), in_mesh->images[3].buffer);
    #undef macro
+   for (int i = 0; i < (int)in_meshes.len; i++)
+   {
+#define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
+      blob::Buffer<fw::Mesh> mb = {in_meshes.data+i, 1};
+      if (stat(macro("{}/{}"), &st) == -1)
+      {
+	 mkdir(macro("{}/{}"), 0700);
+      }
+      
+      blob::save(macro("{}/{}/mesh.blob"), mb);
+      blob::save(macro("{}/{}/ibo.blob"), mb.data->geometry.ibo);
+      blob::save(macro("{}/{}/vbo.blob"), mb.data->geometry.vbo);
+      blob::save(macro("{}/{}/image0.blob"), mb.data->images[0].buffer);
+      blob::save(macro("{}/{}/image1.blob"), mb.data->images[1].buffer);
+      blob::save(macro("{}/{}/image2.blob"), mb.data->images[2].buffer);
+      blob::save(macro("{}/{}/image3.blob"), mb.data->images[3].buffer);
+#undef macro
+   }
 }
 
-void load_mesh(fw::Mesh* out_mesh, const char* in_name)
+void load_meshes(std::vector<Mesh>& out_meshes, const char* in_name)
 {
-   auto temp = blob::Buffer<fw::Mesh>();
-   #define macro(fmtstr) fmt::format(fmtstr, in_name).c_str()
-   blob::load(macro("mesh/{}/mesh.blob"), temp);
-   *out_mesh = *temp.data;
-   blob::load(macro("mesh/{}/ibo.blob"), out_mesh->geometry.ibo);
-   blob::load(macro("mesh/{}/vbo.blob"), out_mesh->geometry.vbo);
-   blob::load(macro("mesh/{}/image0.blob"), out_mesh->images[0].buffer);
-   blob::load(macro("mesh/{}/image1.blob"), out_mesh->images[1].buffer);
-   blob::load(macro("mesh/{}/image2.blob"), out_mesh->images[2].buffer);
-   blob::load(macro("mesh/{}/image3.blob"), out_mesh->images[3].buffer);
+   //todo: count directory entires
+   for (int i = 0; i < (int)out_meshes.size(); i++)
+   {
+#define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
+      blob::BufferNc<fw::Mesh> mb = {nullptr, 1};
+      blob::load(macro("{}/{}/mesh.blob"), mb);
+      blob::load(macro("{}/{}/ibo.blob"), mb.data->geometry.ibo);
+      blob::load(macro("{}/{}/vbo.blob"), mb.data->geometry.vbo);
+      blob::load(macro("{}/{}/image0.blob"), mb.data->images[0].buffer);
+      blob::load(macro("{}/{}/image1.blob"), mb.data->images[1].buffer);
+      blob::load(macro("{}/{}/image2.blob"), mb.data->images[2].buffer);
+      blob::load(macro("{}/{}/image3.blob"), mb.data->images[3].buffer);
+      out_meshes[i] = *mb.data;
    #undef macro
+   }
 }
 
 void vulkan_sample::run()
@@ -103,7 +118,7 @@ void vulkan_sample::run()
    m_graphics->register_shader("shared", "shaders/spv/shared.vert.spv", shader::e_vertex);
    m_graphics->register_shader("pbr", "shaders/spv/pbr.frag.spv", shader::e_fragment);
    m_graphics->register_shader("unlit", "shaders/spv/unlit.frag.spv", shader::e_fragment);
-
+   
    auto* tri_verts = initdata::geometry::tri_verts.data();
    unsigned int tri_verts_count = initdata::geometry::tri_verts.size();
 
@@ -115,12 +130,11 @@ void vulkan_sample::run()
    swapchain_mesh.material.shaders[fw::shader::e_fragment] = hash::string("unlit");
    
    std::vector<Mesh> meshes; std::vector<Image> images;
-   std::vector<Mesh> in_meshes; std::vector<Image> in_images;
    float model_scale = 1.0;
    {
       log::scope topic("timer", true);
       log::timer timer("load model");
-      loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images); model_scale = 0.02;
+      // loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images); model_scale = 0.02;
       // loadmodel("../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", meshes, images);
    }
    for(Mesh& mesh : meshes)
@@ -132,15 +146,18 @@ void vulkan_sample::run()
    }
    {
       {
-	 log::scope topic("timer", true);
-	 log::timer timer("save mesh");
-	 // save_mesh(&meshes[2], "2");
+	 // log::scope topic("timer", true);
+	 // log::timer timer("save mesh");
+	 // blob::Buffer<Mesh> out_meshes({meshes.data(), meshes.size()});
+	 // save_meshes(out_meshes, "sponza_meshes");
       }
       {
 	 log::scope topic("timer", true);
 	 log::timer timer("load mesh");
-	 load_mesh(&meshes[2], "2");
+	 meshes.resize(80);
+	 load_meshes(meshes, "sponza_meshes");
       }
+      
    }
    
    float time = 0;

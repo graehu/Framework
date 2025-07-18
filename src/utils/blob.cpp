@@ -15,7 +15,7 @@ namespace blob
       Allocation alloc;
       AllocNode* next = nullptr;
    };
-   const size_t capacity = 30 MiBs;
+   const size_t capacity = 1 GiBs;
    const size_t max_allocations = 1 MiBs;
    AllocNode allocations[max_allocations];
    char* heap = nullptr;
