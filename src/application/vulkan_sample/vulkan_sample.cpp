@@ -45,7 +45,7 @@ void vulkan_sample::init()
    fw::log::topics::add("graphics");
    m_graphics = graphics::graphicsFactory();
    m_graphics->init();
-   blob::init();
+   blob::miscbank.init();
 }
 
 // todo: add pass dependencies.
@@ -78,13 +78,13 @@ void save_meshes(blob::Buffer<fw::Mesh> in_meshes, const char* in_name)
 	 mkdir(macro("{}/{}"), 0700);
       }
       
-      blob::save(macro("{}/{}/mesh.blob"), mb);
-      blob::save(macro("{}/{}/ibo.blob"), mb.data->geometry.ibo);
-      blob::save(macro("{}/{}/vbo.blob"), mb.data->geometry.vbo);
-      blob::save(macro("{}/{}/image0.blob"), mb.data->images[0].buffer);
-      blob::save(macro("{}/{}/image1.blob"), mb.data->images[1].buffer);
-      blob::save(macro("{}/{}/image2.blob"), mb.data->images[2].buffer);
-      blob::save(macro("{}/{}/image3.blob"), mb.data->images[3].buffer);
+      blob::miscbank.save(macro("{}/{}/mesh.blob"), mb);
+      blob::miscbank.save(macro("{}/{}/ibo.blob"), mb.data->geometry.ibo);
+      blob::miscbank.save(macro("{}/{}/vbo.blob"), mb.data->geometry.vbo);
+      blob::miscbank.save(macro("{}/{}/image0.blob"), mb.data->images[0].buffer);
+      blob::miscbank.save(macro("{}/{}/image1.blob"), mb.data->images[1].buffer);
+      blob::miscbank.save(macro("{}/{}/image2.blob"), mb.data->images[2].buffer);
+      blob::miscbank.save(macro("{}/{}/image3.blob"), mb.data->images[3].buffer);
 #undef macro
    }
 }
@@ -96,13 +96,13 @@ void load_meshes(std::vector<Mesh>& out_meshes, const char* in_name)
    {
 #define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
       blob::BufferNc<fw::Mesh> mb = {nullptr, 1};
-      blob::load(macro("{}/{}/mesh.blob"), mb);
-      blob::load(macro("{}/{}/ibo.blob"), mb.data->geometry.ibo);
-      blob::load(macro("{}/{}/vbo.blob"), mb.data->geometry.vbo);
-      blob::load(macro("{}/{}/image0.blob"), mb.data->images[0].buffer);
-      blob::load(macro("{}/{}/image1.blob"), mb.data->images[1].buffer);
-      blob::load(macro("{}/{}/image2.blob"), mb.data->images[2].buffer);
-      blob::load(macro("{}/{}/image3.blob"), mb.data->images[3].buffer);
+      blob::miscbank.load(macro("{}/{}/mesh.blob"), mb);
+      blob::miscbank.load(macro("{}/{}/ibo.blob"), mb.data->geometry.ibo);
+      blob::miscbank.load(macro("{}/{}/vbo.blob"), mb.data->geometry.vbo);
+      blob::miscbank.load(macro("{}/{}/image0.blob"), mb.data->images[0].buffer);
+      blob::miscbank.load(macro("{}/{}/image1.blob"), mb.data->images[1].buffer);
+      blob::miscbank.load(macro("{}/{}/image2.blob"), mb.data->images[2].buffer);
+      blob::miscbank.load(macro("{}/{}/image3.blob"), mb.data->images[3].buffer);
       out_meshes[i] = *mb.data;
    #undef macro
    }
@@ -149,11 +149,15 @@ void vulkan_sample::run()
 	 // log::scope topic("timer", true);
 	 // log::timer timer("save mesh");
 	 // blob::Buffer<Mesh> out_meshes({meshes.data(), meshes.size()});
+	 // save_meshes(out_meshes, "helmet_meshes");
 	 // save_meshes(out_meshes, "sponza_meshes");
       }
       {
 	 log::scope topic("timer", true);
 	 log::timer timer("load mesh");
+
+	 // meshes.resize(1);
+	 // load_meshes(meshes, "helmet_meshes");
 	 meshes.resize(80);
 	 load_meshes(meshes, "sponza_meshes");
       }
@@ -358,6 +362,6 @@ void vulkan_sample::shutdown()
 
    m_graphics->shutdown();
    m_window->shutdown();
-   blob::shutdown();
+   blob::miscbank.shutdown();
    log::debug("vulkan_sample finished.");
 }

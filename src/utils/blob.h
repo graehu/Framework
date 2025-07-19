@@ -2,39 +2,67 @@
 #include <cstddef>
 #include <stdio.h>
 
+#define GiBs << 30
+#define MiBs << 20
+#define KiBs << 10
+
+// blob: binary serializable objects.
+// bank: storage, loading, and serialisation structure.
 namespace blob
 {
+   // todo: add unload function.
+   // todo: add content hash+tracking to buffers so we can read the hash and opt out of load.
+   // todo: add ref count to allocations for duplicate loads.
    template<typename T> struct Buffer {const T* data = nullptr; size_t len = 0;};
    template<typename T> struct BufferNc {T* data = nullptr; size_t len = 0;};
-   void init();
-   char* allocate(size_t);
-   bool free(char*);
-   void shutdown();
-   template<typename T>
-   inline bool save(const char* in_filename, T in_buffer)
+   typedef Buffer<char> Allocation;
+   struct AllocNode
    {
-      FILE* file = fopen(in_filename, "wb");
-      if (file == nullptr) { return false; }
-      fwrite(in_buffer.data, sizeof(*in_buffer.data), in_buffer.len, file);
-      fclose(file);
-      return true;
-   }
-   template<typename T>
-   inline bool load(const char* in_filename, T& out_buffer)
+      Allocation alloc;
+      AllocNode* next = nullptr;
+   };
+   class bank final
    {
-      FILE* file = fopen(in_filename, "rb");
-      if (file == nullptr) { return false; }
-      fseek(file, 0, SEEK_END);
-      out_buffer.len = ftell(file);
-      assert((out_buffer.len % sizeof(*out_buffer.data)) == 0);
-      fseek(file, 0, SEEK_SET);
-      out_buffer.data = (decltype(out_buffer.data))allocate(out_buffer.len + 1);
-      /* out_buffer.data = (decltype(out_buffer.data)) new char[out_buffer.len + 1]; */
-      fread((char*)out_buffer.data, out_buffer.len, 1, file);
-      fclose(file);
-      out_buffer.len = out_buffer.len / sizeof(*out_buffer.data);
-      return true;
-   }
-   template<typename T> bool free(Buffer<T>& in) { if(free((char*)in.data)) {in = {}; return true;} return false; }
+     public:
+      void init();
+      void shutdown();
+      
+      template<typename T> inline bool save(const char* in_filename, T in_buffer)
+      {
+	 FILE* file = fopen(in_filename, "wb");
+	 if (file == nullptr) { return false; }
+	 fwrite(in_buffer.data, sizeof(*in_buffer.data), in_buffer.len, file);
+	 fclose(file);
+	 return true;
+      }
+      template<typename T> inline bool load(const char* in_filename, T& out_buffer)
+      {
+	 FILE* file = fopen(in_filename, "rb");
+	 if (file == nullptr) { return false; }
+	 fseek(file, 0, SEEK_END);
+	 out_buffer.len = ftell(file);
+	 assert((out_buffer.len % sizeof(*out_buffer.data)) == 0);
+	 fseek(file, 0, SEEK_SET);
+	 out_buffer.data = (decltype(out_buffer.data))allocate(out_buffer.len + 1);
+	 /* out_buffer.data = (decltype(out_buffer.data)) new char[out_buffer.len + 1]; */
+	 fread((char*)out_buffer.data, out_buffer.len, 1, file);
+	 fclose(file);
+	 out_buffer.len = out_buffer.len / sizeof(*out_buffer.data);
+	 return true;
+      }
+      template<typename T> bool free(Buffer<T>& in) { if(free((char*)in.data)) {in = {}; return true;} return false; }
+     private:
+      char* allocate(size_t);
+      bool free(char*);
+      const size_t capacity = 1 GiBs; // todo: pass this into init.
+      static const size_t max_allocations = 1 MiBs;
+      AllocNode allocations[max_allocations];
+      char* heap = nullptr;
+      char* end = nullptr;
+      AllocNode* freed = nullptr;
+      AllocNode* used = nullptr;
+      size_t total_allocations = 0;
+   };
+   extern bank miscbank;
 }
 
