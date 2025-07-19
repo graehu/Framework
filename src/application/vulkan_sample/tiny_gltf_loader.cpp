@@ -71,7 +71,7 @@ void loadmodel(const char* modelpath, std::vector<Mesh>& out_meshes, std::vector
       CpImages[i].image = &out_images[i];
       CpImages[i].source = image.image.data();
       CpImages[i].size = image.image.size();
-      out_images[i] = {{}, image.width, image.height, image.component*image.bits, 0};
+      out_images[i] = {{}, image.width, image.height, image.component*image.bits};
       log::debug("image info: {}/{}: {}, {}x{}, comp: {}, bits: {}, type: {}", (void*)image.image.data(), image.image.size(), image.name.c_str(), image.width, image.height, image.component, image.bits, image.pixel_type);
    }
    std::for_each(std::execution::par, std::begin(CpImages), std::end(CpImages), [](ImageCpStruct& in)
@@ -81,6 +81,7 @@ void loadmodel(const char* modelpath, std::vector<Mesh>& out_meshes, std::vector
       in.image->buffer.data = image_data;
       in.image->buffer.len = in.size/sizeof(unsigned int);
       fw::hash_image(*in.image);
+      
    });
    log::debug("meshes: {}", model.meshes.size());
    out_meshes.reserve(model.meshes.size());

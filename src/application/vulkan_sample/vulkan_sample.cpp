@@ -134,7 +134,7 @@ void vulkan_sample::run()
    {
       log::scope topic("timer", true);
       log::timer timer("load model");
-      // loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images); model_scale = 0.02;
+      loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images); model_scale = 0.02;
       // loadmodel("../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", meshes, images);
    }
    for(Mesh& mesh : meshes)
@@ -146,11 +146,11 @@ void vulkan_sample::run()
    }
    {
       {
-	 // log::scope topic("timer", true);
-	 // log::timer timer("save mesh");
-	 // blob::Buffer<Mesh> out_meshes({meshes.data(), meshes.size()});
+	 log::scope topic("timer", true);
+	 log::timer timer("save mesh");
+	 blob::Buffer<Mesh> out_meshes({meshes.data(), meshes.size()});
 	 // save_meshes(out_meshes, "helmet_meshes");
-	 // save_meshes(out_meshes, "sponza_meshes");
+	 save_meshes(out_meshes, "sponza_meshes");
       }
       {
 	 log::scope topic("timer", true);
