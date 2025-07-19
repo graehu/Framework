@@ -5,21 +5,28 @@
 
 namespace blob
 {
-   void bank::init()
+   void bank::init(size_t in_capacity, size_t in_page)
    {
       if(heap == nullptr)
       {
 	 assert(end == nullptr);
+	 assert(in_capacity > 1 KiBs);
+	 assert((in_capacity % in_page) == 0);
+	 assert(in_page >= sizeof(int));
+	 capacity = in_capacity;
+	 page = in_page;
 	 heap = new char[capacity]; end = heap;
-	 memset(&allocations, 0, sizeof(AllocNode)*max_allocations);
+	 allocations = new AllocNode[capacity/page];
+	 memset(allocations, 0, sizeof(AllocNode)*capacity/page);
       }
    }
    void bank::shutdown()
    {
       delete [] heap;
+      memset(allocations, 0, sizeof(AllocNode)*capacity/page);
+      delete [] allocations;
       end = nullptr, heap = nullptr;
       total_allocations = 0;
-      memset(&allocations, 0, sizeof(AllocNode)*max_allocations);
    }
    bool bank::free(char* allocation)
    {
@@ -43,7 +50,7 @@ namespace blob
    {
       assert(heap != nullptr);
       assert((end-heap) + size < capacity);
-      assert(total_allocations < max_allocations);
+      assert(total_allocations < capacity/page);
       
       AllocNode* alloc = nullptr;
       if(freed != nullptr)

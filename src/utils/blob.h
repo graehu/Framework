@@ -24,7 +24,7 @@ namespace blob
    class bank final
    {
      public:
-      void init();
+      void init(size_t in_capacity, size_t in_page);
       void shutdown();
       
       template<typename T> inline bool save(const char* in_filename, T in_buffer)
@@ -54,9 +54,9 @@ namespace blob
      private:
       char* allocate(size_t);
       bool free(char*);
-      const size_t capacity = 1 GiBs; // todo: pass this into init.
-      static const size_t max_allocations = 1 MiBs;
-      AllocNode allocations[max_allocations];
+      size_t capacity = 0;
+      size_t page = 0;
+      AllocNode* allocations = nullptr;
       char* heap = nullptr;
       char* end = nullptr;
       AllocNode* freed = nullptr;

@@ -45,7 +45,7 @@ void vulkan_sample::init()
    fw::log::topics::add("graphics");
    m_graphics = graphics::graphicsFactory();
    m_graphics->init();
-   blob::miscbank.init();
+   blob::miscbank.init(1 GiBs, 256);
 }
 
 // todo: add pass dependencies.
