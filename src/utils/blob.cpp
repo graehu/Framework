@@ -29,6 +29,7 @@ namespace fw
 	 end = nullptr, heap = nullptr;
 	 total_allocations = 0;
       }
+      
       bool bank::free(char* allocation)
       {
 	 AllocNode* alloc = used;
