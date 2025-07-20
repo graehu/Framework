@@ -16,8 +16,9 @@ namespace fw
       // todo: add unload function.
       // todo: add content hash+tracking to buffers so we can read the hash and opt out of load.
       // todo: add ref count to allocations for duplicate loads.
-      template<typename T> struct Buffer {const T* data = nullptr; size_t len = 0; hash::u32 hash = 0; };
-      template<typename T> struct BufferNc {T* data = nullptr; size_t len = 0; hash::u32 hash = 0; };
+      struct header { hash::u32 hash = 0; };
+      template<typename T> struct Buffer {const T* data = nullptr; size_t len = 0; header head = {}; };
+      template<typename T> struct BufferNc {T* data = nullptr; size_t len = 0; header head = {}; };
       typedef Buffer<char> Allocation;
       struct AllocNode
       {
@@ -34,11 +35,11 @@ namespace fw
 	 {
 	    FILE* file = fopen(in_filename, "wb");
 	    if (file == nullptr) { return false; }
-	    if(in_buffer.hash == 0)
+	    if(in_buffer.head.hash == 0)
 	    {
-	       in_buffer.hash = hash::hash_buffer((const char*)in_buffer.data, sizeof(*in_buffer.data)*in_buffer.len);
+	       in_buffer.head.hash = hash::hash_buffer((const char*)in_buffer.data, sizeof(*in_buffer.data)*in_buffer.len);
 	    }
-	    fwrite(&in_buffer.hash, sizeof(in_buffer.hash), 1, file);
+	    fwrite(&in_buffer.head.hash, sizeof(in_buffer.head.hash), 1, file);
 	    fwrite(in_buffer.data, sizeof(*in_buffer.data), in_buffer.len, file);
 	    fclose(file);
 	    return true;
@@ -49,11 +50,11 @@ namespace fw
 	    if (file == nullptr) { return false; }
 	    fseek(file, 0, SEEK_END);
 	    out_buffer.len = ftell(file);
-	    assert(((out_buffer.len-sizeof(out_buffer.hash)) % sizeof(*out_buffer.data)) == 0);
+	    assert(((out_buffer.len-sizeof(out_buffer.head)) % sizeof(*out_buffer.data)) == 0);
 	    fseek(file, 0, SEEK_SET);
 	    out_buffer.data = (decltype(out_buffer.data))allocate(out_buffer.len + 1);
 	    /* out_buffer.data = (decltype(out_buffer.data)) new char[out_buffer.len + 1]; */
-	    fread((char*)&out_buffer.hash, sizeof(out_buffer.hash), 1, file);
+	    fread((char*)&out_buffer.head, sizeof(out_buffer.head), 1, file);
 	    fread((char*)out_buffer.data, out_buffer.len, 1, file);
 	    fclose(file);
 	    out_buffer.len = out_buffer.len / sizeof(*out_buffer.data);

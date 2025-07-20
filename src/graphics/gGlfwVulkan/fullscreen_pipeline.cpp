@@ -68,10 +68,10 @@ namespace fwvulkan
 	 buffers::CreateImageHandle(white);
 	 buffers::CreateImageHandle(black);
 	    
-	 SetDescriptorAlbedo(g_im_map[white.hash].view, g_descriptor_sets);
-	 SetDescriptorMetallicRoughness(g_im_map[white.hash].view, g_descriptor_sets);
-	 SetDescriptorNormal(g_im_map[black.hash].view, g_descriptor_sets);
-	 SetDescriptorAO(g_im_map[white.hash].view, g_descriptor_sets);
+	 SetDescriptorAlbedo(g_im_map[white.buffer.head.hash].view, g_descriptor_sets);
+	 SetDescriptorMetallicRoughness(g_im_map[white.buffer.head.hash].view, g_descriptor_sets);
+	 SetDescriptorNormal(g_im_map[black.buffer.head.hash].view, g_descriptor_sets);
+	 SetDescriptorAO(g_im_map[white.buffer.head.hash].view, g_descriptor_sets);
       }
       VkPipelineLayoutCreateInfo GetPipelineLayout()
       {

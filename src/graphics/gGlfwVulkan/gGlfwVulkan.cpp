@@ -784,7 +784,7 @@ namespace fwvulkan
 	 size_t image_size = width * height * (bits/8);
 	 bool first_use = fw::hash_image(image);
 	 
-	 if (g_im_map.find(image.buffer.hash) == g_im_map.end())
+	 if (g_im_map.find(image.buffer.head.hash) == g_im_map.end())
 	 {
 	    VkBuffer copy_buffer = VK_NULL_HANDLE;
 	    VkDeviceMemory copy_memory = VK_NULL_HANDLE;
@@ -833,15 +833,15 @@ namespace fwvulkan
 	    // todo: this will be wrong if the bits aren't 32 / non 8888.
 	    VkImageView view = CreateImageView(vkimage, VK_FORMAT_R8G8B8A8_SRGB);
 	    
-	    g_im_map[image.buffer.hash] = {vkimage, view, image_memory, width, height};
-	    log::debug("Created IMHandle: {}", image.buffer.hash);
+	    g_im_map[image.buffer.head.hash] = {vkimage, view, image_memory, width, height};
+	    log::debug("Created IMHandle: {}", image.buffer.head.hash);
 	 }
 	 else
 	 {
-	    if (first_use) log::warn("Reusing IMHandle unexpectedly {}", image.buffer.hash);
-	    else log::debug("Reusing IMHandle: {}", image.buffer.hash);
+	    if (first_use) log::warn("Reusing IMHandle unexpectedly {}", image.buffer.head.hash);
+	    else log::debug("Reusing IMHandle: {}", image.buffer.head.hash);
 	 }
-	 return image.buffer.hash;
+	 return image.buffer.head.hash;
       }
       int CreateVertexBufferHandle(const fw::Vertex* vertices, int num_vertices)
       {

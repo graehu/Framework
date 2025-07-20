@@ -53,9 +53,9 @@ namespace fw
    };
    inline bool hash_image(Image& image)
    {
-      if (image.buffer.hash == 0)
+      if (image.buffer.head.hash == 0)
       {
-	 image.buffer.hash = hash::hash_buffer((const char*)image.buffer.data, sizeof(int)*image.buffer.len);//image.width*image.height*(image.bits/8));
+	 image.buffer.head.hash = hash::hash_buffer((const char*)image.buffer.data, sizeof(int)*image.buffer.len);//image.width*image.height*(image.bits/8));
 	 return true;
       }
       return false;
