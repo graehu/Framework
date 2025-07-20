@@ -32,56 +32,56 @@ namespace fw
       
       bool bank::free(char* allocation)
       {
-	 AllocNode* alloc = used;
-	 while(alloc != nullptr)
+	 AllocNode* node = used;
+	 while(node != nullptr)
 	 {
-	    if(alloc->alloc.data == allocation)
+	    if(node->alloc.data == allocation)
 	    {
 	       AllocNode* previous = freed;
-	       freed = alloc;
-	       alloc->next = previous;
+	       freed = node;
+	       node->next = previous;
 	       return true;
 	    }
-	    alloc = alloc->next;
+	    node = node->next;
 	 }
 	 return false;
       }
       // todo: force these to be page sized under the hood.
       // ----: consistent sizes will help with splitting/fragmentation.
-      char* bank::allocate(size_t size)
+      Allocation* bank::allocate(size_t size)
       {
 	 assert(heap != nullptr);
 	 assert((end-heap) + size < capacity);
 	 assert(total_allocations < capacity/page);
       
-	 AllocNode* alloc = nullptr;
+	 AllocNode* node = nullptr;
 	 if(freed != nullptr)
 	 {
-	    alloc = freed;
+	    node = freed;
 	    AllocNode* prev = nullptr;
-	    while(alloc != nullptr)
+	    while(node != nullptr)
 	    {
 	       // todo: split.
-	       if(alloc->alloc.len >= size)
+	       if(node->alloc.len >= size)
 	       {
-		  if (prev != nullptr) prev->next = alloc->next;
-		  return (char*)alloc->alloc.data;
+		  if (prev != nullptr) prev->next = node->next;
+		  return &node->alloc;
 	       }
-	       alloc = alloc->next;
+	       node = node->next;
 	    }
 	 }
       
-	 if(alloc == nullptr)
+	 if(node == nullptr)
 	 {
-	    alloc = &allocations[total_allocations++];
-	    *alloc = {{end, size}, nullptr};
+	    node = &allocations[total_allocations++];
+	    *node = {{{}, end, size}, nullptr};
 	    end += size;
 	    AllocNode* previous = used;
-	    used = alloc;
-	    alloc->next = previous;
+	    used = node;
+	    node->next = previous;
 	 }
       
-	 return (char*)alloc->alloc.data;
+	 return &node->alloc;
       }
       bank miscbank;
       // float get_percent_used() { return  ((float)(end-heap) / (float)capacity)*100.0f; }

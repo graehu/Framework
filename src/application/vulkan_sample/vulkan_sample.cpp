@@ -72,7 +72,7 @@ void save_meshes(blob::Buffer<fw::Mesh> in_meshes, const char* in_name)
    for (int i = 0; i < (int)in_meshes.len; i++)
    {
 #define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
-      blob::Buffer<fw::Mesh> mb = {in_meshes.data+i, 1};
+      blob::Buffer<fw::Mesh> mb = {{}, in_meshes.data+i, 1};
       if (stat(macro("{}/{}"), &st) == -1)
       {
 	 mkdir(macro("{}/{}"), 0700);
@@ -95,7 +95,7 @@ void load_meshes(std::vector<Mesh>& out_meshes, const char* in_name)
    for (int i = 0; i < (int)out_meshes.size(); i++)
    {
 #define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
-      blob::BufferNc<fw::Mesh> mb = {nullptr, 1};
+      blob::BufferNc<fw::Mesh> mb = {{}, nullptr, 1};
       blob::miscbank.load(macro("{}/{}/mesh.blob"), mb);
       blob::miscbank.load(macro("{}/{}/ibo.blob"), mb.data->geometry.ibo);
       blob::miscbank.load(macro("{}/{}/vbo.blob"), mb.data->geometry.vbo);
@@ -125,7 +125,7 @@ void vulkan_sample::run()
    auto* tri_indices = initdata::geometry::tri_indices.data();
    unsigned int tri_indices_count = initdata::geometry::tri_indices.size();
 
-   Mesh swapchain_mesh = {{{tri_verts, tri_verts_count}, {tri_indices, tri_indices_count}}, {}, {}, {hash::string("swapchain")}, {}};;
+   Mesh swapchain_mesh = {{{{},tri_verts, tri_verts_count}, {{}, tri_indices, tri_indices_count}}, {}, {}, {hash::string("swapchain")}, {}};;
    swapchain_mesh.material.shaders[fw::shader::e_vertex] = hash::string("fullscreen");
    swapchain_mesh.material.shaders[fw::shader::e_fragment] = hash::string("unlit");
    
@@ -134,7 +134,7 @@ void vulkan_sample::run()
    {
       log::scope topic("timer", true);
       log::timer timer("load model");
-      loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images); model_scale = 0.02;
+      // loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images); model_scale = 0.02;
       // loadmodel("../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", meshes, images);
    }
    for(Mesh& mesh : meshes)
@@ -148,9 +148,9 @@ void vulkan_sample::run()
       {
 	 log::scope topic("timer", true);
 	 log::timer timer("save mesh");
-	 blob::Buffer<Mesh> out_meshes({meshes.data(), meshes.size()});
+	 // blob::Buffer<Mesh> out_meshes({{}, meshes.data(), meshes.size()});
 	 // save_meshes(out_meshes, "helmet_meshes");
-	 save_meshes(out_meshes, "sponza_meshes");
+	 // save_meshes(out_meshes, "sponza_meshes");
       }
       {
 	 log::scope topic("timer", true);

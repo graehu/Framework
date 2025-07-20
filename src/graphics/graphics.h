@@ -90,7 +90,7 @@ namespace fw
 	    0xffff00ff, 0x00000000, 0xffff00ff, 0x00000000,
 	 };
 	 // todo: need a way to precalculate the hash and force it into the g_im_map.
-	 const Image missing = { {missing_data.data(), 16}, 4, 4, 32 };
+	 const Image missing = { {{}, missing_data.data(), 16}, 4, 4, 32 };
 	 const std::array<unsigned int, 16> white_data =
 	 {
 	    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
@@ -99,7 +99,7 @@ namespace fw
 	    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
 	 };
 	 // todo: need a way to precalculate the hash and force it into the g_im_map.
-	 const Image white = { {white_data.data(), 16}, 4, 4, 32 };
+	 const Image white = { {{}, white_data.data(), 16}, 4, 4, 32 };
 	 const std::array<unsigned int, 16> black_data =
 	 {
 	    0x00000000, 0x00000000, 0x00000000, 0x00000000,
@@ -108,7 +108,7 @@ namespace fw
 	    0x00000000, 0x00000000, 0x00000000, 0x00000000,
 	 };
 	 // todo: need a way to precalculate the hash and force it into the g_im_map.
-	 const Image black = { {black_data.data(), 16}, 4, 4, 32 };
+	 const Image black = { {{}, black_data.data(), 16}, 4, 4, 32 };
 	 const std::array<unsigned int, 16> grey_data =
 	 {
 	    0x08080808, 0x08080808, 0x08080808, 0x08080808,
@@ -117,7 +117,7 @@ namespace fw
 	    0x08080808, 0x08080808, 0x08080808, 0x08080808,
 	 };
 	 // todo: need a way to precalculate the hash and force it into the g_im_map.
-	 const Image grey = { {black_data.data(), 16}, 4, 4, 32 };
+	 const Image grey = { {{}, black_data.data(), 16}, 4, 4, 32 };
       }
       namespace geometry
       {

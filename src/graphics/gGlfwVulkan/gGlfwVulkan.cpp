@@ -780,10 +780,10 @@ namespace fwvulkan
 	 size_t bits = image.bits;
 	 
 	 log::debug("CreateImageHandle: {} x {} ({}bit)", width, height, bits);
-	 if (image_buffer == nullptr) return 0;
+	 if (image_buffer == nullptr || image.buffer.len == 0) return 0;
 	 size_t image_size = width * height * (bits/8);
 	 bool first_use = fw::hash_image(image);
-	 
+	 if(image.buffer.head.hash == 0) return 0;
 	 if (g_im_map.find(image.buffer.head.hash) == g_im_map.end())
 	 {
 	    VkBuffer copy_buffer = VK_NULL_HANDLE;

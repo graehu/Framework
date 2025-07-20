@@ -9,6 +9,7 @@
 
 // blob: binary serializable objects.
 // bank: storage, loading, and serialisation structure.
+// note: when moving from "Allocation" to other buffers, len is the count of sizeof(T).
 namespace fw
 {    
    namespace blob
@@ -18,8 +19,8 @@ namespace fw
       // todo: add ref count to allocations for duplicate loads.
       const hash::u32 fourcc = 'fwb1'; // 8 byte header.
       struct header {hash::u32 ver = fourcc; hash::u32 hash = 0; };
-      template<typename T> struct Buffer {const T* data = nullptr; size_t len = 0; header head = {}; };
-      template<typename T> struct BufferNc {T* data = nullptr; size_t len = 0; header head = {}; };
+      template<typename T> struct Buffer {header head = {}; const T* data = nullptr; size_t len = 0; };
+      template<typename T> struct BufferNc {header head = {}; T* data = nullptr; size_t len = 0; };
       typedef Buffer<char> Allocation;
       struct AllocNode
       {
@@ -31,7 +32,7 @@ namespace fw
 	public:
 	 void init(size_t in_capacity, size_t in_page);
 	 void shutdown();
-      
+	 
 	 template<typename T> inline bool save(const char* in_filename, T in_buffer)
 	 {
 	    FILE* file = fopen(in_filename, "wb");
@@ -54,10 +55,12 @@ namespace fw
 	    out_buffer.len = ftell(file);
 	    assert(((out_buffer.len-sizeof(out_buffer.head)) % sizeof(*out_buffer.data)) == 0);
 	    fseek(file, 0, SEEK_SET);
-	    out_buffer.data = (decltype(out_buffer.data))allocate(out_buffer.len + 1);
+	    Allocation* alloc = allocate(out_buffer.len + 1);
+	    out_buffer.data = (decltype(out_buffer.data))alloc->data;
 	    // todo: consider a short read
 	    fread((char*)out_buffer.data, out_buffer.len, 1, file);
 	    out_buffer.head = *((header*)out_buffer.data);
+	    alloc->head = *((header*)out_buffer.data);
 	    out_buffer.data = (decltype(out_buffer.data)) ((char*)out_buffer.data+sizeof(out_buffer.head));
 	    assert(out_buffer.head.ver == fourcc);
 	    // todo: decide if a file with no content is ok: (out_buffer.len == sizeof(out_buffer.head)).
@@ -71,8 +74,23 @@ namespace fw
 	    if(free((char*)in.data)-sizeof(in.head)) {in = {}; return true;}
 	    return false;
 	 }
+	 template<typename T> bool find(hash::u32 in_hash, Buffer<T>& out_buffer)
+	 {
+	    AllocNode* alloc = used;
+	    while(alloc != nullptr)
+	    {
+	       if(alloc->alloc.head.hash == in_hash)
+	       {
+		  out_buffer = *((Buffer<T>*)&alloc->alloc);
+		  out_buffer.len = (out_buffer.len-sizeof(out_buffer.head)) / sizeof(*out_buffer.data);
+		  return true;
+	       }
+	       alloc = alloc->next;
+	    }
+	    return false;
+	 }
 	private:
-	 char* allocate(size_t);
+	 Allocation* allocate(size_t);
 	 bool free(char*);
 	 size_t capacity = 0;
 	 size_t page = 0;
