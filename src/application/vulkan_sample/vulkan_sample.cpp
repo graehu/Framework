@@ -89,6 +89,32 @@ void save_meshes(blob::Buffer<fw::Mesh> in_meshes, const char* in_name)
    }
 }
 
+void save_images(blob::Buffer<fw::Image> in_images, const char* in_name)
+{
+   // explitily serialise each buffer, then load like below.
+   // handle images etc next.
+   #define macro(fmtstr) fmt::format(fmtstr, in_name).c_str()
+   struct stat st = {};
+   if (stat(macro("{}/"), &st) == -1)
+   {
+      mkdir(macro("{}/"), 0700);
+   }
+   #undef macro
+   for (int i = 0; i < (int)in_images.len; i++)
+   {
+#define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
+      blob::Buffer<fw::Image> ib = {{}, in_images.data+i, 1};
+      if (stat(macro("{}/{}"), &st) == -1)
+      {
+	 mkdir(macro("{}/{}"), 0700);
+      }
+      blob::miscbank.save(macro("{}/{}/image.blob"), ib);
+      blob::miscbank.save(macro("{}/{}/ibo.blob"), ib.data->buffer);
+#undef macro
+   }
+}
+
+
 void load_meshes(std::vector<Mesh>& out_meshes, const char* in_name)
 {
    //todo: count directory entires
@@ -104,6 +130,20 @@ void load_meshes(std::vector<Mesh>& out_meshes, const char* in_name)
       blob::miscbank.load(macro("{}/{}/image2.blob"), mb.data->images[2].buffer);
       blob::miscbank.load(macro("{}/{}/image3.blob"), mb.data->images[3].buffer);
       out_meshes[i] = *mb.data;
+   #undef macro
+   }
+}
+
+void load_images(std::vector<fw::Image>& out_images, const char* in_name)
+{
+   //todo: count directory entires
+   for (int i = 0; i < (int)out_images.size(); i++)
+   {
+#define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
+      blob::BufferNc<fw::Image> ib = {{}, nullptr, 1};
+      blob::miscbank.load(macro("{}/{}/image.blob"), ib);
+      blob::miscbank.load(macro("{}/{}/ibo.blob"), ib.data->buffer);
+      out_images[i] = *ib.data;
    #undef macro
    }
 }
@@ -134,7 +174,7 @@ void vulkan_sample::run()
    {
       log::scope topic("timer", true);
       log::timer timer("load model");
-      // loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images); model_scale = 0.02;
+      loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images); model_scale = 0.02;
       // loadmodel("../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", meshes, images);
    }
    for(Mesh& mesh : meshes)
@@ -148,9 +188,11 @@ void vulkan_sample::run()
       {
 	 log::scope topic("timer", true);
 	 log::timer timer("save mesh");
-	 // blob::Buffer<Mesh> out_meshes({{}, meshes.data(), meshes.size()});
+	 blob::Buffer<Mesh> out_meshes({{}, meshes.data(), meshes.size()});
+	 blob::Buffer<fw::Image> out_images({{}, images.data(), images.size()});
 	 // save_meshes(out_meshes, "helmet_meshes");
-	 // save_meshes(out_meshes, "sponza_meshes");
+	 save_meshes(out_meshes, "sponza_meshes");
+	 save_images(out_images, "sponza_images");
       }
       {
 	 log::scope topic("timer", true);
@@ -158,8 +200,10 @@ void vulkan_sample::run()
 
 	 // meshes.resize(1);
 	 // load_meshes(meshes, "helmet_meshes");
-	 meshes.resize(80);
-	 load_meshes(meshes, "sponza_meshes");
+	 // meshes.resize(80);
+	 // load_meshes(meshes, "sponza_meshes");
+	 images.resize(69);
+	 load_images(images, "sponza_images");
       }
       
    }
