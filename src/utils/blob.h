@@ -89,6 +89,7 @@ namespace fw
 	    }
 	    return false;
 	 }
+	 template<typename T> bool fixup(Buffer<T>& out_buffer) { return find(out_buffer.head.hash, out_buffer); }
 	private:
 	 Allocation* allocate(size_t);
 	 bool free(char*);
