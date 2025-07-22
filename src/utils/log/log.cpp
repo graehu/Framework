@@ -256,6 +256,25 @@ namespace fw
 	 m_name = _name;
 	 m_start = m_clock.now();
       }
+      void timer::print()
+      {
+	 if(m_condition)
+	 {
+	    auto time = m_clock.now()-m_start;
+	    auto millisecs = std::chrono::duration<float, std::milli>(time).count();
+	    if(millisecs > 1000)
+	    {
+	       auto seconds = std::chrono::duration<float>(time).count();
+	       std::string message = fmt::format("{} at {} secs so far", m_name, seconds);
+	       info(message.c_str());
+	    }
+	    else
+	    {
+	       std::string message = fmt::format("{} at {} millisecs so far", m_name, millisecs);
+	       info(message.c_str());
+	    }
+	 }
+      }
       timer::~timer()
       {
 	 if(m_condition)

@@ -122,6 +122,7 @@ namespace fw
       public:
 	 timer(const char* _name, bool _condition = true);
 	 ~timer();
+	 void print();
       private:
 	 std::chrono::high_resolution_clock m_clock;
 	 std::chrono::_V2::system_clock::time_point m_start;
