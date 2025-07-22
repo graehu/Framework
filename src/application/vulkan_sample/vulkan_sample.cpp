@@ -54,31 +54,18 @@ void vulkan_sample::init()
 // todo: move all imgui related init out of this sample and into framework.
 // todo: lock the mouse center in freecam.
 // todo: fix resource transition validation errors.
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
+#include "../../utils/filesystem.h"
 
 void save_meshes(blob::Buffer<fw::Mesh> in_meshes, const char* in_name)
 {
    // explitily serialise each buffer, then load like below.
    // handle images etc next.
-   #define macro(fmtstr) fmt::format(fmtstr, in_name).c_str()
-   struct stat st = {};
-   if (stat(macro("{}/"), &st) == -1)
-   {
-      mkdir(macro("{}/"), 0700);
-   }
-   #undef macro
    for (int i = 0; i < (int)in_meshes.len; i++)
    {
 #define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
-      blob::Buffer<fw::Mesh> mb = {{}, in_meshes.data+i, 1};
-      if (stat(macro("{}/{}"), &st) == -1)
-      {
-	 mkdir(macro("{}/{}"), 0700);
-      }
+      fw::filesystem::makedirs(macro("{}/{}"));
       
+      blob::Buffer<fw::Mesh> mb = {{}, in_meshes.data+i, 1};
       blob::miscbank.save(macro("{}/{}/mesh.blob"), mb);
       blob::miscbank.save(macro("{}/{}/ibo.blob"), mb.data->geometry.ibo);
       blob::miscbank.save(macro("{}/{}/vbo.blob"), mb.data->geometry.vbo);
@@ -94,21 +81,12 @@ void save_images(blob::Buffer<fw::Image> in_images, const char* in_name)
 {
    // explitily serialise each buffer, then load like below.
    // handle images etc next.
-   #define macro(fmtstr) fmt::format(fmtstr, in_name).c_str()
-   struct stat st = {};
-   if (stat(macro("{}/"), &st) == -1)
-   {
-      mkdir(macro("{}/"), 0700);
-   }
-   #undef macro
    for (int i = 0; i < (int)in_images.len; i++)
    {
 #define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
+      fw::filesystem::makedirs(macro("{}/{}"));
+      
       blob::Buffer<fw::Image> ib = {{}, in_images.data+i, 1};
-      if (stat(macro("{}/{}"), &st) == -1)
-      {
-	 mkdir(macro("{}/{}"), 0700);
-      }
       blob::miscbank.save(macro("{}/{}/image.blob"), ib);
       blob::miscbank.save(macro("{}/{}/ibo.blob"), ib.data->buffer);
 #undef macro
