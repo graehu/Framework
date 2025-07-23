@@ -63,12 +63,12 @@ void save_meshes(blob::Buffer<fw::Mesh> in_meshes, const char* in_name)
    for (int i = 0; i < (int)in_meshes.len; i++)
    {
 #define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
-      fw::filesystem::makedirs(macro("{}/{}"));
+      fw::filesystem::makedirs(macro("{}/meshes/{}"));
       
       blob::Buffer<fw::Mesh> mb = {{}, in_meshes.data+i, 1};
-      blob::miscbank.save(macro("{}/{}/mesh.blob"), mb);
-      blob::miscbank.save(macro("{}/{}/ibo.blob"), mb.data->geometry.ibo);
-      blob::miscbank.save(macro("{}/{}/vbo.blob"), mb.data->geometry.vbo);
+      blob::miscbank.save(macro("{}/meshes/{}/mesh.blob"), mb);
+      blob::miscbank.save(macro("{}/meshes/{}/ibo.blob"), mb.data->geometry.ibo);
+      blob::miscbank.save(macro("{}/meshes/{}/vbo.blob"), mb.data->geometry.vbo);
       // blob::miscbank.save(macro("{}/{}/image0.blob"), mb.data->images[0].buffer);
       // blob::miscbank.save(macro("{}/{}/image1.blob"), mb.data->images[1].buffer);
       // blob::miscbank.save(macro("{}/{}/image2.blob"), mb.data->images[2].buffer);
@@ -84,11 +84,11 @@ void save_images(blob::Buffer<fw::Image> in_images, const char* in_name)
    for (int i = 0; i < (int)in_images.len; i++)
    {
 #define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
-      fw::filesystem::makedirs(macro("{}/{}"));
+      fw::filesystem::makedirs(macro("{}/images/{}"));
       
       blob::Buffer<fw::Image> ib = {{}, in_images.data+i, 1};
-      blob::miscbank.save(macro("{}/{}/image.blob"), ib);
-      blob::miscbank.save(macro("{}/{}/ibo.blob"), ib.data->buffer);
+      blob::miscbank.save(macro("{}/images/{}/image.blob"), ib);
+      blob::miscbank.save(macro("{}/images/{}/ibo.blob"), ib.data->buffer);
 #undef macro
    }
 }
@@ -97,7 +97,7 @@ void save_images(blob::Buffer<fw::Image> in_images, const char* in_name)
 void load_meshes(std::vector<Mesh>& out_meshes, const char* in_name)
 {
 #define macro(fmtstr) fmt::format(fmtstr, in_name).c_str()
-   int num_meshes = fw::filesystem::countdirs(macro("{}/"));
+   int num_meshes = fw::filesystem::countdirs(macro("{}/meshes/"));
    out_meshes.resize(num_meshes);
    log::info("num meshes to load: {}", num_meshes);
 #undef macro
@@ -105,9 +105,9 @@ void load_meshes(std::vector<Mesh>& out_meshes, const char* in_name)
    for (int i = 0; i < num_meshes; i++)
    {
       blob::BufferNc<fw::Mesh> mb = {{}, nullptr, 1};
-      blob::miscbank.load(macro("{}/{}/mesh.blob"), mb);
-      blob::miscbank.load(macro("{}/{}/ibo.blob"), mb.data->geometry.ibo);
-      blob::miscbank.load(macro("{}/{}/vbo.blob"), mb.data->geometry.vbo);
+      blob::miscbank.load(macro("{}/meshes/{}/mesh.blob"), mb);
+      blob::miscbank.load(macro("{}/meshes/{}/ibo.blob"), mb.data->geometry.ibo);
+      blob::miscbank.load(macro("{}/meshes/{}/vbo.blob"), mb.data->geometry.vbo);
       blob::miscbank.fixup(mb.data->images[0].buffer);
       blob::miscbank.fixup(mb.data->images[1].buffer);
       blob::miscbank.fixup(mb.data->images[2].buffer);
@@ -125,20 +125,35 @@ void load_meshes(std::vector<Mesh>& out_meshes, const char* in_name)
 void load_images(std::vector<fw::Image>& out_images, const char* in_name)
 {
 #define macro(fmtstr) fmt::format(fmtstr, in_name).c_str()
-   int num_images = fw::filesystem::countdirs(macro("{}/"));
+   int num_images = fw::filesystem::countdirs(macro("{}/images/"));
    out_images.resize(num_images);
    log::info("num images to load: {}", num_images);
 #undef macro
-   //todo: count directory entires
+#define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
    for (int i = 0; i < num_images; i++)
    {
-#define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
       blob::BufferNc<fw::Image> ib = {{}, nullptr, 1};
-      blob::miscbank.load(macro("{}/{}/image.blob"), ib);
-      blob::miscbank.load(macro("{}/{}/ibo.blob"), ib.data->buffer);
+      blob::miscbank.load(macro("{}/images/{}/image.blob"), ib);
+      blob::miscbank.load(macro("{}/images/{}/ibo.blob"), ib.data->buffer);
       out_images[i] = *ib.data;
-   #undef macro
+
    }
+#undef macro
+}
+
+void save_scene(std::vector<fw::Image>& in_images, std::vector<Mesh>& in_meshes, const char* in_name)
+{
+   log::scope topic("timer", true);
+   log::timer timer("save scene");
+   save_images({{}, in_images.data(), in_images.size()}, in_name);
+   save_meshes({{}, in_meshes.data(), in_meshes.size()}, in_name);
+}
+void load_scene(std::vector<fw::Image>& out_images, std::vector<Mesh>& out_meshes, const char* in_name)
+{
+   log::scope topic("timer", true);
+   log::timer timer("load scene");
+   load_images(out_images, in_name);
+   load_meshes(out_meshes, in_name);
 }
 
 void vulkan_sample::run()
@@ -177,30 +192,9 @@ void vulkan_sample::run()
       mesh.material.shaders[fw::shader::e_fragment] = {hash::string("pbr")};
       mesh.transform = mat4x4f::scaled(model_scale, model_scale, model_scale);
    }
-   {
-      {
-	 log::scope topic("timer", true);
-	 log::timer timer("save mesh");
-	 // blob::Buffer<Mesh> out_meshes({{}, meshes.data(), meshes.size()});
-	 // blob::Buffer<fw::Image> out_images({{}, images.data(), images.size()});
-	 // // save_meshes(out_meshes, "helmet_meshes");
-	 // save_meshes(out_meshes, "sponza_meshes");
-	 // save_images(out_images, "sponza_images");
-      }
-      {
-	 log::scope topic("timer", true);
-	 log::timer timer("load mesh");
-
-	 // meshes.resize(1);
-	 // load_meshes(meshes, "helmet_meshes");
-
-	 images.resize(69);
-	 load_images(images, "sponza_images");
-	 meshes.resize(80);
-	 load_meshes(meshes, "sponza_meshes");
-      }
-      
-   }
+   // save_scene(images, meshes, "sponza");
+   load_scene(images, meshes, "sponza");
+   log::debug("loaded images {}, meshes {}", images.size(), meshes.size());
    
    float time = 0;
    int shademode = 0;
@@ -390,7 +384,7 @@ void vulkan_sample::run()
       m_input->update();
       if(m_input->isKeyPressed(input::e_quit)) break;
    }
-
+   // todo: this needs to be removed / handled better.
    for(auto image : images) { delete[] image.buffer.data; }
 }
 
