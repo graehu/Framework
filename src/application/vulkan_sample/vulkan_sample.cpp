@@ -96,10 +96,14 @@ void save_images(blob::Buffer<fw::Image> in_images, const char* in_name)
 
 void load_meshes(std::vector<Mesh>& out_meshes, const char* in_name)
 {
-   //todo: count directory entires
-   for (int i = 0; i < (int)out_meshes.size(); i++)
-   {
+#define macro(fmtstr) fmt::format(fmtstr, in_name).c_str()
+   int num_meshes = fw::filesystem::countdirs(macro("{}/"));
+   out_meshes.resize(num_meshes);
+   log::info("num meshes to load: {}", num_meshes);
+#undef macro
 #define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
+   for (int i = 0; i < num_meshes; i++)
+   {
       blob::BufferNc<fw::Mesh> mb = {{}, nullptr, 1};
       blob::miscbank.load(macro("{}/{}/mesh.blob"), mb);
       blob::miscbank.load(macro("{}/{}/ibo.blob"), mb.data->geometry.ibo);
@@ -113,14 +117,20 @@ void load_meshes(std::vector<Mesh>& out_meshes, const char* in_name)
       // blob::miscbank.load(macro("{}/{}/image2.blob"), mb.data->images[2].buffer);
       // blob::miscbank.load(macro("{}/{}/image3.blob"), mb.data->images[3].buffer);
       out_meshes[i] = *mb.data;
-   #undef macro
+
    }
+#undef macro
 }
 
 void load_images(std::vector<fw::Image>& out_images, const char* in_name)
 {
+#define macro(fmtstr) fmt::format(fmtstr, in_name).c_str()
+   int num_images = fw::filesystem::countdirs(macro("{}/"));
+   out_images.resize(num_images);
+   log::info("num images to load: {}", num_images);
+#undef macro
    //todo: count directory entires
-   for (int i = 0; i < (int)out_images.size(); i++)
+   for (int i = 0; i < num_images; i++)
    {
 #define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
       blob::BufferNc<fw::Image> ib = {{}, nullptr, 1};
