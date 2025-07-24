@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -7,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
+#include "hasher.h"
 
 namespace fw
 {
@@ -79,6 +81,20 @@ namespace fw
 
 	 closedir(dir);
 	 return count;
+      }
+      inline hash::u32 filehash(const char* in_file)
+      {
+	 FILE* file = fopen(in_file, "rb");
+	 if (file == nullptr) { return 0; }
+	 fseek(file, 0, SEEK_END);
+	 size_t size = ftell(file);
+	 fseek(file, 0, SEEK_SET);
+	 char* alloc = new char[size];
+	 fread((char*)alloc, size, 1, file);
+	 hash::u32 out = hash::hash_buffer(alloc, size);
+	 fclose(file);
+	 delete [] alloc;
+	 return out;
       }
    }
 }

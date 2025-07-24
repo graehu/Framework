@@ -46,7 +46,49 @@ void vulkan_sample::init()
    m_graphics = graphics::graphicsFactory();
    m_graphics->init(); // 1.7467304 seconds.
    blob::miscbank.init(1 GiBs, 256);
+}
+struct FileHashEntry
+{
+   hash::string filepath;
+   hash::u32 contenthash;
+};
+std::vector<FileHashEntry> filehashes;
 
+void loadfilehashes()
+{
+   blob::Buffer<FileHashEntry> fhb;
+   blob::miscbank.load("filehashes.blob", fhb);
+   filehashes.resize(fhb.len);
+   for(int i = 0; i < (int)fhb.len; i++)
+   {
+      filehashes[i] = *(fhb.data+i);
+   }
+}
+void savefilehashes()
+{
+   blob::Buffer<FileHashEntry> fhb = {{}, filehashes.data(), filehashes.size()};
+   blob::miscbank.save("filehashes.blob", fhb);
+}
+
+bool updatefilehashes(FileHashEntry entry)
+{
+   bool ret = false;
+   for(auto hash : filehashes)
+   {
+      if(hash.filepath == entry.filepath)
+      {
+	 ret = hash.contenthash == entry.contenthash;
+	 if(!ret)
+	 {
+	    hash.contenthash = entry.contenthash;
+	    savefilehashes();
+	 }
+	 return ret;
+      }
+   }
+   filehashes.push_back(entry);
+   savefilehashes();
+   return ret;
 }
 
 // todo: add pass dependencies.
@@ -155,13 +197,41 @@ void load_scene(std::vector<fw::Image>& out_images, std::vector<Mesh>& out_meshe
    load_images(out_images, in_name);
    load_meshes(out_meshes, in_name);
 }
+void load_gltf(std::vector<fw::Image>& in_images, std::vector<Mesh>& in_meshes, const char* in_path)
+{
+   log::scope topic("timer", true);
+   log::timer timer("load gltf");
+   const FileHashEntry filehash = {hash::string(in_path, strlen(in_path)), filesystem::filehash(in_path)};
+   log::info("{} hash", filehash.filepath);
+   if(!updatefilehashes(filehash))
+   {
+      log::info("not skipped!");
+      loadmodel(in_path, in_meshes, in_images);
+      const char* start = in_path;
+      while(*start != '\0')
+      {
+	 if(*start == '/') in_path = start+1;
+	 start++;
+      }
+      save_scene(in_images, in_meshes, in_path);
+   }
+   else {
+      const char* start = in_path;
+      while(*start != '\0')
+      {
+	 if(*start == '/') in_path = start+1;
+	 start++;
+      }
+   }
+   load_scene(in_images, in_meshes, in_path);
+}
 
 void vulkan_sample::run()
 {
    commandline::parse();
 
    log::scope vulkan_sample("vulkan_sample", true);
-   
+   loadfilehashes();
    m_graphics->register_shader("fullscreen", "shaders/spv/fullscreen.vert.spv", shader::e_vertex);
    m_graphics->register_shader("shared", "shaders/spv/shared.vert.spv", shader::e_vertex);
    m_graphics->register_shader("pbr", "shaders/spv/pbr.frag.spv", shader::e_fragment);
@@ -182,8 +252,13 @@ void vulkan_sample::run()
    {
       log::scope topic("timer", true);
       log::timer timer("load model");
+      filesystem::filehash("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf");
+   }
+   {
       // loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images); model_scale = 0.02;
       // loadmodel("../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", meshes, images);
+      load_gltf(images, meshes, "../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf");
+
    }
    for(Mesh& mesh : meshes)
    {
@@ -193,7 +268,7 @@ void vulkan_sample::run()
       mesh.transform = mat4x4f::scaled(model_scale, model_scale, model_scale);
    }
    // save_scene(images, meshes, "sponza");
-   load_scene(images, meshes, "sponza");
+   // load_scene(images, meshes, "sponza");
    log::debug("loaded images {}, meshes {}", images.size(), meshes.size());
    
    float time = 0;
