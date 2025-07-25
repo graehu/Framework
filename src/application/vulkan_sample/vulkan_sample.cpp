@@ -1,8 +1,8 @@
-
 #include "vulkan_sample.h"
 #include "../../utils/log/log.h"
 #include "../../utils/params.h"
 #include "../../utils/blob.h"
+#include "../../utils/filesystem.h"
 #include "../../window/window.h"
 #include "../../graphics/graphics.h"
 #include <array>
@@ -13,6 +13,7 @@
 #include "../../graphics/camera/camera.h"
 #include "../../input/input.h"
 #include "../../../libs/imgui/imgui.h"
+
 
 // todo: we don't want to have this as an explicit file like this I don't think.
 #include "tiny_gltf_loader.h"
@@ -63,6 +64,7 @@ void loadfilehashes()
    {
       filehashes[i] = *(fhb.data+i);
    }
+   blob::miscbank.free(fhb);
 }
 void savefilehashes()
 {
@@ -96,7 +98,7 @@ bool updatefilehashes(FileHashEntry entry)
 // todo: move all imgui related init out of this sample and into framework.
 // todo: lock the mouse center in freecam.
 // todo: fix resource transition validation errors.
-#include "../../utils/filesystem.h"
+
 
 void save_meshes(blob::Buffer<fw::Mesh> in_meshes, const char* in_name)
 {
@@ -111,10 +113,6 @@ void save_meshes(blob::Buffer<fw::Mesh> in_meshes, const char* in_name)
       blob::miscbank.save(macro("{}/meshes/{}/mesh.blob"), mb);
       blob::miscbank.save(macro("{}/meshes/{}/ibo.blob"), mb.data->geometry.ibo);
       blob::miscbank.save(macro("{}/meshes/{}/vbo.blob"), mb.data->geometry.vbo);
-      // blob::miscbank.save(macro("{}/{}/image0.blob"), mb.data->images[0].buffer);
-      // blob::miscbank.save(macro("{}/{}/image1.blob"), mb.data->images[1].buffer);
-      // blob::miscbank.save(macro("{}/{}/image2.blob"), mb.data->images[2].buffer);
-      // blob::miscbank.save(macro("{}/{}/image3.blob"), mb.data->images[3].buffer);
 #undef macro
    }
 }
@@ -135,7 +133,6 @@ void save_images(blob::Buffer<fw::Image> in_images, const char* in_name)
    }
 }
 
-
 void load_meshes(std::vector<Mesh>& out_meshes, const char* in_name)
 {
 #define macro(fmtstr) fmt::format(fmtstr, in_name).c_str()
@@ -154,10 +151,7 @@ void load_meshes(std::vector<Mesh>& out_meshes, const char* in_name)
       blob::miscbank.fixup(mb.data->images[1].buffer);
       blob::miscbank.fixup(mb.data->images[2].buffer);
       blob::miscbank.fixup(mb.data->images[3].buffer);
-      // blob::miscbank.load(macro("{}/{}/image0.blob"), mb.data->images[0].buffer);
-      // blob::miscbank.load(macro("{}/{}/image1.blob"), mb.data->images[1].buffer);
-      // blob::miscbank.load(macro("{}/{}/image2.blob"), mb.data->images[2].buffer);
-      // blob::miscbank.load(macro("{}/{}/image3.blob"), mb.data->images[3].buffer);
+      // todo: this can just be stored as the pointers, so we're not allocating mesh copies.
       out_meshes[i] = *mb.data;
 
    }
@@ -177,6 +171,7 @@ void load_images(std::vector<fw::Image>& out_images, const char* in_name)
       blob::BufferNc<fw::Image> ib = {{}, nullptr, 1};
       blob::miscbank.load(macro("{}/images/{}/image.blob"), ib);
       blob::miscbank.load(macro("{}/images/{}/ibo.blob"), ib.data->buffer);
+      // todo: this can just be stored as the pointers, so we're not allocating image copies.
       out_images[i] = *ib.data;
 
    }
@@ -197,16 +192,25 @@ void load_scene(std::vector<fw::Image>& out_images, std::vector<Mesh>& out_meshe
    load_images(out_images, in_name);
    load_meshes(out_meshes, in_name);
 }
+// todo: move this entire thing out of this sample.
 void load_gltf(std::vector<fw::Image>& in_images, std::vector<Mesh>& in_meshes, const char* in_path)
 {
    log::scope topic("timer", true);
    log::timer timer("load gltf");
    const FileHashEntry filehash = {hash::string(in_path, strlen(in_path)), filesystem::filehash(in_path)};
    log::info("{} hash", filehash.filepath);
+   // todo: check if exported folder actually exists here.
    if(!updatefilehashes(filehash))
    {
       log::info("not skipped!");
       loadmodel(in_path, in_meshes, in_images);
+      // todo: set this up in load model?
+      for(Mesh& mesh : in_meshes)
+      {
+	 mesh.passes = {hash::string("pbr")};
+	 mesh.material.shaders[fw::shader::e_vertex] = {hash::string("shared")};
+	 mesh.material.shaders[fw::shader::e_fragment] = {hash::string("pbr")};
+      }
       const char* start = in_path;
       while(*start != '\0')
       {
@@ -248,25 +252,15 @@ void vulkan_sample::run()
    swapchain_mesh.material.shaders[fw::shader::e_fragment] = hash::string("unlit");
    
    std::vector<Mesh> meshes; std::vector<Image> images;
-   float model_scale = 1.0;
    {
       log::scope topic("timer", true);
       log::timer timer("load model");
-      filesystem::filehash("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf");
-   }
-   {
       // loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images); model_scale = 0.02;
       // loadmodel("../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", meshes, images);
-      load_gltf(images, meshes, "../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf");
+      // load_gltf(images, meshes, "../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf");
+      load_gltf(images, meshes, "../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf");
+   }
 
-   }
-   for(Mesh& mesh : meshes)
-   {
-      mesh.passes = {hash::string("pbr")};
-      mesh.material.shaders[fw::shader::e_vertex] = {hash::string("shared")};
-      mesh.material.shaders[fw::shader::e_fragment] = {hash::string("pbr")};
-      mesh.transform = mat4x4f::scaled(model_scale, model_scale, model_scale);
-   }
    // save_scene(images, meshes, "sponza");
    // load_scene(images, meshes, "sponza");
    log::debug("loaded images {}, meshes {}", images.size(), meshes.size());
