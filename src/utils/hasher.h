@@ -1,5 +1,4 @@
-#ifndef HASHER_H
-#define HASHER_H
+#pragma once
 #include <cstdint>
 
 namespace fw
@@ -190,4 +189,3 @@ namespace fw
 // constexpr string(const string& rhs) {*this = rhs;}
 // constexpr string(const string&& rhs) {*this = rhs;}
 
-#endif//HASHER_H

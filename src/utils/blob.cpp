@@ -21,6 +21,10 @@ namespace fw
 	    memset(allocations, 0, sizeof(AllocNode)*capacity/page);
 	 }
       }
+      bool bank::is_initialised()
+      {
+	 return heap != nullptr;
+      }
       void bank::shutdown()
       {
 	 delete [] heap;

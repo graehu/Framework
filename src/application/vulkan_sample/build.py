@@ -10,11 +10,12 @@ config.confply.tool = "clang++"
 config.confply.log_topic = "vulkan_sample"
 config.source_files = [
     "vulkan_sample.cpp",
-    "tiny_gltf_loader.cpp",
+    # "tiny_gltf_loader.cpp",
     "../../main.cpp",
     "../../utils/params.cpp",
     "../../utils/log/log.cpp",
     "../../utils/blob.cpp",
+    "../../utils/import.cpp",
     "../../types/vec2f.cpp",
     "../../types/vec3f.cpp",
     "../../types/mat4x4f.cpp",

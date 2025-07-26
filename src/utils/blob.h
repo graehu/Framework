@@ -31,6 +31,7 @@ namespace fw
       {
 	public:
 	 void init(size_t in_capacity, size_t in_page);
+	 bool is_initialised();
 	 void shutdown();
 	 
 	 template<typename T> inline bool save(const char* in_filename, T in_buffer)

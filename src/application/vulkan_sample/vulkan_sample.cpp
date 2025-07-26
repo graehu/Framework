@@ -12,10 +12,8 @@
 #include "../../graphics/camera/camera.h"
 #include "../../input/input.h"
 #include "../../../libs/imgui/imgui.h"
+#include "../../utils/import.h" 
 
-
-// todo: we don't want to have this as an explicit file like this I don't think.
-#include "tiny_gltf_loader.h"
 #include "GLFW/glfw3.h"
 using namespace fw;
 namespace fwvulkan
@@ -46,181 +44,7 @@ void vulkan_sample::init()
    m_graphics = graphics::graphicsFactory();
    m_graphics->init(); // 1.7467304 seconds.
    blob::miscbank.init(1 GiBs, 256);
-}
-struct FileHashEntry
-{
-   hash::string filepath;
-   hash::u32 contenthash;
-};
-std::vector<FileHashEntry> filehashes;
-
-void load_filehashes()
-{
-   blob::Buffer<FileHashEntry> fhb;
-   blob::miscbank.load("filehashes.blob", fhb);
-   filehashes.resize(fhb.len);
-   for(int i = 0; i < (int)fhb.len; i++)
-   {
-      filehashes[i] = *(fhb.data+i);
-   }
-   blob::miscbank.free(fhb);
-}
-void save_filehashes()
-{
-   blob::Buffer<FileHashEntry> fhb = {{}, filehashes.data(), filehashes.size()};
-   blob::miscbank.save("filehashes.blob", fhb);
-}
-
-bool update_filehashes(FileHashEntry entry)
-{
-   bool ret = false;
-   for(auto hash : filehashes)
-   {
-      if(hash.filepath == entry.filepath)
-      {
-	 ret = hash.contenthash == entry.contenthash;
-	 if(!ret)
-	 {
-	    hash.contenthash = entry.contenthash;
-	    save_filehashes();
-	 }
-	 return ret;
-      }
-   }
-   filehashes.push_back(entry);
-   save_filehashes();
-   return ret;
-}
-
-// todo: add pass dependencies.
-// todo: move the swapchain mesh into framework.
-// todo: move all imgui related init out of this sample and into framework.
-// todo: lock the mouse center in freecam.
-// todo: fix resource transition validation errors.
-// todo: add gltf/scene unloading.
-// todo: add gltf/scene loading from imgui.
-// todo: add non-fmt string functions.
-
-
-void save_meshes(blob::Buffer<fw::Mesh> in_meshes, const char* in_name)
-{
-   // explitily serialise each buffer, then load like below.
-   // handle images etc next.
-   for (int i = 0; i < (int)in_meshes.len; i++)
-   {
-#define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
-      fw::filesystem::makedirs(macro("{}/meshes/{}"));
-      
-      blob::Buffer<fw::Mesh> mb = {{}, in_meshes.data+i, 1};
-      blob::miscbank.save(macro("{}/meshes/{}/mesh.blob"), mb);
-      blob::miscbank.save(macro("{}/meshes/{}/ibo.blob"), mb.data->geometry.ibo);
-      blob::miscbank.save(macro("{}/meshes/{}/vbo.blob"), mb.data->geometry.vbo);
-#undef macro
-   }
-}
-
-void save_images(blob::Buffer<fw::Image> in_images, const char* in_name)
-{
-   // explitily serialise each buffer, then load like below.
-   // handle images etc next.
-   for (int i = 0; i < (int)in_images.len; i++)
-   {
-#define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
-      fw::filesystem::makedirs(macro("{}/images/{}"));
-      
-      blob::Buffer<fw::Image> ib = {{}, in_images.data+i, 1};
-      blob::miscbank.save(macro("{}/images/{}/image.blob"), ib);
-      blob::miscbank.save(macro("{}/images/{}/ibo.blob"), ib.data->buffer);
-#undef macro
-   }
-}
-
-void load_meshes(std::vector<Mesh*>& out_meshes, const char* in_name)
-{
-#define macro(fmtstr) fmt::format(fmtstr, in_name).c_str()
-   int num_meshes = fw::filesystem::countdirs(macro("{}/meshes/"));
-   out_meshes.resize(num_meshes);
-   log::info("num meshes to load: {}", num_meshes);
-#undef macro
-#define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
-   for (int i = 0; i < num_meshes; i++)
-   {
-      blob::BufferNc<fw::Mesh> mb = {{}, nullptr, 1};
-      blob::miscbank.load(macro("{}/meshes/{}/mesh.blob"), mb);
-      blob::miscbank.load(macro("{}/meshes/{}/ibo.blob"), mb.data->geometry.ibo);
-      blob::miscbank.load(macro("{}/meshes/{}/vbo.blob"), mb.data->geometry.vbo);
-      blob::miscbank.fixup(mb.data->images[0].buffer);
-      blob::miscbank.fixup(mb.data->images[1].buffer);
-      blob::miscbank.fixup(mb.data->images[2].buffer);
-      blob::miscbank.fixup(mb.data->images[3].buffer);
-      out_meshes[i] = mb.data;
-   }
-#undef macro
-}
-
-void load_images(std::vector<fw::Image*>& out_images, const char* in_name)
-{
-#define macro(fmtstr) fmt::format(fmtstr, in_name).c_str()
-   int num_images = fw::filesystem::countdirs(macro("{}/images/"));
-   out_images.resize(num_images);
-   log::info("num images to load: {}", num_images);
-#undef macro
-#define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
-   for (int i = 0; i < num_images; i++)
-   {
-      blob::BufferNc<fw::Image> ib = {{}, nullptr, 1};
-      blob::miscbank.load(macro("{}/images/{}/image.blob"), ib);
-      blob::miscbank.load(macro("{}/images/{}/ibo.blob"), ib.data->buffer);
-      out_images[i] = ib.data;
-   }
-#undef macro
-}
-
-void save_scene(std::vector<fw::Image>& in_images, std::vector<Mesh>& in_meshes, const char* in_name)
-{
-   log::scope topic("timer", true);
-   log::timer timer("save scene");
-   save_images({{}, in_images.data(), in_images.size()}, in_name);
-   save_meshes({{}, in_meshes.data(), in_meshes.size()}, in_name);
-}
-void load_scene(std::vector<fw::Image*>& out_images, std::vector<Mesh*>& out_meshes, const char* in_name)
-{
-   log::scope topic("timer", true);
-   log::timer timer("load scene");
-   load_images(out_images, in_name);
-   load_meshes(out_meshes, in_name);
-}
-// todo: move this entire thing out of this sample.
-void load_gltf(std::vector<fw::Image*>& in_images, std::vector<Mesh*>& in_meshes, const char* in_path)
-{
-   log::scope topic("timer", true);
-   log::timer timer("load gltf");
-
-   const char* start = in_path;
-   const char* import = nullptr;
-   while(*start != '\0')
-   {
-      if(*start == '/') import = start+1;
-      start++;
-   }
-   const FileHashEntry filehash = {hash::string(import, strlen(import)), filesystem::filehash(in_path)};
-   if(!update_filehashes(filehash) || !filesystem::exists(import))
-   {
-      log::info("not skipped!");
-      std::vector<fw::Image> images; std::vector<fw::Mesh> meshes;
-      loadmodel(in_path, meshes, images);
-      // todo: set this up in load model?
-      for(Mesh& mesh : meshes)
-      {
-	 mesh.passes = {hash::string("pbr")};
-	 mesh.material.shaders[fw::shader::e_vertex] = {hash::string("shared")};
-	 mesh.material.shaders[fw::shader::e_fragment] = {hash::string("pbr")};
-      }
-      save_scene(images, meshes, import);
-      // todo: this needs to be removed / handled better.
-      for(auto image : images) { delete[] image.buffer.data; }
-   }
-   load_scene(in_images, in_meshes, import);
+   import::init();
 }
 
 void vulkan_sample::run()
@@ -228,7 +52,6 @@ void vulkan_sample::run()
    commandline::parse();
 
    log::scope vulkan_sample("vulkan_sample", true);
-   load_filehashes();
    m_graphics->register_shader("fullscreen", "shaders/spv/fullscreen.vert.spv", shader::e_vertex);
    m_graphics->register_shader("shared", "shaders/spv/shared.vert.spv", shader::e_vertex);
    m_graphics->register_shader("pbr", "shaders/spv/pbr.frag.spv", shader::e_fragment);
@@ -251,7 +74,8 @@ void vulkan_sample::run()
       // loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images); model_scale = 0.02;
       // loadmodel("../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", meshes, images);
       // load_gltf(images, meshes, "../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf");
-      load_gltf(images, meshes, "../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf");
+      import::gltf(images, meshes, "../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf");
+      // load_gltf(images, meshes, "../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf");
    }
 
    // save_scene(images, meshes, "sponza");
