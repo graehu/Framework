@@ -5,7 +5,6 @@
 #include "../../utils/filesystem.h"
 #include "../../window/window.h"
 #include "../../graphics/graphics.h"
-#include <array>
 #include <cstddef>
 #include <cstring>
 #include <thread>
@@ -55,7 +54,7 @@ struct FileHashEntry
 };
 std::vector<FileHashEntry> filehashes;
 
-void loadfilehashes()
+void load_filehashes()
 {
    blob::Buffer<FileHashEntry> fhb;
    blob::miscbank.load("filehashes.blob", fhb);
@@ -66,13 +65,13 @@ void loadfilehashes()
    }
    blob::miscbank.free(fhb);
 }
-void savefilehashes()
+void save_filehashes()
 {
    blob::Buffer<FileHashEntry> fhb = {{}, filehashes.data(), filehashes.size()};
    blob::miscbank.save("filehashes.blob", fhb);
 }
 
-bool updatefilehashes(FileHashEntry entry)
+bool update_filehashes(FileHashEntry entry)
 {
    bool ret = false;
    for(auto hash : filehashes)
@@ -83,13 +82,13 @@ bool updatefilehashes(FileHashEntry entry)
 	 if(!ret)
 	 {
 	    hash.contenthash = entry.contenthash;
-	    savefilehashes();
+	    save_filehashes();
 	 }
 	 return ret;
       }
    }
    filehashes.push_back(entry);
-   savefilehashes();
+   save_filehashes();
    return ret;
 }
 
@@ -98,6 +97,9 @@ bool updatefilehashes(FileHashEntry entry)
 // todo: move all imgui related init out of this sample and into framework.
 // todo: lock the mouse center in freecam.
 // todo: fix resource transition validation errors.
+// todo: add gltf/scene unloading.
+// todo: add gltf/scene loading from imgui.
+// todo: add non-fmt string functions.
 
 
 void save_meshes(blob::Buffer<fw::Mesh> in_meshes, const char* in_name)
@@ -133,7 +135,7 @@ void save_images(blob::Buffer<fw::Image> in_images, const char* in_name)
    }
 }
 
-void load_meshes(std::vector<Mesh>& out_meshes, const char* in_name)
+void load_meshes(std::vector<Mesh*>& out_meshes, const char* in_name)
 {
 #define macro(fmtstr) fmt::format(fmtstr, in_name).c_str()
    int num_meshes = fw::filesystem::countdirs(macro("{}/meshes/"));
@@ -151,14 +153,12 @@ void load_meshes(std::vector<Mesh>& out_meshes, const char* in_name)
       blob::miscbank.fixup(mb.data->images[1].buffer);
       blob::miscbank.fixup(mb.data->images[2].buffer);
       blob::miscbank.fixup(mb.data->images[3].buffer);
-      // todo: this can just be stored as the pointers, so we're not allocating mesh copies.
-      out_meshes[i] = *mb.data;
-
+      out_meshes[i] = mb.data;
    }
 #undef macro
 }
 
-void load_images(std::vector<fw::Image>& out_images, const char* in_name)
+void load_images(std::vector<fw::Image*>& out_images, const char* in_name)
 {
 #define macro(fmtstr) fmt::format(fmtstr, in_name).c_str()
    int num_images = fw::filesystem::countdirs(macro("{}/images/"));
@@ -171,9 +171,7 @@ void load_images(std::vector<fw::Image>& out_images, const char* in_name)
       blob::BufferNc<fw::Image> ib = {{}, nullptr, 1};
       blob::miscbank.load(macro("{}/images/{}/image.blob"), ib);
       blob::miscbank.load(macro("{}/images/{}/ibo.blob"), ib.data->buffer);
-      // todo: this can just be stored as the pointers, so we're not allocating image copies.
-      out_images[i] = *ib.data;
-
+      out_images[i] = ib.data;
    }
 #undef macro
 }
@@ -185,7 +183,7 @@ void save_scene(std::vector<fw::Image>& in_images, std::vector<Mesh>& in_meshes,
    save_images({{}, in_images.data(), in_images.size()}, in_name);
    save_meshes({{}, in_meshes.data(), in_meshes.size()}, in_name);
 }
-void load_scene(std::vector<fw::Image>& out_images, std::vector<Mesh>& out_meshes, const char* in_name)
+void load_scene(std::vector<fw::Image*>& out_images, std::vector<Mesh*>& out_meshes, const char* in_name)
 {
    log::scope topic("timer", true);
    log::timer timer("load scene");
@@ -193,7 +191,7 @@ void load_scene(std::vector<fw::Image>& out_images, std::vector<Mesh>& out_meshe
    load_meshes(out_meshes, in_name);
 }
 // todo: move this entire thing out of this sample.
-void load_gltf(std::vector<fw::Image>& in_images, std::vector<Mesh>& in_meshes, const char* in_path)
+void load_gltf(std::vector<fw::Image*>& in_images, std::vector<Mesh*>& in_meshes, const char* in_path)
 {
    log::scope topic("timer", true);
    log::timer timer("load gltf");
@@ -206,18 +204,21 @@ void load_gltf(std::vector<fw::Image>& in_images, std::vector<Mesh>& in_meshes, 
       start++;
    }
    const FileHashEntry filehash = {hash::string(import, strlen(import)), filesystem::filehash(in_path)};
-   if(!updatefilehashes(filehash) || !filesystem::exists(import))
+   if(!update_filehashes(filehash) || !filesystem::exists(import))
    {
       log::info("not skipped!");
-      loadmodel(in_path, in_meshes, in_images);
+      std::vector<fw::Image> images; std::vector<fw::Mesh> meshes;
+      loadmodel(in_path, meshes, images);
       // todo: set this up in load model?
-      for(Mesh& mesh : in_meshes)
+      for(Mesh& mesh : meshes)
       {
 	 mesh.passes = {hash::string("pbr")};
 	 mesh.material.shaders[fw::shader::e_vertex] = {hash::string("shared")};
 	 mesh.material.shaders[fw::shader::e_fragment] = {hash::string("pbr")};
       }
-      save_scene(in_images, in_meshes, import);
+      save_scene(images, meshes, import);
+      // todo: this needs to be removed / handled better.
+      for(auto image : images) { delete[] image.buffer.data; }
    }
    load_scene(in_images, in_meshes, import);
 }
@@ -227,7 +228,7 @@ void vulkan_sample::run()
    commandline::parse();
 
    log::scope vulkan_sample("vulkan_sample", true);
-   loadfilehashes();
+   load_filehashes();
    m_graphics->register_shader("fullscreen", "shaders/spv/fullscreen.vert.spv", shader::e_vertex);
    m_graphics->register_shader("shared", "shaders/spv/shared.vert.spv", shader::e_vertex);
    m_graphics->register_shader("pbr", "shaders/spv/pbr.frag.spv", shader::e_fragment);
@@ -243,7 +244,7 @@ void vulkan_sample::run()
    swapchain_mesh.material.shaders[fw::shader::e_vertex] = hash::string("fullscreen");
    swapchain_mesh.material.shaders[fw::shader::e_fragment] = hash::string("unlit");
    
-   std::vector<Mesh> meshes; std::vector<Image> images;
+   std::vector<Mesh*> meshes; std::vector<Image*> images;
    {
       log::scope topic("timer", true);
       log::timer timer("load model");
@@ -432,7 +433,7 @@ void vulkan_sample::run()
       // light.intensity = 2.0f*alpha;
       cam.update();
       // todo: you can't isolate model 0.
-      for(size_t i = 0; i < meshes.size(); i++) { if(i == (size_t)model_id || !model_id) { m_graphics->getRenderer()->visit(&meshes[i]); } }
+      for(size_t i = 0; i < meshes.size(); i++) { if(i == (size_t)model_id || !model_id) { m_graphics->getRenderer()->visit(meshes[i]); } }
       m_graphics->getRenderer()->visit(&cam);
       m_graphics->getRenderer()->visit(&light);
       m_graphics->getRenderer()->visit(ui_drawdata);
@@ -445,8 +446,6 @@ void vulkan_sample::run()
       m_input->update();
       if(m_input->isKeyPressed(input::e_quit)) break;
    }
-   // todo: this needs to be removed / handled better.
-   for(auto image : images) { delete[] image.buffer.data; }
 }
 
 void vulkan_sample::shutdown()

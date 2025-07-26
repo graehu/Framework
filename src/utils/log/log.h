@@ -1,5 +1,4 @@
-#ifndef LOG_H
-#define LOG_H
+#pragma once
 #include "../hasher.h"
 #include "../params.h"
 #include <string>
@@ -178,4 +177,3 @@ namespace fw
       }
    }
 }
-#endif//LOG_H
