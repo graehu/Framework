@@ -197,10 +197,16 @@ void load_gltf(std::vector<fw::Image>& in_images, std::vector<Mesh>& in_meshes, 
 {
    log::scope topic("timer", true);
    log::timer timer("load gltf");
-   const FileHashEntry filehash = {hash::string(in_path, strlen(in_path)), filesystem::filehash(in_path)};
-   log::info("{} hash", filehash.filepath);
-   // todo: check if exported folder actually exists here.
-   if(!updatefilehashes(filehash))
+
+   const char* start = in_path;
+   const char* import = nullptr;
+   while(*start != '\0')
+   {
+      if(*start == '/') import = start+1;
+      start++;
+   }
+   const FileHashEntry filehash = {hash::string(import, strlen(import)), filesystem::filehash(in_path)};
+   if(!updatefilehashes(filehash) || !filesystem::exists(import))
    {
       log::info("not skipped!");
       loadmodel(in_path, in_meshes, in_images);
@@ -211,23 +217,9 @@ void load_gltf(std::vector<fw::Image>& in_images, std::vector<Mesh>& in_meshes, 
 	 mesh.material.shaders[fw::shader::e_vertex] = {hash::string("shared")};
 	 mesh.material.shaders[fw::shader::e_fragment] = {hash::string("pbr")};
       }
-      const char* start = in_path;
-      while(*start != '\0')
-      {
-	 if(*start == '/') in_path = start+1;
-	 start++;
-      }
-      save_scene(in_images, in_meshes, in_path);
+      save_scene(in_images, in_meshes, import);
    }
-   else {
-      const char* start = in_path;
-      while(*start != '\0')
-      {
-	 if(*start == '/') in_path = start+1;
-	 start++;
-      }
-   }
-   load_scene(in_images, in_meshes, in_path);
+   load_scene(in_images, in_meshes, import);
 }
 
 void vulkan_sample::run()

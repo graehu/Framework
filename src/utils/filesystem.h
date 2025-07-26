@@ -82,6 +82,19 @@ namespace fw
 	 closedir(dir);
 	 return count;
       }
+      inline size_t get_modtime(const char* path)
+      {
+	 struct stat attr;
+	 if (stat(path, &attr) == 0) {
+	    return (size_t)attr.st_mtime;  // Last modification time
+	 }
+	 return 0;
+      }
+      inline bool exists(const char* path)
+      {
+	 struct stat buffer;
+	 return (stat(path, &buffer) == 0);
+      }
       inline hash::u32 filehash(const char* in_file)
       {
 	 FILE* file = fopen(in_file, "rb");
