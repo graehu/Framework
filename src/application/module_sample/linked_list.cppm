@@ -7,9 +7,11 @@ private:
     {
         T data;
         Node* next;
+	Node() : data(), next(nullptr) {};
         Node(const T& value) : data(value), next(nullptr) {}
     };
-    Node* head;
+    Node head;
 public:
     T* get_head();
+    void set_head(T new_data);
 };

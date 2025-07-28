@@ -22,7 +22,6 @@ config.library_paths = [
 ]
 config.source_files = [
     "module_sample.cpp",
-    "linked_list.cppm",
     "linked_list.cpp",
     "../../main.cpp",
     "../../utils/log/log.cpp",
@@ -32,6 +31,14 @@ config.warnings = ["all", "extra", "pedantic"]
 config.optimisation = 3
 config.link_libraries = ["stdc++", "m", "fwcore"]
 config.standard = "c++20"
-config.command_prepend = "-fmodules"
+config.command_prepend = "-fmodule-file=objects/clang++/linked_list.pcm"
 config.output_file = "module_sample.bin"
 config.confply_log_config = False
+
+def prebuild():
+    # you precompile the module you want like this.
+    # then you use "-fmodule-file=objects/clang++/linked_list.pcm"
+    # to point at the module definition.
+    os.system("clang++ -std=c++20 linked_list.cppm -O3 --precompile -o objects/clang++/linked_list.pcm")
+
+config.confply.post_load = prebuild
