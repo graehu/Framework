@@ -71,11 +71,8 @@ void vulkan_sample::run()
    {
       log::scope topic("timer", true);
       log::timer timer("load model");
-      // loadmodel("../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", meshes, images); model_scale = 0.02;
-      // loadmodel("../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", meshes, images);
-      // load_gltf(images, meshes, "../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf");
-      import::gltf(images, meshes, "../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf");
-      // load_gltf(images, meshes, "../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf");
+      import::gltf(images, meshes, "../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf");
+      // import::gltf(images, meshes, "../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf");
    }
 
    // save_scene(images, meshes, "sponza");
@@ -148,6 +145,7 @@ void vulkan_sample::run()
 	    if (ImGui::Button("next model")) wants_model = true;
 	    ImGui::SameLine();
 	    ImGui::Text("model = %d", model_id);
+	    ImGui::ProgressBar(((float)blob::miscbank.get_used())/blob::miscbank.get_capacity());
 	 }
 	 ImGui::End();
       }
@@ -206,7 +204,7 @@ void vulkan_sample::run()
       {
 	 case cam_free:
 	 {
-	    // note: IsWindowHovered will assert if you don't use anywindow outwith a window being.
+	    // note: IsWindowHovered will assert if you don't use anywindow outwith a window begin.
 	    if(!ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow))
 	    {
 	       float dx, dy;

@@ -9,6 +9,7 @@
 
 // blob: binary serializable objects.
 // bank: storage, loading, and serialisation structure.
+// asset: loadable / serialisable object.
 // note: when moving from "Allocation" to other buffers, len is the count of sizeof(T).
 namespace fw
 {    
@@ -17,11 +18,14 @@ namespace fw
       // todo: add unload function.
       // todo: add content hash+tracking to buffers so we can read the hash and opt out of load.
       // todo: add ref count to allocations for duplicate loads.
-      const hash::u32 fourcc = 'fwb1'; // 8 byte header.
-      struct header {hash::u32 ver = fourcc; hash::u32 hash = 0; };
-      template<typename T> struct buffer {header head = {}; const T* data = nullptr; size_t len = 0; };
-      template<typename T> struct buffernc {header head = {}; T* data = nullptr; size_t len = 0; };
-      typedef buffer<char> allocation;
+      // todo: page needs to control allocation size allocat(size) {((int)size/page)*page}
+      const hash::u32 fourcc = 'fwb1'; // change to bnk1? header<T> ver = T::fourcc;
+      struct header {hash::u32 ver = fourcc; hash::u32 hash = 0; }; // 8 byte header.
+      // something like this?
+      // template<typename T, size_T V=fourcc> struct asset {header head = {}; const T* data = nullptr; size_t len = 0; };
+      template<typename T> struct asset {header head = {}; const T* data = nullptr; size_t len = 0; };
+      template<typename T> struct assetnc {header head = {}; T* data = nullptr; size_t len = 0; };
+      typedef asset<char> allocation;
       struct allocnode
       {
 	 allocation alloc;
@@ -31,13 +35,15 @@ namespace fw
       {
 	public:
 	 void init(size_t in_capacity, size_t in_page);
-	 bool is_initialised();
 	 void shutdown(); 
+	 inline bool is_initialised() const { return heap != nullptr; }
+	 inline size_t get_capacity() const { return  capacity; }
+	 inline size_t get_used() const { return (size_t)(end-heap); }
 	 template<typename T> inline bool save(const char* in_filename, T in_buffer);
 	 template<typename T> inline bool load(const char* in_filename, T& out_buffer);
-	 template<typename T> inline bool free(buffer<T>& in);
-	 template<typename T> inline bool find(hash::u32 in_hash, buffer<T>& out_buffer);
-	 template<typename T> inline bool fixup(buffer<T>& out_buffer);
+	 template<typename T> inline bool free(asset<T>& in);
+	 template<typename T> inline bool find(hash::u32 in_hash, asset<T>& out_buffer);
+	 template<typename T> inline bool fixup(asset<T>& out_buffer);
 
 	private:
 	 allocation* allocate(size_t);
@@ -55,7 +61,7 @@ namespace fw
       {
 	 FILE* file = fopen(in_filename, "wb");
 	 if (file == nullptr) { return false; }
-	 assert(in_buffer.head.ver == fourcc);
+	 assert(in_buffer.head.ver == fourcc); // T::fourcc?
 	 if(in_buffer.head.hash == 0)
 	 {
 	    in_buffer.head.hash = hash::hash_buffer((const char*)in_buffer.data, sizeof(*in_buffer.data)*in_buffer.len);
@@ -87,19 +93,19 @@ namespace fw
 	 out_buffer.len = (out_buffer.len-sizeof(out_buffer.head)) / sizeof(*out_buffer.data);
 	 return true;
       }
-      template<typename T> inline bool bank::free(buffer<T>& in)
+      template<typename T> inline bool bank::free(asset<T>& in)
       {
 	 if(free((char*)in.data)-sizeof(in.head)) {in = {}; return true;}
 	 return false;
       }
-      template<typename T> inline bool bank::find(hash::u32 in_hash, buffer<T>& out_buffer)
+      template<typename T> inline bool bank::find(hash::u32 in_hash, asset<T>& out_buffer)
       {
 	 allocnode* alloc = used;
 	 while(alloc != nullptr)
 	 {
 	    if(alloc->alloc.head.hash == in_hash)
 	    {
-	       out_buffer = *((buffer<T>*)&alloc->alloc);
+	       out_buffer = *((asset<T>*)&alloc->alloc);
 	       out_buffer.len = (out_buffer.len-sizeof(out_buffer.head)) / sizeof(*out_buffer.data);
 	       return true;
 	    }
@@ -107,7 +113,7 @@ namespace fw
 	 }
 	 return false;
       }
-      template<typename T> inline bool bank::fixup(buffer<T>& out_buffer) { return find(out_buffer.head.hash, out_buffer); }
+      template<typename T> inline bool bank::fixup(asset<T>& out_buffer) { return find(out_buffer.head.hash, out_buffer); }
       extern bank miscbank;
    }
 }

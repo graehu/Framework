@@ -21,10 +21,6 @@ namespace fw
 	    memset(allocations, 0, sizeof(allocnode)*capacity/page);
 	 }
       }
-      bool bank::is_initialised()
-      {
-	 return heap != nullptr;
-      }
       void bank::shutdown()
       {
 	 delete [] heap;
@@ -88,6 +84,5 @@ namespace fw
 	 return &node->alloc;
       }
       bank miscbank;
-      // float get_percent_used() { return  ((float)(end-heap) / (float)capacity)*100.0f; }
    }
 }

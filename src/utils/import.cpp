@@ -247,7 +247,7 @@ namespace fw
       std::vector<FileHashEntry> filehashes;
       void load_filehashes()
       {
-	 blob::buffer<FileHashEntry> fhb;
+	 blob::asset<FileHashEntry> fhb;
 	 blob::miscbank.load("filehashes.blob", fhb);
 	 filehashes.resize(fhb.len);
 	 for(int i = 0; i < (int)fhb.len; i++)
@@ -258,7 +258,7 @@ namespace fw
       }
       void save_filehashes()
       {
-	 blob::buffer<FileHashEntry> fhb = {{}, filehashes.data(), filehashes.size()};
+	 blob::asset<FileHashEntry> fhb = {{}, filehashes.data(), filehashes.size()};
 	 blob::miscbank.save("filehashes.blob", fhb);
       }
       bool update_filehashes(FileHashEntry entry)
@@ -281,7 +281,7 @@ namespace fw
 	 save_filehashes();
 	 return ret;
       }
-      void save_meshes(blob::buffer<fw::Mesh> in_meshes, const char* in_name)
+      void save_meshes(blob::asset<fw::Mesh> in_meshes, const char* in_name)
       {
 	 // explitily serialise each buffer, then load like below.
 	 // handle images etc next.
@@ -290,7 +290,7 @@ namespace fw
 #define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
 	    fw::filesystem::makedirs(macro("{}/meshes/{}"));
       
-	    blob::buffer<fw::Mesh> mb = {{}, in_meshes.data+i, 1};
+	    blob::asset<fw::Mesh> mb = {{}, in_meshes.data+i, 1};
 	    blob::miscbank.save(macro("{}/meshes/{}/mesh.blob"), mb);
 	    blob::miscbank.save(macro("{}/meshes/{}/ibo.blob"), mb.data->geometry.ibo);
 	    blob::miscbank.save(macro("{}/meshes/{}/vbo.blob"), mb.data->geometry.vbo);
@@ -298,7 +298,7 @@ namespace fw
 	 }
       }
 
-      void save_images(blob::buffer<fw::Image> in_images, const char* in_name)
+      void save_images(blob::asset<fw::Image> in_images, const char* in_name)
       {
 	 // explitily serialise each buffer, then load like below.
 	 // handle images etc next.
@@ -307,7 +307,7 @@ namespace fw
 #define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
 	    fw::filesystem::makedirs(macro("{}/images/{}"));
       
-	    blob::buffer<fw::Image> ib = {{}, in_images.data+i, 1};
+	    blob::asset<fw::Image> ib = {{}, in_images.data+i, 1};
 	    blob::miscbank.save(macro("{}/images/{}/image.blob"), ib);
 	    blob::miscbank.save(macro("{}/images/{}/ibo.blob"), ib.data->buffer);
 #undef macro
@@ -324,7 +324,7 @@ namespace fw
 #define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
 	 for (int i = 0; i < num_meshes; i++)
 	 {
-	    blob::buffernc<fw::Mesh> mb = {{}, nullptr, 1};
+	    blob::assetnc<fw::Mesh> mb = {{}, nullptr, 1};
 	    blob::miscbank.load(macro("{}/meshes/{}/mesh.blob"), mb);
 	    blob::miscbank.load(macro("{}/meshes/{}/ibo.blob"), mb.data->geometry.ibo);
 	    blob::miscbank.load(macro("{}/meshes/{}/vbo.blob"), mb.data->geometry.vbo);
@@ -347,7 +347,7 @@ namespace fw
 #define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
 	 for (int i = 0; i < num_images; i++)
 	 {
-	    blob::buffernc<fw::Image> ib = {{}, nullptr, 1};
+	    blob::assetnc<fw::Image> ib = {{}, nullptr, 1};
 	    blob::miscbank.load(macro("{}/images/{}/image.blob"), ib);
 	    blob::miscbank.load(macro("{}/images/{}/ibo.blob"), ib.data->buffer);
 	    out_images[i] = ib.data;
