@@ -19,13 +19,13 @@ namespace fw
       // todo: add ref count to allocations for duplicate loads.
       const hash::u32 fourcc = 'fwb1'; // 8 byte header.
       struct header {hash::u32 ver = fourcc; hash::u32 hash = 0; };
-      template<typename T> struct Buffer {header head = {}; const T* data = nullptr; size_t len = 0; };
-      template<typename T> struct BufferNc {header head = {}; T* data = nullptr; size_t len = 0; };
-      typedef Buffer<char> Allocation;
-      struct AllocNode
+      template<typename T> struct buffer {header head = {}; const T* data = nullptr; size_t len = 0; };
+      template<typename T> struct buffernc {header head = {}; T* data = nullptr; size_t len = 0; };
+      typedef buffer<char> allocation;
+      struct allocnode
       {
-	 Allocation alloc;
-	 AllocNode* next = nullptr;
+	 allocation alloc;
+	 allocnode* next = nullptr;
       };
       class bank final
       {
@@ -35,20 +35,20 @@ namespace fw
 	 void shutdown(); 
 	 template<typename T> inline bool save(const char* in_filename, T in_buffer);
 	 template<typename T> inline bool load(const char* in_filename, T& out_buffer);
-	 template<typename T> inline bool free(Buffer<T>& in);
-	 template<typename T> inline bool find(hash::u32 in_hash, Buffer<T>& out_buffer);
-	 template<typename T> inline bool fixup(Buffer<T>& out_buffer);
+	 template<typename T> inline bool free(buffer<T>& in);
+	 template<typename T> inline bool find(hash::u32 in_hash, buffer<T>& out_buffer);
+	 template<typename T> inline bool fixup(buffer<T>& out_buffer);
 
 	private:
-	 Allocation* allocate(size_t);
+	 allocation* allocate(size_t);
 	 bool free(char*);
 	 size_t capacity = 0;
 	 size_t page = 0;
-	 AllocNode* allocations = nullptr;
+	 allocnode* allocations = nullptr;
 	 char* heap = nullptr;
 	 char* end = nullptr;
-	 AllocNode* freed = nullptr;
-	 AllocNode* used = nullptr;
+	 allocnode* freed = nullptr;
+	 allocnode* used = nullptr;
 	 size_t total_allocations = 0;
       };
       template<typename T> inline bool bank::save(const char* in_filename, T in_buffer)
@@ -73,7 +73,7 @@ namespace fw
 	 out_buffer.len = ftell(file);
 	 assert(((out_buffer.len-sizeof(out_buffer.head)) % sizeof(*out_buffer.data)) == 0);
 	 fseek(file, 0, SEEK_SET);
-	 Allocation* alloc = allocate(out_buffer.len + 1);
+	 allocation* alloc = allocate(out_buffer.len + 1);
 	 out_buffer.data = (decltype(out_buffer.data))alloc->data;
 	 // todo: consider a short read
 	 fread((char*)out_buffer.data, out_buffer.len, 1, file);
@@ -87,19 +87,19 @@ namespace fw
 	 out_buffer.len = (out_buffer.len-sizeof(out_buffer.head)) / sizeof(*out_buffer.data);
 	 return true;
       }
-      template<typename T> inline bool bank::free(Buffer<T>& in)
+      template<typename T> inline bool bank::free(buffer<T>& in)
       {
 	 if(free((char*)in.data)-sizeof(in.head)) {in = {}; return true;}
 	 return false;
       }
-      template<typename T> inline bool bank::find(hash::u32 in_hash, Buffer<T>& out_buffer)
+      template<typename T> inline bool bank::find(hash::u32 in_hash, buffer<T>& out_buffer)
       {
-	 AllocNode* alloc = used;
+	 allocnode* alloc = used;
 	 while(alloc != nullptr)
 	 {
 	    if(alloc->alloc.head.hash == in_hash)
 	    {
-	       out_buffer = *((Buffer<T>*)&alloc->alloc);
+	       out_buffer = *((buffer<T>*)&alloc->alloc);
 	       out_buffer.len = (out_buffer.len-sizeof(out_buffer.head)) / sizeof(*out_buffer.data);
 	       return true;
 	    }
@@ -107,7 +107,7 @@ namespace fw
 	 }
 	 return false;
       }
-      template<typename T> inline bool bank::fixup(Buffer<T>& out_buffer) { return find(out_buffer.head.hash, out_buffer); }
+      template<typename T> inline bool bank::fixup(buffer<T>& out_buffer) { return find(out_buffer.head.hash, out_buffer); }
       extern bank miscbank;
    }
 }

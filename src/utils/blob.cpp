@@ -17,8 +17,8 @@ namespace fw
 	    capacity = in_capacity;
 	    page = in_page;
 	    heap = new char[capacity]; end = heap;
-	    allocations = new AllocNode[capacity/page];
-	    memset(allocations, 0, sizeof(AllocNode)*capacity/page);
+	    allocations = new allocnode[capacity/page];
+	    memset(allocations, 0, sizeof(allocnode)*capacity/page);
 	 }
       }
       bool bank::is_initialised()
@@ -28,7 +28,7 @@ namespace fw
       void bank::shutdown()
       {
 	 delete [] heap;
-	 memset(allocations, 0, sizeof(AllocNode)*capacity/page);
+	 memset(allocations, 0, sizeof(allocnode)*capacity/page);
 	 delete [] allocations;
 	 end = nullptr, heap = nullptr;
 	 total_allocations = 0;
@@ -36,12 +36,12 @@ namespace fw
       
       bool bank::free(char* allocation)
       {
-	 AllocNode* node = used;
+	 allocnode* node = used;
 	 while(node != nullptr)
 	 {
 	    if(node->alloc.data == allocation)
 	    {
-	       AllocNode* previous = freed;
+	       allocnode* previous = freed;
 	       freed = node;
 	       node->next = previous;
 	       return true;
@@ -52,17 +52,17 @@ namespace fw
       }
       // todo: force these to be page sized under the hood.
       // ----: consistent sizes will help with splitting/fragmentation.
-      Allocation* bank::allocate(size_t size)
+      allocation* bank::allocate(size_t size)
       {
 	 assert(heap != nullptr);
 	 assert((end-heap) + size < capacity);
 	 assert(total_allocations < capacity/page);
       
-	 AllocNode* node = nullptr;
+	 allocnode* node = nullptr;
 	 if(freed != nullptr)
 	 {
 	    node = freed;
-	    AllocNode* prev = nullptr;
+	    allocnode* prev = nullptr;
 	    while(node != nullptr)
 	    {
 	       // todo: split.
@@ -80,7 +80,7 @@ namespace fw
 	    node = &allocations[total_allocations++];
 	    *node = {{{}, end, size}, nullptr};
 	    end += size;
-	    AllocNode* previous = used;
+	    allocnode* previous = used;
 	    used = node;
 	    node->next = previous;
 	 }

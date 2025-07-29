@@ -28,9 +28,9 @@ namespace fw
    static const unsigned int max_passes = 16;
    typedef std::array<hash::u32, max_passes> PassList;
    struct Vertex { vec3f position; vec3f normal; vec3f color; vec2f uv; };
-   typedef blob::Buffer<Vertex> VertexBuffer;
-   typedef blob::Buffer<uint32_t> IndexBuffer;
-   typedef blob::Buffer<unsigned int> ImageBuffer;
+   typedef blob::buffer<Vertex> VertexBuffer;
+   typedef blob::buffer<uint32_t> IndexBuffer;
+   typedef blob::buffer<unsigned int> ImageBuffer;
    struct Geometry { VertexBuffer vbo; IndexBuffer ibo; };
    struct Image { ImageBuffer buffer; int width = 0; int height = 0; int bits = 0; };
    struct Mesh
