@@ -46,7 +46,8 @@ void vulkan_sample::init()
    blob::miscbank.init(1 GiBs, 256);
    import::init();
 }
-
+char gltfpath[256] = "../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf";
+// char gltfpath[256] = "../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf";
 void vulkan_sample::run()
 {
    commandline::parse();
@@ -67,18 +68,7 @@ void vulkan_sample::run()
    swapchain_mesh.material.shaders[fw::shader::e_vertex] = hash::string("fullscreen");
    swapchain_mesh.material.shaders[fw::shader::e_fragment] = hash::string("unlit");
    
-   std::vector<Mesh*> meshes; std::vector<Image*> images;
-   {
-      log::scope topic("timer", true);
-      log::timer timer("load model");
-      import::gltf(images, meshes, "../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf");
-      // import::gltf(images, meshes, "../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf");
-   }
-
-   // save_scene(images, meshes, "sponza");
-   // load_scene(images, meshes, "sponza");
-   log::debug("loaded images {}, meshes {}", images.size(), meshes.size());
-   
+   std::vector<Mesh*> meshes; std::vector<Image*> images;   
    float time = 0;
    int shademode = 0;
    camera cam;
@@ -146,6 +136,20 @@ void vulkan_sample::run()
 	    ImGui::SameLine();
 	    ImGui::Text("model = %d", model_id);
 	    ImGui::ProgressBar(((float)blob::miscbank.get_used())/blob::miscbank.get_capacity());
+
+	    ImGui::InputText("gltf", gltfpath, 256);
+	    {
+	       if (filesystem::exists(gltfpath) && ImGui::Button("load gltf"))
+	       {
+		  log::scope topic("timer", true);
+		  log::timer timer("load model");
+		  // todo: fix potential image leaks in graphics.
+		  // todo: fix miscbank leak.
+		  m_graphics->reset();
+		  import::gltf(images, meshes, gltfpath);
+		  log::debug("loaded {}, images {}, meshes {}", gltfpath, images.size(), meshes.size());
+	       }
+	    }
 	 }
 	 ImGui::End();
       }

@@ -70,6 +70,7 @@ public:
    virtual bool register_material(fw::Material /*material*/)  { return 0; } // being lazy here, don't want to have to implement this for everything
    virtual bool register_pass(fw::hash::string) {return 0;}
    virtual void set_shademode(int /*shademode*/) { } // lazy
+   virtual void reset() { }// lazy
    virtual int shutdown(void) = 0; //shutsdown the graphics engine
    virtual int update(void) = 0; //this is currently useless.
    virtual iRenderVisitor* getRenderer(void) = 0; //passes back the renderer

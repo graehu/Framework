@@ -2606,6 +2606,7 @@ int gGlfwVulkan::shutdown()
    return 0;
 }
 int gGlfwVulkan::update() { return 0; }
+void gGlfwVulkan::reset() { fwvulkan::g_resized = true; }
 int gGlfwVulkan::render()
 {
    ImGui_ImplVulkan_NewFrame();
