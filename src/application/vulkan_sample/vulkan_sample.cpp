@@ -86,6 +86,7 @@ void vulkan_sample::run()
    bool cam_toggling = false;
    bool shade_toggling = false;
    bool model_toggling = false;
+   bool skip_draws = false;
    int model_id = 0;
    
    ImGui::StyleColorsDark();
@@ -136,6 +137,8 @@ void vulkan_sample::run()
 	    ImGui::SameLine();
 	    ImGui::Text("model = %d", model_id);
 	    ImGui::ProgressBar(((float)blob::miscbank.get_used())/blob::miscbank.get_capacity());
+	    ImGui::Text("free = %d, used %d", blob::miscbank.get_freecount(), blob::miscbank.get_usedcount());
+	    ImGui::Text("free = %p, used %p", (void*)blob::miscbank.get_freednode(), (void*)blob::miscbank.get_usednode());
 
 	    ImGui::InputText("gltf", gltfpath, 256);
 	    {
@@ -146,7 +149,21 @@ void vulkan_sample::run()
 		  // todo: fix potential image leaks in graphics.
 		  // todo: fix miscbank leak.
 		  m_graphics->reset();
+		  // todo: import should really do this as an unload.
+		  for(auto& image : images)
+		  {
+		     assert(blob::miscbank.free(image->buffer));
+		  }
+		  for(auto& mesh : meshes)
+		  {
+		     assert(blob::miscbank.free(mesh->geometry.vbo));
+		     assert(blob::miscbank.free(mesh->geometry.ibo));
+		     auto mesh_asset = blob::asset<fw::Mesh>({{}, mesh, sizeof(fw::Mesh)});
+		     // todo: write an rvalue free, this sucks.
+		     assert(blob::miscbank.free(mesh_asset));
+		  }
 		  import::gltf(images, meshes, gltfpath);
+		  skip_draws = true;
 		  log::debug("loaded {}, images {}, meshes {}", gltfpath, images.size(), meshes.size());
 	       }
 	    }
@@ -258,12 +275,19 @@ void vulkan_sample::run()
       }
       // light.intensity = 2.0f*alpha;
       cam.update();
-      // todo: you can't isolate model 0.
-      for(size_t i = 0; i < meshes.size(); i++) { if(i == (size_t)model_id || !model_id) { m_graphics->getRenderer()->visit(meshes[i]); } }
-      m_graphics->getRenderer()->visit(&cam);
-      m_graphics->getRenderer()->visit(&light);
-      m_graphics->getRenderer()->visit(ui_drawdata);
-      m_graphics->getRenderer()->visit(&swapchain_mesh);
+      if(!skip_draws)
+      {
+	 // todo: you can't isolate model 0.
+	 for(size_t i = 0; i < meshes.size(); i++) { if(i == (size_t)model_id || !model_id) { m_graphics->getRenderer()->visit(meshes[i]); } }
+	 m_graphics->getRenderer()->visit(&cam);
+	 m_graphics->getRenderer()->visit(&light);
+	 m_graphics->getRenderer()->visit(ui_drawdata);
+	 m_graphics->getRenderer()->visit(&swapchain_mesh);
+      }
+      else 
+      {
+	 skip_draws = false;
+      }
 
       m_graphics->render();
       std::this_thread::sleep_for(std::chrono::milliseconds(16));

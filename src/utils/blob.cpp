@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cstddef>
 #include <string.h>
+#include "log/log.h"
 namespace fw
 {    
    namespace blob
@@ -10,12 +11,16 @@ namespace fw
       {
 	 if(heap == nullptr)
 	 {
+
+	    fw::log::topics::add("blob");
 	    assert(end == nullptr);
 	    assert(in_capacity > 1 KiBs);
 	    assert((in_capacity % in_page) == 0);
 	    assert(in_page >= sizeof(int));
 	    capacity = in_capacity;
 	    page = in_page;
+	    used = nullptr;
+	    freed = nullptr;
 	    heap = new char[capacity]; end = heap;
 	    allocations = new allocnode[capacity/page];
 	    memset(allocations, 0, sizeof(allocnode)*capacity/page);
@@ -32,16 +37,24 @@ namespace fw
       
       bool bank::free(char* allocation)
       {
+	 log::scope topic("blob");
+	 log::debug("freeing");
 	 allocnode* node = used;
+	 allocnode* previous = nullptr;
 	 while(node != nullptr)
 	 {
 	    if(node->alloc.data == allocation)
 	    {
-	       allocnode* previous = freed;
+	       if(previous) {previous->next = node->next;}
+	       if(node == used) { used = used->next; }
+	       node->next = freed;
 	       freed = node;
-	       node->next = previous;
+	       log::debug("freed");
+	       freecount++;
+	       usedcount--;
 	       return true;
 	    }
+	    previous = node;
 	    node = node->next;
 	 }
 	 return false;
@@ -50,6 +63,8 @@ namespace fw
       // ----: consistent sizes will help with splitting/fragmentation.
       allocation* bank::allocate(size_t size)
       {
+	 log::scope topic("blob");
+	 log::debug("allocating");
 	 assert(heap != nullptr);
 	 assert((end-heap) + size < capacity);
 	 assert(total_allocations < capacity/page);
@@ -64,15 +79,23 @@ namespace fw
 	       // todo: split.
 	       if(node->alloc.len >= size)
 	       {
-		  if (prev != nullptr) prev->next = node->next;
-		  return &node->alloc;
+		  log::debug("found free alloc");
+		  if (prev != nullptr) { prev->next = node->next; }
+		  if(node == freed) { freed = freed->next; }
+		  node->next = used;
+		  used = node;
+		  freecount--;
+		  usedcount++;
+		  break;
 	       }
+	       prev = node;
 	       node = node->next;
 	    }
 	 }
-      
+	 log::debug("need new alloc");
 	 if(node == nullptr)
 	 {
+	    usedcount++;
 	    node = &allocations[total_allocations++];
 	    *node = {{{}, end, size}, nullptr};
 	    end += size;

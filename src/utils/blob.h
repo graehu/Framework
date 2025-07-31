@@ -39,6 +39,10 @@ namespace fw
 	 inline bool is_initialised() const { return heap != nullptr; }
 	 inline size_t get_capacity() const { return  capacity; }
 	 inline size_t get_used() const { return (size_t)(end-heap); }
+	 inline int get_freecount() const {return freecount; }
+	 inline int get_usedcount() const {return usedcount; }
+	 inline allocnode* get_freednode() const { return freed; }
+	 inline allocnode* get_usednode() const { return used; }
 	 template<typename T> inline bool save(const char* in_filename, T in_buffer);
 	 template<typename T> inline bool load(const char* in_filename, T& out_buffer);
 	 template<typename T> inline bool free(asset<T>& in);
@@ -48,13 +52,17 @@ namespace fw
 	private:
 	 allocation* allocate(size_t);
 	 bool free(char*);
+	 int freecount = 0;
+	 int usedcount = 0;
+	 allocnode* freed = nullptr;
+	 allocnode* used = nullptr;
 	 size_t capacity = 0;
 	 size_t page = 0;
 	 allocnode* allocations = nullptr;
 	 char* heap = nullptr;
 	 char* end = nullptr;
-	 allocnode* freed = nullptr;
-	 allocnode* used = nullptr;
+
+
 	 size_t total_allocations = 0;
       };
       template<typename T> inline bool bank::save(const char* in_filename, T in_buffer)
@@ -95,7 +103,7 @@ namespace fw
       }
       template<typename T> inline bool bank::free(asset<T>& in)
       {
-	 if(free((char*)in.data)-sizeof(in.head)) {in = {}; return true;}
+	 if(free((char*)in.data-sizeof(in.head))) { in = {}; return true; }
 	 return false;
       }
       template<typename T> inline bool bank::find(hash::u32 in_hash, asset<T>& out_buffer)
