@@ -71,7 +71,9 @@ namespace fw
       allocation* bank::allocate(size_t size)
       {
 	 log::scope topic("blob");
-	 log::debug("allocating");
+	 // quantise to page size
+	 size = ((size/page)+1)*page;
+	 log::debug("allocating {}", size);
 	 assert(heap != nullptr);
 	 assert((end-heap) + size < capacity);
 	 assert(total_allocations < capacity/page);
@@ -83,10 +85,22 @@ namespace fw
 	    allocnode* prev = nullptr;
 	    while(node != nullptr)
 	    {
-	       // todo: split.
-	       if(node->alloc.len >= size)
+	       // note: this goes horribly if the bank is allocating lots of different sized things
+	       // ----: splitting also goes poorly if that's the case.
+	       // ----: so, only try to use freed if the slop isn't massive, 8 pages or 16 pages.
+	       if(node->alloc.len >= size && ((node->alloc.len/page)-(size/page)) < 8)
 	       {
-		  log::debug("found free alloc");
+		  log::debug("found free alloc {} vs {}", (size/page), node->alloc.len/page);
+		  // if((size/page) != (node->alloc.len/page))
+		  // {
+		  //    log::debug("splitting");
+		  //    allocnode* split = &allocations[total_allocations++];
+		  //    *split = {{{}, node->alloc.data, size}, node};
+		  //    node->alloc.data += size;
+		  //    node->alloc.len -= size;
+		  //    node = split;
+		  //    freecount++;
+		  // }
 		  if (prev != nullptr) { prev->next = node->next; }
 		  if(node == freed) { freed = freed->next; }
 		  if(used > node || used == nullptr)

@@ -142,12 +142,8 @@ void vulkan_sample::run()
 
 	    ImGui::InputText("gltf", gltfpath, 256);
 	    {
-	       if (filesystem::exists(gltfpath) && ImGui::Button("load gltf"))
-	       {
-		  log::scope topic("timer", true);
-		  log::timer timer("load model");
+	       auto unload = [&](){
 		  // todo: fix potential image leaks in graphics.
-		  // todo: fix miscbank leak.
 		  m_graphics->reset();
 		  // todo: import should really do this as an unload.
 		  for(auto& image : images)
@@ -164,9 +160,18 @@ void vulkan_sample::run()
 		     // todo: write an rvalue free, this sucks.
 		     assert(blob::miscbank.free(mesh_asset));
 		  }
+		  images.clear();
+		  meshes.clear();
+		  skip_draws = true;
+	       };
+	       if(ImGui::Button("unload gltf")) { unload(); }
+	       if (filesystem::exists(gltfpath) && ImGui::Button("load gltf"))
+	       {
+		  log::scope topic("timer", true);
+		  log::timer timer("load model");
+		  unload();
 		  import::gltf(images, meshes, gltfpath);
 		  blob::miscbank.print();
-		  skip_draws = true;
 		  log::debug("loaded {}, images {}, meshes {}", gltfpath, images.size(), meshes.size());
 	       }
 	    }
