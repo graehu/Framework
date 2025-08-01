@@ -409,6 +409,8 @@ namespace fw
       }
       bool shutdown()
       {
+	 blob::asset<FileHashEntry> fhb = {{}, filehashes.data(), filehashes.size()};
+	 blob::miscbank.free(fhb);
 	 return true;
       }
    }

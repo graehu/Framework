@@ -35,7 +35,8 @@ namespace fw
       {
 	public:
 	 void init(size_t in_capacity, size_t in_page);
-	 void shutdown(); 
+	 void shutdown();
+	 void print();
 	 inline bool is_initialised() const { return heap != nullptr; }
 	 inline size_t get_capacity() const { return  capacity; }
 	 inline size_t get_used() const { return (size_t)(end-heap); }

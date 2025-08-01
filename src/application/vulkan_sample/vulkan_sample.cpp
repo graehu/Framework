@@ -153,6 +153,8 @@ void vulkan_sample::run()
 		  for(auto& image : images)
 		  {
 		     assert(blob::miscbank.free(image->buffer));
+		     auto image_asset = blob::asset<fw::Image>({{}, image, sizeof(fw::Image)});
+		     assert(blob::miscbank.free(image_asset));
 		  }
 		  for(auto& mesh : meshes)
 		  {
@@ -163,6 +165,7 @@ void vulkan_sample::run()
 		     assert(blob::miscbank.free(mesh_asset));
 		  }
 		  import::gltf(images, meshes, gltfpath);
+		  blob::miscbank.print();
 		  skip_draws = true;
 		  log::debug("loaded {}, images {}, meshes {}", gltfpath, images.size(), meshes.size());
 	       }
@@ -304,6 +307,7 @@ void vulkan_sample::shutdown()
 
    m_graphics->shutdown();
    m_window->shutdown();
+   import::shutdown();
    blob::miscbank.shutdown();
    log::debug("vulkan_sample finished.");
 }

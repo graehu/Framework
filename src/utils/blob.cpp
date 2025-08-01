@@ -11,7 +11,6 @@ namespace fw
       {
 	 if(heap == nullptr)
 	 {
-
 	    fw::log::topics::add("blob");
 	    assert(end == nullptr);
 	    assert(in_capacity > 1 KiBs);
@@ -47,8 +46,16 @@ namespace fw
 	    {
 	       if(previous) {previous->next = node->next;}
 	       if(node == used) { used = used->next; }
-	       node->next = freed;
-	       freed = node;
+	       if(freed > node || freed == nullptr)
+	       {
+		  node->next = freed;
+		  freed = node;
+	       }
+	       else
+	       {
+		  node->next = freed->next;
+		  freed->next = node;
+	       }
 	       log::debug("freed");
 	       freecount++;
 	       usedcount--;
@@ -82,8 +89,16 @@ namespace fw
 		  log::debug("found free alloc");
 		  if (prev != nullptr) { prev->next = node->next; }
 		  if(node == freed) { freed = freed->next; }
-		  node->next = used;
-		  used = node;
+		  if(used > node || used == nullptr)
+		  {
+		     node->next = used;
+		     used = node;
+		  }
+		  else
+		  {
+		     node->next = used->next;
+		     used->next = node;
+		  }
 		  freecount--;
 		  usedcount++;
 		  break;
@@ -105,6 +120,26 @@ namespace fw
 	 }
       
 	 return &node->alloc;
+      }
+      void bank::print()
+      {
+	 log::scope topic("blob");
+	 allocnode* node = used;
+	 unsigned int node_count = 0;
+	 while(node != nullptr)
+	 {
+	    node_count++;
+	    node = node->next;
+	 }
+	 log::info("actual used: {} vs {}", node_count, usedcount);
+	 node = freed;
+	 node_count = 0;
+	 while(node != nullptr)
+	 {
+	    node_count++;
+	    node = node->next;
+	 }
+	 log::info("actual freed: {} vs {}", node_count, freecount);
       }
       bank miscbank;
    }
