@@ -124,5 +124,7 @@ namespace fw
       }
       template<typename T> inline bool bank::fixup(asset<T>& out_buffer) { return find(out_buffer.head.hash, out_buffer); }
       extern bank miscbank;
+      extern bank meshbank;
+      extern bank imagebank;
    }
 }

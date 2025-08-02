@@ -136,9 +136,30 @@ void vulkan_sample::run()
 	    if (ImGui::Button("next model")) wants_model = true;
 	    ImGui::SameLine();
 	    ImGui::Text("model = %d", model_id);
+	    
+	    ImGui::Text("miscbank:");ImGui::SameLine();
 	    ImGui::ProgressBar(((float)blob::miscbank.get_used())/blob::miscbank.get_capacity());
+	    ImGui::Indent();
 	    ImGui::Text("free = %d, used %d", blob::miscbank.get_freecount(), blob::miscbank.get_usedcount());
+	    ImGui::SameLine();
 	    ImGui::Text("free = %p, used %p", (void*)blob::miscbank.get_freednode(), (void*)blob::miscbank.get_usednode());
+	    ImGui::Unindent();
+	    
+	    ImGui::Text("imagebank:");ImGui::SameLine();
+	    ImGui::ProgressBar(((float)blob::imagebank.get_used())/blob::imagebank.get_capacity());
+	    ImGui::Indent();
+	    ImGui::Text("free = %d, used %d", blob::imagebank.get_freecount(), blob::imagebank.get_usedcount());
+	    ImGui::SameLine();
+	    ImGui::Text("free = %p, used %p", (void*)blob::imagebank.get_freednode(), (void*)blob::imagebank.get_usednode());
+	    ImGui::Unindent();
+	    
+	    ImGui::Text("meshbank:");ImGui::SameLine();
+	    ImGui::ProgressBar(((float)blob::meshbank.get_used())/blob::meshbank.get_capacity());
+	    ImGui::Indent();
+	    ImGui::Text("free = %d, used %d", blob::meshbank.get_freecount(), blob::meshbank.get_usedcount());
+	    ImGui::SameLine();
+	    ImGui::Text("free = %p, used %p", (void*)blob::meshbank.get_freednode(), (void*)blob::meshbank.get_usednode());
+	    ImGui::Unindent();
 
 	    ImGui::InputText("gltf", gltfpath, 256);
 	    {
@@ -148,17 +169,17 @@ void vulkan_sample::run()
 		  // todo: import should really do this as an unload.
 		  for(auto& image : images)
 		  {
-		     assert(blob::miscbank.free(image->buffer));
+		     assert(blob::imagebank.free(image->buffer));
 		     auto image_asset = blob::asset<fw::Image>({{}, image, sizeof(fw::Image)});
-		     assert(blob::miscbank.free(image_asset));
+		     assert(blob::imagebank.free(image_asset));
 		  }
 		  for(auto& mesh : meshes)
 		  {
-		     assert(blob::miscbank.free(mesh->geometry.vbo));
-		     assert(blob::miscbank.free(mesh->geometry.ibo));
+		     assert(blob::meshbank.free(mesh->geometry.vbo));
+		     assert(blob::meshbank.free(mesh->geometry.ibo));
 		     auto mesh_asset = blob::asset<fw::Mesh>({{}, mesh, sizeof(fw::Mesh)});
 		     // todo: write an rvalue free, this sucks.
-		     assert(blob::miscbank.free(mesh_asset));
+		     assert(blob::meshbank.free(mesh_asset));
 		  }
 		  images.clear();
 		  meshes.clear();

@@ -228,6 +228,9 @@ void load_gltf(const char* modelpath, std::vector<Mesh>& out_meshes, std::vector
 	       out_mesh.images[3] = out_images[model.textures[tex_id].source];
 	    }
 	 }
+	 out_mesh.passes = {hash::string("pbr")};
+	 out_mesh.material.shaders[fw::shader::e_vertex] = {hash::string("shared")};
+	 out_mesh.material.shaders[fw::shader::e_fragment] = {hash::string("pbr")};
 	 std::lock_guard<std::mutex> guard(m);
 	 out_meshes.push_back(out_mesh);
       }
@@ -248,7 +251,7 @@ namespace fw
       void load_filehashes()
       {
 	 blob::asset<FileHashEntry> fhb;
-	 blob::miscbank.load("filehashes.blob", fhb);
+	 blob::miscbank.load("imports/filehashes.blob", fhb);
 	 filehashes.resize(fhb.len);
 	 for(int i = 0; i < (int)fhb.len; i++)
 	 {
@@ -259,7 +262,7 @@ namespace fw
       void save_filehashes()
       {
 	 blob::asset<FileHashEntry> fhb = {{}, filehashes.data(), filehashes.size()};
-	 blob::miscbank.save("filehashes.blob", fhb);
+	 blob::miscbank.save("imports/filehashes.blob", fhb);
       }
       bool update_filehashes(FileHashEntry entry)
       {
@@ -288,12 +291,12 @@ namespace fw
 	 for (int i = 0; i < (int)in_meshes.len; i++)
 	 {
 #define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
-	    fw::filesystem::makedirs(macro("{}/meshes/{}"));
+	    fw::filesystem::makedirs(macro("imports/{}/meshes/{}"));
       
 	    blob::asset<fw::Mesh> mb = {{}, in_meshes.data+i, 1};
-	    blob::miscbank.save(macro("{}/meshes/{}/mesh.blob"), mb);
-	    blob::miscbank.save(macro("{}/meshes/{}/ibo.blob"), mb.data->geometry.ibo);
-	    blob::miscbank.save(macro("{}/meshes/{}/vbo.blob"), mb.data->geometry.vbo);
+	    blob::meshbank.save(macro("imports/{}/meshes/{}/mesh.blob"), mb);
+	    blob::meshbank.save(macro("imports/{}/meshes/{}/ibo.blob"), mb.data->geometry.ibo);
+	    blob::meshbank.save(macro("imports/{}/meshes/{}/vbo.blob"), mb.data->geometry.vbo);
 #undef macro
 	 }
       }
@@ -305,11 +308,11 @@ namespace fw
 	 for (int i = 0; i < (int)in_images.len; i++)
 	 {
 #define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
-	    fw::filesystem::makedirs(macro("{}/images/{}"));
+	    fw::filesystem::makedirs(macro("imports/{}/images/{}"));
       
 	    blob::asset<fw::Image> ib = {{}, in_images.data+i, 1};
-	    blob::miscbank.save(macro("{}/images/{}/image.blob"), ib);
-	    blob::miscbank.save(macro("{}/images/{}/ibo.blob"), ib.data->buffer);
+	    blob::imagebank.save(macro("imports/{}/images/{}/image.blob"), ib);
+	    blob::imagebank.save(macro("imports/{}/images/{}/ibo.blob"), ib.data->buffer);
 #undef macro
 	 }
       }
@@ -317,7 +320,7 @@ namespace fw
       void load_meshes(std::vector<Mesh*>& out_meshes, const char* in_name)
       {
 #define macro(fmtstr) fmt::format(fmtstr, in_name).c_str()
-	 int num_meshes = fw::filesystem::countdirs(macro("{}/meshes/"));
+	 int num_meshes = fw::filesystem::countdirs(macro("imports/{}/meshes/"));
 	 out_meshes.resize(num_meshes);
 	 log::info("num meshes to load: {}", num_meshes);
 #undef macro
@@ -325,13 +328,13 @@ namespace fw
 	 for (int i = 0; i < num_meshes; i++)
 	 {
 	    blob::assetnc<fw::Mesh> mb = {{}, nullptr, 1};
-	    blob::miscbank.load(macro("{}/meshes/{}/mesh.blob"), mb);
-	    blob::miscbank.load(macro("{}/meshes/{}/ibo.blob"), mb.data->geometry.ibo);
-	    blob::miscbank.load(macro("{}/meshes/{}/vbo.blob"), mb.data->geometry.vbo);
-	    blob::miscbank.fixup(mb.data->images[0].buffer);
-	    blob::miscbank.fixup(mb.data->images[1].buffer);
-	    blob::miscbank.fixup(mb.data->images[2].buffer);
-	    blob::miscbank.fixup(mb.data->images[3].buffer);
+	    blob::meshbank.load(macro("imports/{}/meshes/{}/mesh.blob"), mb);
+	    blob::meshbank.load(macro("imports/{}/meshes/{}/ibo.blob"), mb.data->geometry.ibo);
+	    blob::meshbank.load(macro("imports/{}/meshes/{}/vbo.blob"), mb.data->geometry.vbo);
+	    blob::imagebank.fixup(mb.data->images[0].buffer);
+	    blob::imagebank.fixup(mb.data->images[1].buffer);
+	    blob::imagebank.fixup(mb.data->images[2].buffer);
+	    blob::imagebank.fixup(mb.data->images[3].buffer);
 	    out_meshes[i] = mb.data;
 	 }
 #undef macro
@@ -340,7 +343,7 @@ namespace fw
       void load_images(std::vector<fw::Image*>& out_images, const char* in_name)
       {
 #define macro(fmtstr) fmt::format(fmtstr, in_name).c_str()
-	 int num_images = fw::filesystem::countdirs(macro("{}/images/"));
+	 int num_images = fw::filesystem::countdirs(macro("imports/{}/images/"));
 	 out_images.resize(num_images);
 	 log::info("num images to load: {}", num_images);
 #undef macro
@@ -348,8 +351,8 @@ namespace fw
 	 for (int i = 0; i < num_images; i++)
 	 {
 	    blob::assetnc<fw::Image> ib = {{}, nullptr, 1};
-	    blob::miscbank.load(macro("{}/images/{}/image.blob"), ib);
-	    blob::miscbank.load(macro("{}/images/{}/ibo.blob"), ib.data->buffer);
+	    blob::imagebank.load(macro("imports/{}/images/{}/image.blob"), ib);
+	    blob::imagebank.load(macro("imports/{}/images/{}/ibo.blob"), ib.data->buffer);
 	    out_images[i] = ib.data;
 	 }
 #undef macro
@@ -372,6 +375,8 @@ namespace fw
       bool init()
       {
 	 assert(blob::miscbank.is_initialised());
+	 blob::imagebank.init(1 GiBs, 4 KiBs);
+	 blob::meshbank.init(1 GiBs, 4 KiBs);
 	 load_filehashes();
 	 return true;
       }
@@ -387,19 +392,14 @@ namespace fw
 	    if(*start == '/') import = start+1;
 	    start++;
 	 }
+	 // todo: the amount of fmr::format usage in this file is making me sad.
+	 // ----: write my own thing or start using c formating.
 	 const FileHashEntry filehash = {hash::string(import, strlen(import)), filesystem::filehash(in_path)};
-	 if(!update_filehashes(filehash) || !filesystem::exists(import))
+	 if(!update_filehashes(filehash) || !filesystem::exists(fmt::format("{}/{}","imports",import).c_str()))
 	 {
 	    log::info("not skipped!");
 	    std::vector<fw::Image> images; std::vector<fw::Mesh> meshes;
 	    load_gltf(in_path, meshes, images);
-	    // todo: set this up in load model?
-	    for(Mesh& mesh : meshes)
-	    {
-	       mesh.passes = {hash::string("pbr")};
-	       mesh.material.shaders[fw::shader::e_vertex] = {hash::string("shared")};
-	       mesh.material.shaders[fw::shader::e_fragment] = {hash::string("pbr")};
-	    }
 	    save_scene(images, meshes, import);
 	    // todo: delete mesh vbs/ibs, etc?
 	    for(auto image : images) { delete[] image.buffer.data; }

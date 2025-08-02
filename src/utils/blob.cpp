@@ -145,7 +145,7 @@ namespace fw
 	    node_count++;
 	    node = node->next;
 	 }
-	 log::info("actual used: {} vs {}", node_count, usedcount);
+	 log::debug("actual used: {} vs {}", node_count, usedcount);
 	 node = freed;
 	 node_count = 0;
 	 while(node != nullptr)
@@ -153,8 +153,10 @@ namespace fw
 	    node_count++;
 	    node = node->next;
 	 }
-	 log::info("actual freed: {} vs {}", node_count, freecount);
+	 log::debug("actual freed: {} vs {}", node_count, freecount);
       }
       bank miscbank;
+      bank meshbank;
+      bank imagebank;
    }
 }
