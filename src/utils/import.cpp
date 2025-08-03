@@ -25,7 +25,7 @@
 #include "tiny_gltf.h"
 #pragma GCC diagnostic pop
 // #pragma warning (pop)
-
+extern int zip_folder(const char *folder_path, const char *zip_file);
 using namespace fw;
 void load_gltf(const char* modelpath, std::vector<Mesh>& out_meshes, std::vector<Image>& out_images)
 {
@@ -405,6 +405,7 @@ namespace fw
 	    for(auto image : images) { delete[] image.buffer.data; }
 	 }
 	 load_scene(in_images, in_meshes, import);
+	 zip_folder("/home/graehu/Projects/framework/src/application/vulkan_sample/imports", "imports.zip");
 	 return true;
       }
       bool shutdown()

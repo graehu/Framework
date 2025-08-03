@@ -10,7 +10,6 @@ config.confply.tool = "clang++"
 config.confply.log_topic = "vulkan_sample"
 config.source_files = [
     "vulkan_sample.cpp",
-    # "tiny_gltf_loader.cpp",
     "../../main.cpp",
     "../../utils/params.cpp",
     "../../utils/log/log.cpp",
@@ -26,6 +25,7 @@ config.source_files = [
     "../../graphics/gGlfwVulkan/pbr_pipeline.cpp",
     "../../graphics/gGlfwVulkan/fullscreen_pipeline.cpp",
     "../../input/inGlfw/inGlfw.cpp",
+    "../../utils/zip.cpp",
 ]
 libs = "../../../libs"
 config.include_paths = [
@@ -34,6 +34,7 @@ config.include_paths = [
     f"{libs}/glfw/include/",
     f"{libs}/tinygltf/",
     f"{libs}/imgui/",
+    f"{libs}/miniz/_build/amalgamation/",
 ]
 imgui_files = [
     f"{libs}/imgui/imgui.cpp",
