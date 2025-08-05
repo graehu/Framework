@@ -6,14 +6,12 @@
 #include "../graphics/graphics.h"
 #include "import.h"
 #include "blob.h"
-// #include "zip.h"
+#include "zip.h"
 #include "filesystem.h"
 #include "log/log.h"
 
 #include <execution>
 // note: this requires linking ttb (i.e. -lttb) on linux.
-extern bool zip_compress(const char*, const char*);
-
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -402,7 +400,7 @@ namespace fw
 	    std::vector<fw::Image> images; std::vector<fw::Mesh> meshes;
 	    load_gltf(in_path, meshes, images);
 	    save_scene(images, meshes, import);
-	    zip_compress(fmt::format("{}/{}","imports",import).c_str(), fmt::format("{}.zip",import).c_str());
+	    zip::archive(fmt::format("{}/{}","imports",import).c_str(), fmt::format("{}.zip",import).c_str());
 	    // todo: delete mesh vbs/ibs, etc?
 	    for(auto image : images) { delete[] image.buffer.data; }
 	 }

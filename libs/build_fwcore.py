@@ -20,7 +20,7 @@ config.object_path = "objects/fwcore"
 
 config.include_paths = [
     "fmt/include/",
-    "/miniz/_build/amalgamation/"
+    "miniz/_build/amalgamation/"
 ]
 config.source_files = [
     "fmt/src/format.cc",

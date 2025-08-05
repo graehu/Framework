@@ -3,7 +3,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include "miniz.h"
-// #include "zip.h"
+#include "zip.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -112,8 +112,14 @@ namespace fw
 	 closedir(dir);
       }
 #endif
+   }
+} // namespace fw
 
-      bool compress(const char *folder_path, const char *zip_file)
+namespace fw
+{
+   namespace zip
+   {
+      bool archive(const char *folder_path, const char *zip_file)
       {
 	 mz_zip_archive zip;
 	 memset(&zip, 0, sizeof(zip));
@@ -131,8 +137,3 @@ namespace fw
       }
    }
 } // namespace fw
-   
-bool zip_compress(const char *folder_path, const char *zip_file)
-{
-   return fw::zip::compress(folder_path, zip_file);
-}
