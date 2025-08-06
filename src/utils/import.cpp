@@ -26,7 +26,7 @@
 #pragma GCC diagnostic pop
 // #pragma warning (pop)
 using namespace fw;
-void load_gltf(const char* modelpath, std::vector<Mesh>& out_meshes, std::vector<Image>& out_images)
+void load_tinygltf(const char* modelpath, std::vector<Mesh>& out_meshes, std::vector<Image>& out_images)
 {
    log::scope topic("importer", true);
    log::debug("loading model: {}", modelpath);
@@ -379,7 +379,7 @@ namespace fw
 	 load_filehashes();
 	 return true;
       }
-      bool gltf(std::vector<fw::Image*>& in_images, std::vector<Mesh*>& in_meshes, const char* in_path)
+      bool load_gltf(std::vector<fw::Image*>& in_images, std::vector<Mesh*>& in_meshes, const char* in_path)
       {
 	 log::scope topic("timer", true);
 	 log::timer timer("load gltf");
@@ -398,13 +398,37 @@ namespace fw
 	 {
 	    log::info("not skipped!");
 	    std::vector<fw::Image> images; std::vector<fw::Mesh> meshes;
-	    load_gltf(in_path, meshes, images);
+	    load_tinygltf(in_path, meshes, images);
 	    save_scene(images, meshes, import);
 	    zip::archive(fmt::format("{}/{}","imports",import).c_str(), fmt::format("{}.zip",import).c_str());
-	    // todo: delete mesh vbs/ibs, etc?
 	    for(auto image : images) { delete[] image.buffer.data; }
+	    for(auto mesh : meshes)
+	    {
+	       delete[] mesh.geometry.ibo.data;
+	       delete[] mesh.geometry.vbo.data;
+	    }
 	 }
 	 load_scene(in_images, in_meshes, import);
+	 return true;
+      }
+      bool unload_gltf(std::vector<fw::Image*>& in_images, std::vector<Mesh*>& in_meshes)
+      {
+	 for(auto& image : in_images)
+	 {
+	    assert(blob::imagebank.free(image->buffer));
+	    auto image_asset = blob::asset<fw::Image>({{}, image, sizeof(fw::Image)});
+	    assert(blob::imagebank.free(image_asset));
+	 }
+	 for(auto& mesh : in_meshes)
+	 {
+	    assert(blob::meshbank.free(mesh->geometry.vbo));
+	    assert(blob::meshbank.free(mesh->geometry.ibo));
+	    auto mesh_asset = blob::asset<fw::Mesh>({{}, mesh, sizeof(fw::Mesh)});
+	    // todo: write an rvalue free, this sucks.
+	    assert(blob::meshbank.free(mesh_asset));
+	 }
+	 in_images.clear();
+	 in_meshes.clear();
 	 return true;
       }
       bool shutdown()

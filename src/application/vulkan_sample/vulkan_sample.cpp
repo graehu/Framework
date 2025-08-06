@@ -166,23 +166,7 @@ void vulkan_sample::run()
 	       auto unload = [&](){
 		  // todo: fix potential image leaks in graphics.
 		  m_graphics->reset();
-		  // todo: import should really do this as an unload.
-		  for(auto& image : images)
-		  {
-		     assert(blob::imagebank.free(image->buffer));
-		     auto image_asset = blob::asset<fw::Image>({{}, image, sizeof(fw::Image)});
-		     assert(blob::imagebank.free(image_asset));
-		  }
-		  for(auto& mesh : meshes)
-		  {
-		     assert(blob::meshbank.free(mesh->geometry.vbo));
-		     assert(blob::meshbank.free(mesh->geometry.ibo));
-		     auto mesh_asset = blob::asset<fw::Mesh>({{}, mesh, sizeof(fw::Mesh)});
-		     // todo: write an rvalue free, this sucks.
-		     assert(blob::meshbank.free(mesh_asset));
-		  }
-		  images.clear();
-		  meshes.clear();
+		  import::unload_gltf(images, meshes);
 		  skip_draws = true;
 	       };
 	       if(ImGui::Button("unload gltf")) { unload(); }
@@ -191,7 +175,7 @@ void vulkan_sample::run()
 		  log::scope topic("timer", true);
 		  log::timer timer("load model");
 		  unload();
-		  import::gltf(images, meshes, gltfpath);
+		  import::load_gltf(images, meshes, gltfpath);
 		  blob::miscbank.print();
 		  log::debug("loaded {}, images {}, meshes {}", gltfpath, images.size(), meshes.size());
 	       }
