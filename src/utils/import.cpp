@@ -321,7 +321,7 @@ namespace fw
 #define macro(fmtstr) fmt::format(fmtstr, in_name).c_str()
 	 int num_meshes = fw::filesystem::countdirs(macro("imports/{}/meshes/"));
 	 out_meshes.resize(num_meshes);
-	 log::info("num meshes to load: {}", num_meshes);
+	 log::debug("num meshes to load: {}", num_meshes);
 #undef macro
 #define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
 	 for (int i = 0; i < num_meshes; i++)
@@ -344,7 +344,7 @@ namespace fw
 #define macro(fmtstr) fmt::format(fmtstr, in_name).c_str()
 	 int num_images = fw::filesystem::countdirs(macro("imports/{}/images/"));
 	 out_images.resize(num_images);
-	 log::info("num images to load: {}", num_images);
+	 log::debug("num images to load: {}", num_images);
 #undef macro
 #define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
 	 for (int i = 0; i < num_images; i++)
@@ -400,7 +400,8 @@ namespace fw
 	    std::vector<fw::Image> images; std::vector<fw::Mesh> meshes;
 	    load_tinygltf(in_path, meshes, images);
 	    save_scene(images, meshes, import);
-	    zip::archive(fmt::format("{}/{}","imports",import).c_str(), fmt::format("{}.zip",import).c_str());
+	    // todo: this takes a very long time, do it on another thread.
+	    // zip::archive(fmt::format("{}/{}","imports",import).c_str(), fmt::format("{}.zip",import).c_str());
 	    for(auto image : images) { delete[] image.buffer.data; }
 	    for(auto mesh : meshes)
 	    {

@@ -46,8 +46,7 @@ void vulkan_sample::init()
    blob::miscbank.init(1 GiBs, 256);
    import::init();
 }
-char gltfpath[256] = "../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf";
-// char gltfpath[256] = "../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf";
+
 void vulkan_sample::run()
 {
    commandline::parse();
@@ -160,16 +159,27 @@ void vulkan_sample::run()
 	    ImGui::SameLine();
 	    ImGui::Text("free = %p, used %p", (void*)blob::meshbank.get_freednode(), (void*)blob::meshbank.get_usednode());
 	    ImGui::Unindent();
-
-	    ImGui::InputText("gltf", gltfpath, 256);
+	    static int current_gltf = 0;
+	    // todo: make tis list user driven, have it pull recursively from a directory.
+	    static const char* gltf_list[] = {
+	       "../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf",
+	       "../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf",
+	    };
+	    static const char* gltfpath = gltf_list[0];
+	    if(ImGui::Combo("gltfs", &current_gltf, gltf_list, IM_ARRAYSIZE(gltf_list)))
 	    {
-	       auto unload = [&](){
+	       gltfpath = gltf_list[current_gltf];
+	    }
+	    {
+	       auto unload = [&]()
+	       {
 		  // todo: fix potential image leaks in graphics.
 		  m_graphics->reset();
 		  import::unload_gltf(images, meshes);
 		  skip_draws = true;
 	       };
 	       if(ImGui::Button("unload gltf")) { unload(); }
+	       ImGui::SameLine();
 	       if (filesystem::exists(gltfpath) && ImGui::Button("load gltf"))
 	       {
 		  log::scope topic("timer", true);
