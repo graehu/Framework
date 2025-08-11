@@ -424,12 +424,22 @@ namespace fw
 	 {
 	    assert(blob::meshbank.free(mesh->geometry.vbo));
 	    assert(blob::meshbank.free(mesh->geometry.ibo));
-	    auto mesh_asset = blob::asset<fw::Mesh>({{}, mesh, sizeof(fw::Mesh)});
-	    // todo: write an rvalue free, this sucks.
-	    assert(blob::meshbank.free(mesh_asset));
+	    {
+	       // todo: write an rvalue free, or whatever makes this syntax possible:
+	       // ----: blob::meshbank.free({}, mesh, sizeof(fw::Mesh)});
+	       auto mesh_asset = blob::asset<fw::Mesh>({{}, mesh, sizeof(fw::Mesh)});
+	       assert(blob::meshbank.free(mesh_asset));
+	    }
 	 }
 	 in_images.clear();
 	 in_meshes.clear();
+	 return true;
+      }
+      bool load_scene_zip(std::vector<fw::Image*>& in_images, std::vector<Mesh*>& in_meshes, const char* in_path)
+      {
+	 (void)in_images;
+	 (void)in_meshes;
+	 zip::load(in_path);
 	 return true;
       }
       bool shutdown()

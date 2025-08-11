@@ -1,4 +1,5 @@
 #pragma once
+#include <cassert>
 #include <cstddef>
 #include <stdio.h>
 #include "hasher.h"
@@ -47,6 +48,7 @@ namespace fw
 	 template<typename T> inline bool save(const char* in_filename, T in_buffer);
 	 template<typename T> inline bool load(const char* in_filename, T& out_buffer);
 	 template<typename T> inline bool free(asset<T>& in);
+	 template<typename T> inline bool allocate(asset<T>& out_buffer);
 	 template<typename T> inline bool find(hash::u32 in_hash, asset<T>& out_buffer);
 	 template<typename T> inline bool fixup(asset<T>& out_buffer);
 
@@ -62,8 +64,6 @@ namespace fw
 	 allocnode* allocations = nullptr;
 	 char* heap = nullptr;
 	 char* end = nullptr;
-
-
 	 size_t total_allocations = 0;
       };
       template<typename T> inline bool bank::save(const char* in_filename, T in_buffer)
@@ -100,6 +100,15 @@ namespace fw
 	 assert(out_buffer.head.hash != 0 || out_buffer.len == sizeof(out_buffer.head));
 	 fclose(file);
 	 out_buffer.len = (out_buffer.len-sizeof(out_buffer.head)) / sizeof(*out_buffer.data);
+	 return true;
+      }
+      template<typename T> inline bool bank::allocate(asset<T>& out_buffer)
+      {
+	 assert(out_buffer.data == nullptr);
+	 assert(out_buffer.len != 0);
+	 size_t alloc_size = sizeof(decltype(*out_buffer.data))*out_buffer.len;
+	 allocation* alloc = allocate(alloc_size+1);
+	 out_buffer.data = (decltype(out_buffer.data))alloc->data;
 	 return true;
       }
       template<typename T> inline bool bank::free(asset<T>& in)

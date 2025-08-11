@@ -189,6 +189,11 @@ void vulkan_sample::run()
 		  blob::miscbank.print();
 		  log::debug("loaded {}, images {}, meshes {}", gltfpath, images.size(), meshes.size());
 	       }
+	       if(ImGui::Button("test"))
+	       {
+		  // import::load_scene_zip(images, meshes, "Sponza.gltf.zip");
+		  import::load_scene_zip(images, meshes, "SciFiHelmet.gltf.zip");
+	       }
 	    }
 	 }
 	 ImGui::End();
