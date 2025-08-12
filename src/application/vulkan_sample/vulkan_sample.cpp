@@ -192,7 +192,9 @@ void vulkan_sample::run()
 	       if(ImGui::Button("test"))
 	       {
 		  // import::load_scene_zip(images, meshes, "Sponza.gltf.zip");
-		  import::load_scene_zip(images, meshes, "SciFiHelmet.gltf.zip");
+		  // import::load_scene_zip(images, meshes, "imports/Sponza.gltf/meshes.zip");
+		  import::load_scene_zip(images, meshes, "SciFiHelmet.gltf");
+		  log::info("actual lens: {} {}", images.size(), meshes.size());
 	       }
 	    }
 	 }

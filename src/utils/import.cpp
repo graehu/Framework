@@ -300,6 +300,42 @@ namespace fw
 	 }
       }
 
+      void save_meshes_zip(const char* in_name)
+      {
+	 // explitily serialise each buffer, then load like below.
+	 // handle images etc next.
+	 auto base_str = fmt::format("imports/{}/meshes", in_name);
+	 int num_meshes = fw::filesystem::countdirs(base_str.c_str());
+	 zip::begin_archive((base_str+".zip").c_str());
+	 log::debug("num meshes to zip: {}", num_meshes);
+	 for (int i = 0; i < num_meshes; i++)
+	 {
+	    auto dir_str = fmt::format("{}", i);
+	    auto blob_str = fmt::format("{}/{}/", base_str, dir_str);
+	    zip::add_file((blob_str+"mesh.blob").c_str(), (dir_str+"/mesh.blob").c_str());
+	    zip::add_file((blob_str+"ibo.blob").c_str(), (dir_str+"/ibo.blob").c_str());
+	    zip::add_file((blob_str+"vbo.blob").c_str(), (dir_str+"/vbo.blob").c_str());
+	 }
+	 zip::end_archive();
+      }
+      void save_images_zip(const char* in_name)
+      {
+	 // explitily serialise each buffer, then load like below.
+	 // handle images etc next.
+	 auto base_str = fmt::format("imports/{}/images", in_name);
+	 int num_images = fw::filesystem::countdirs(base_str.c_str());
+	 zip::begin_archive((base_str+".zip").c_str());
+	 log::debug("num images to zip: {}", num_images);
+	 for (int i = 0; i < num_images; i++)
+	 {
+	    auto dir_str = fmt::format("{}", i);
+	    auto blob_str = fmt::format("{}/{}/", base_str, dir_str);
+	    zip::add_file((blob_str+"image.blob").c_str(), (dir_str+"/image.blob").c_str());
+	    zip::add_file((blob_str+"ibo.blob").c_str(), (dir_str+"/ibo.blob").c_str());
+	 }
+	 zip::end_archive();
+      }
+
       void save_images(blob::asset<fw::Image> in_images, const char* in_name)
       {
 	 // explitily serialise each buffer, then load like below.
@@ -356,6 +392,43 @@ namespace fw
 	 }
 #undef macro
       }
+      bool load_images_zip(std::vector<fw::Image*>& out_images, const char* in_name)
+      {
+	 auto base_str = fmt::format("imports/{}/images", in_name);
+	 zip::begin_load((base_str+".zip").c_str());
+	 int num_entries = zip::entry_count();
+	 log::info("num entries: {}", num_entries);
+	 for (int i = 0; i < num_entries; i+=2)
+	 {
+	    blob::assetnc<fw::Image> ib = {{}, nullptr, 1};
+	    zip::load_index(i, &blob::imagebank, &ib);
+	    zip::load_index(i+1, &blob::imagebank, &ib.data->buffer);
+	    out_images.push_back(ib.data);
+	 }
+	 zip::end_load();
+	 return true;
+      }
+      bool load_meshes_zip(std::vector<fw::Mesh*>& out_meshes, const char* in_name)
+      {
+	 auto base_str = fmt::format("imports/{}/meshes", in_name);
+	 zip::begin_load((base_str+".zip").c_str());
+	 int num_entries = zip::entry_count();
+	 log::info("num entries: {}", num_entries);
+	 for (int i = 0; i < num_entries; i+=3)
+	 {
+	    blob::assetnc<fw::Mesh> mb = {{}, nullptr, 1};
+	    zip::load_index(i, &blob::meshbank, &mb);
+	    zip::load_index(i+1, &blob::meshbank, &mb.data->geometry.ibo);
+	    zip::load_index(i+2, &blob::meshbank, &mb.data->geometry.vbo);
+	    assert(blob::imagebank.fixup(mb.data->images[0].buffer));
+	    blob::imagebank.fixup(mb.data->images[1].buffer);
+	    blob::imagebank.fixup(mb.data->images[2].buffer);
+	    blob::imagebank.fixup(mb.data->images[3].buffer);
+	    out_meshes.push_back(mb.data);
+	 }
+	 zip::end_load();
+	 return true;
+      }
 
       void save_scene(std::vector<fw::Image>& in_images, std::vector<Mesh>& in_meshes, const char* in_name)
       {
@@ -401,7 +474,10 @@ namespace fw
 	    load_tinygltf(in_path, meshes, images);
 	    save_scene(images, meshes, import);
 	    // todo: this takes a very long time, do it on another thread.
-	    // zip::archive(fmt::format("{}/{}","imports",import).c_str(), fmt::format("{}.zip",import).c_str());
+	    // zip::archive(fmt::format("imports/{}/meshes",import).c_str(), fmt::format("imports/{}/meshes.zip",import).c_str());
+	    // zip::archive(fmt::format("imports/{}/images",import).c_str(), fmt::format("imports/{}/images.zip",import).c_str());
+	    save_meshes_zip(import);
+	    save_images_zip(import);
 	    for(auto image : images) { delete[] image.buffer.data; }
 	    for(auto mesh : meshes)
 	    {
@@ -437,9 +513,8 @@ namespace fw
       }
       bool load_scene_zip(std::vector<fw::Image*>& in_images, std::vector<Mesh*>& in_meshes, const char* in_path)
       {
-	 (void)in_images;
-	 (void)in_meshes;
-	 zip::load(in_path);
+	 load_images_zip(in_images, in_path);
+	 load_meshes_zip(in_meshes, in_path);
 	 return true;
       }
       bool shutdown()
