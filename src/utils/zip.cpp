@@ -118,7 +118,7 @@ namespace fw
       {
 	 mz_zip_archive zip;
 	 memset(&zip, 0, sizeof(zip));
-	 static blob::bank& current_bank = blob::miscbank;
+	 static blob::bank* current_bank = &blob::miscbank;
 	 if (!mz_zip_reader_init_file(&zip, zip_filename, 0))
 	 {
 	    fprintf(stderr, "Could not open ZIP archive: %s\n", zip_filename);
@@ -128,7 +128,7 @@ namespace fw
 	 auto bank_allocate = [](void*, size_t items, size_t size)
 	 {
 	    blob::allocation alloc = {{}, nullptr, size};
-	    current_bank.allocate(alloc);
+	    current_bank->allocate(alloc);
 	    printf("[ALLOC] %zu x %zu bytes = %zu bytes @ %p\n", items, size, items * size, (void*)alloc.data);
 	    return (void*)alloc.data;
 	 };
@@ -136,7 +136,7 @@ namespace fw
 	 {
 	    printf("[FREE] %p\n", address);
 	    blob::allocation alloc = {{}, (char*)address, 0};
-	    current_bank.free(alloc);
+	    current_bank->free(alloc);
 	 };
 	 auto bank_reallocate = [](void*, void*, size_t, size_t)
 	 {
@@ -160,11 +160,11 @@ namespace fw
 	    {
 	       if(strstr(stat.m_filename, "images") == stat.m_filename)
 	       {
-		  current_bank = blob::imagebank; printf("images\n");
+		  current_bank = &blob::imagebank; printf("images\n");
 	       }
 	       else if (strstr(stat.m_filename, "meshes") == stat.m_filename)
 	       {
-		  current_bank = blob::meshbank; printf("meshes\n");
+		  current_bank = &blob::meshbank; printf("meshes\n");
 	       }
 	       continue;
 	    }
