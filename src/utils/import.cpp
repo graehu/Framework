@@ -420,7 +420,8 @@ namespace fw
 	    zip::load_index(i, &blob::meshbank, &mb);
 	    zip::load_index(i+1, &blob::meshbank, &mb.data->geometry.ibo);
 	    zip::load_index(i+2, &blob::meshbank, &mb.data->geometry.vbo);
-	    assert(blob::imagebank.fixup(mb.data->images[0].buffer));
+	    printf("hash: %d\n", mb.data->images[0].buffer.head.hash);
+	    blob::imagebank.fixup(mb.data->images[0].buffer);
 	    blob::imagebank.fixup(mb.data->images[1].buffer);
 	    blob::imagebank.fixup(mb.data->images[2].buffer);
 	    blob::imagebank.fixup(mb.data->images[3].buffer);

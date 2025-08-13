@@ -48,13 +48,16 @@ namespace fw
 	 template<typename T> inline bool save(const char* in_filename, T in_buffer);
 	 template<typename T> inline bool load(const char* in_filename, T& out_buffer);
 	 template<typename T> inline bool free(asset<T>& in);
-	 template<typename T> inline bool allocate(asset<T>& out_buffer);
+	 // template<typename T> inline bool allocate(asset<T>& out_buffer);
 	 template<typename T> inline bool find(hash::u32 in_hash, asset<T>& out_buffer);
 	 template<typename T> inline bool fixup(asset<T>& out_buffer);
 
-	private:
 	 allocation* allocate(size_t);
 	 bool free(char*);
+	 
+	private:
+	 // allocation* allocate(size_t);
+	 // bool free(char*);
 	 int freecount = 0;
 	 int usedcount = 0;
 	 allocnode* freed = nullptr;
@@ -71,6 +74,11 @@ namespace fw
 	 FILE* file = fopen(in_filename, "wb");
 	 if (file == nullptr) { return false; }
 	 assert(in_buffer.head.ver == fourcc); // T::fourcc?
+	 assert(in_buffer.data != nullptr);
+	 // data can't point at header... unless it can!!
+	 // turns out fw::Image immediately has the ibo, which is bad.
+	 // assert(((blob::header*)in_buffer.data)->ver != fourcc);
+	 // assert(((blob::header*)in_buffer.data) != &in_buffer.head);
 	 if(in_buffer.head.hash == 0)
 	 {
 	    in_buffer.head.hash = hash::hash_buffer((const char*)in_buffer.data, sizeof(*in_buffer.data)*in_buffer.len);
@@ -94,6 +102,8 @@ namespace fw
 	 fread((char*)out_buffer.data, out_buffer.len, 1, file);
 	 out_buffer.head = *((header*)out_buffer.data);
 	 alloc->head = *((header*)out_buffer.data);
+	 // todo: this shift is a bit awkward if you're using the allocate function directly.
+	 // ----: should all allocations always have the blob header?
 	 out_buffer.data = (decltype(out_buffer.data)) ((char*)out_buffer.data+sizeof(out_buffer.head));
 	 assert(out_buffer.head.ver == fourcc);
 	 // todo: decide if a file with no content is ok: (out_buffer.len == sizeof(out_buffer.head)).
@@ -102,15 +112,17 @@ namespace fw
 	 out_buffer.len = (out_buffer.len-sizeof(out_buffer.head)) / sizeof(*out_buffer.data);
 	 return true;
       }
-      template<typename T> inline bool bank::allocate(asset<T>& out_buffer)
-      {
-	 assert(out_buffer.data == nullptr);
-	 assert(out_buffer.len != 0);
-	 size_t alloc_size = sizeof(decltype(*out_buffer.data))*out_buffer.len;
-	 allocation* alloc = allocate(alloc_size+1);
-	 out_buffer.data = (decltype(out_buffer.data))alloc->data;
-	 return true;
-      }
+      // todo: should this shift / populate the header?
+      // ----: related to above todo in load.
+      // template<typename T> inline bool bank::allocate(asset<T>& out_buffer)
+      // {
+      // 	 assert(out_buffer.data == nullptr);
+      // 	 assert(out_buffer.len != 0);
+      // 	 size_t alloc_size = sizeof(decltype(*out_buffer.data))*out_buffer.len;
+      // 	 allocation* alloc = allocate(alloc_size+1);
+      // 	 out_buffer.data = (decltype(out_buffer.data))alloc->data;
+      // 	 return true;
+      // }
       template<typename T> inline bool bank::free(asset<T>& in)
       {
 	 if(free((char*)in.data-sizeof(in.head))) { in = {}; return true; }
@@ -118,9 +130,11 @@ namespace fw
       }
       template<typename T> inline bool bank::find(hash::u32 in_hash, asset<T>& out_buffer)
       {
+	 if(in_hash == 0) return false;
 	 allocnode* alloc = used;
 	 while(alloc != nullptr)
 	 {
+	    // assert(alloc->alloc.head.hash != 0);
 	    if(alloc->alloc.head.hash == in_hash)
 	    {
 	       out_buffer = *((asset<T>*)&alloc->alloc);

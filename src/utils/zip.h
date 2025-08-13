@@ -5,7 +5,6 @@ namespace fw
 {
    namespace zip
    {
-      bool archive(const char *folder_path, const char *zip_file);
       bool begin_archive(const char* zip_file);
       bool add_file(const char* file_path, const char* zip_path);
       bool end_archive();
