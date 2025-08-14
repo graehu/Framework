@@ -471,13 +471,20 @@ namespace fw
 	 {
 	    log::info("not skipped!");
 	    std::vector<fw::Image> images; std::vector<fw::Mesh> meshes;
-	    load_tinygltf(in_path, meshes, images);
+	    {
+	       log::timer timer_scope("load tiny gltf");
+	       load_tinygltf(in_path, meshes, images);
+	    }
 	    save_scene(images, meshes, import);
-	    // todo: this takes a very long time, do it on another thread.
-	    // zip::archive(fmt::format("imports/{}/meshes",import).c_str(), fmt::format("imports/{}/meshes.zip",import).c_str());
-	    // zip::archive(fmt::format("imports/{}/images",import).c_str(), fmt::format("imports/{}/images.zip",import).c_str());
-	    save_meshes_zip(import);
-	    save_images_zip(import);
+	    {
+	       log::timer timer_scope("load tiny gltf");
+	       // todo: this takes a very long time, do it on another thread.
+	       save_meshes_zip(import);
+	       save_images_zip(import);
+	    }
+	    // note: tiny gltf allocates a bunch on the heap.
+	    // todo: maybe find a way to have it do it straight to the banks?
+	    // ----: after import we don't take this path, so not a big deal.
 	    for(auto image : images) { delete[] image.buffer.data; }
 	    for(auto mesh : meshes)
 	    {
@@ -515,6 +522,11 @@ namespace fw
       {
 	 load_images_zip(in_images, in_path);
 	 load_meshes_zip(in_meshes, in_path);
+	 return true;
+      }
+      bool invalidate_cache()
+      {
+	 filehashes.clear();
 	 return true;
       }
       bool shutdown()

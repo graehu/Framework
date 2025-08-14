@@ -109,6 +109,14 @@ namespace fw
 	 delete [] alloc;
 	 return out;
       }
+      inline bool remove_file(const char* path)
+      {
+	 return remove(path) == 0;
+      }
+      inline bool remove_dir(const char* path)
+      {
+	 return rmdir(path) == 0;
+      }
    }
 }
 

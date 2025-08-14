@@ -198,6 +198,10 @@ void vulkan_sample::run()
 		  import::load_scene_zip(images, meshes, gltf_list_zip[current_gltf]);
 		  log::debug("loaded {}, images {}, meshes {}", gltf_list_zip[current_gltf], images.size(), meshes.size());
 	       }
+	       if(ImGui::Button("invalidate import cache"))
+	       {
+		  import::invalidate_cache();
+	       }
 	    }
 	 }
 	 ImGui::End();
