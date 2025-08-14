@@ -3,6 +3,7 @@
 #include "miniz.h"
 #include "zip.h"
 #include "blob.h"
+#include "log/log.h"
 
 namespace fw
 {
@@ -10,34 +11,47 @@ namespace fw
    {
       mz_zip_archive write_archive;
       mz_zip_archive read_archive;
+      bool init()
+      {
+	 fw::log::topics::add("zip");
+	 return true;
+      }
       bool begin_archive(const char* zip_file)
       {
+	 log::scope topic("zip");
+	 // todo: this is allocating from the heap, probably bad?
 	 memset(&write_archive, 0, sizeof(write_archive));
 	 if (!mz_zip_writer_init_file(&write_archive, zip_file, 0))
 	 {
-	    fprintf(stderr, "Failed to initialize zip file: %s\n", zip_file);
+	    log::error("Failed to initialize zip file: {}", zip_file);
 	    return false;
 	 }
 	 return true;
       }
       bool add_file(const char* file_path, const char* zip_path)
       {
-	 printf("adding %s -> %s\n", file_path, zip_path);
+	 log::scope topic("zip");
+	 log::debug("adding {} -> {}", file_path, zip_path);
 	 mz_zip_writer_add_file(&write_archive, zip_path, file_path, NULL, 0, MZ_BEST_COMPRESSION);
 	 return true;
       }
       bool end_archive()
       {
+	 // todo: this is allocating from the heap, probably bad?
 	 mz_zip_writer_finalize_archive(&write_archive);
 	 mz_zip_writer_end(&write_archive);
 	 return true;
       }
       bool begin_load(const char* zip_file)
       {
+	 log::scope topic("zip");
+	 // note: init allocations come from the heap directly.
+	 // ----: we never want these to be associated with a bank.
+	 // ----: that would require realloc / buffer growth.
 	 memset(&read_archive, 0, sizeof(read_archive));
 	 if (!mz_zip_reader_init_file(&read_archive, zip_file, 0))
 	 {
-	    fprintf(stderr, "Could not open ZIP archive: %s\n", zip_file);
+	    log::error("Could not open ZIP archive: {}", zip_file);
 	    return false;
 	 }
 	 return true;
@@ -46,39 +60,45 @@ namespace fw
       {
 	 return (int)mz_zip_reader_get_num_files(&read_archive);
       }
-      // todo: allocholder is a hack, not my favourite.
-      struct allocholder { blob::allocation* alloc = nullptr; };
+      // todo: allocholder->alloc is a hack, not my favourite.
+      // ----: it's taking advantage of the first allocation being the
+      // ----: allocation for the resource, I'm not sure that's consistent behaviour.
+      struct allocholder
+      {
+	 blob::bank* bank = nullptr;
+	 blob::allocation* alloc = nullptr;
+      };
       bool load_entry(int index, blob::bank* in_bank, blob::allocation* out_entry)
       {
-	 static blob::bank* current_bank = nullptr;
-	 current_bank = in_bank;
+	 log::scope topic("zip");
 	 allocholder holder;
-	 auto bank_allocate2 = [](void* holder, size_t items, size_t size)
+	 holder.bank = in_bank;
+	 auto bank_allocate = [](void* opaque, size_t items, size_t size)
 	 {
-	    blob::allocation* alloc = current_bank->allocate(size);
-	    if(((allocholder*)holder)->alloc == nullptr)((allocholder*)holder)->alloc = alloc;
-	    printf("[ALLOC]  %zu x %zu bytes = %zu bytes @ %p\n", items, size, items * size, (void*)alloc->data);
+	    log::scope topic("zip");
+	    allocholder* holder = (allocholder*)opaque;
+	    blob::allocation* alloc = holder->bank->allocate(size);
+	    if(holder->alloc == nullptr) holder->alloc = alloc;
+	    log::debug("[ALLOC]  {} x {} bytes = {} bytes @ {}", items, size, items * size, (void*)alloc->data);
 	    return (void*)alloc->data;
 	 };
-	 auto bank_free = [](void*, void* address)
+	 auto bank_free = [](void* opaque, void* address)
 	 {
-	    printf("[FREE]  %p\n", address);
+	    log::scope topic("zip");
+	    allocholder* holder = (allocholder*)opaque;
+	    log::debug("[FREE]  {}", address);
 	    blob::allocation alloc = {{}, (char*)address, 0};
-	    current_bank->free(alloc);
+	    holder->bank->free(alloc);
 	 };
-	 // auto bank_free = [](void*, void* address){printf("[no_free]  %p\n", address);};
-	 auto bank_reallocate = [](void*, void*, size_t, size_t)
-	 {
-	    assert(false);
-	    return (void*)nullptr;
-	 };
-	 read_archive.m_pAlloc = bank_allocate2;
+	 // note: bank doesn't support reallocate.
+	 auto bank_reallocate = [](void*, void*, size_t, size_t) { assert(false); return (void*)nullptr; };
+	 read_archive.m_pAlloc = bank_allocate;
 	 read_archive.m_pAlloc_opaque = &holder;
 	 read_archive.m_pFree = bank_free;
 	 read_archive.m_pRealloc = bank_reallocate;
 	 mz_zip_archive_file_stat stat;
 	 mz_zip_reader_file_stat(&read_archive, index, &stat);
-	 printf("name: %s\n", stat.m_filename);
+	 log::debug("name: {}", stat.m_filename);
 	 out_entry->data = (const char*)mz_zip_reader_extract_to_heap(&read_archive, index, &out_entry->len, 0);
 	 if (out_entry->data != nullptr)
 	 {
@@ -94,19 +114,14 @@ namespace fw
       }
       bool end_load()
       {
-	 // auto bank_allocate = [](void*, size_t, size_t) {return (void*)nullptr;};
-	 // auto bank_free = [](void*, void* address){printf("[no_free]  %p\n", address);};
-	 // auto bank_reallocate = [](void*, void*, size_t, size_t){return (void*)nullptr;};
-	 // read_archive.m_pAlloc = bank_allocate;
-	 // read_archive.m_pFree = bank_free;
-	 // read_archive.m_pRealloc = bank_reallocate;
+	 // note: these allocations come from the heap directly.
+	 // ----: we never want these to be associated with a bank.
+	 // ----: that would require realloc / buffer growth.
+	 read_archive.m_pAlloc = nullptr;
+	 read_archive.m_pFree = nullptr;
+	 read_archive.m_pRealloc = nullptr;
 	 mz_zip_reader_end(&read_archive);
 	 return true;
-      }
-      bool load(const char* zip_filename)
-      {
-	 // return read_all_files_from_zip(zip_filename);
-	 return false;
       }
    }
 } // namespace fw

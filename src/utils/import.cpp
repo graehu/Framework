@@ -420,7 +420,6 @@ namespace fw
 	    zip::load_index(i, &blob::meshbank, &mb);
 	    zip::load_index(i+1, &blob::meshbank, &mb.data->geometry.ibo);
 	    zip::load_index(i+2, &blob::meshbank, &mb.data->geometry.vbo);
-	    printf("hash: %d\n", mb.data->images[0].buffer.head.hash);
 	    blob::imagebank.fixup(mb.data->images[0].buffer);
 	    blob::imagebank.fixup(mb.data->images[1].buffer);
 	    blob::imagebank.fixup(mb.data->images[2].buffer);
@@ -451,6 +450,7 @@ namespace fw
 	 blob::imagebank.init(1 GiBs, 4 KiBs);
 	 blob::meshbank.init(1 GiBs, 4 KiBs);
 	 load_filehashes();
+	 zip::init();
 	 return true;
       }
       bool load_gltf(std::vector<fw::Image*>& in_images, std::vector<Mesh*>& in_meshes, const char* in_path)

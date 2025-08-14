@@ -45,6 +45,7 @@ namespace fw
 	 inline int get_usedcount() const {return usedcount; }
 	 inline allocnode* get_freednode() const { return freed; }
 	 inline allocnode* get_usednode() const { return used; }
+	 inline bool contains(const char* alloc) { return alloc >= heap && alloc <= end; }
 	 template<typename T> inline bool save(const char* in_filename, T in_buffer);
 	 template<typename T> inline bool load(const char* in_filename, T& out_buffer);
 	 template<typename T> inline bool free(asset<T>& in);

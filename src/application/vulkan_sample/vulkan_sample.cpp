@@ -165,6 +165,7 @@ void vulkan_sample::run()
 	       "../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf",
 	       "../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf",
 	    };
+	    static const char* gltf_list_zip[] = { "Sponza.gltf", "SciFiHelmet.gltf", };
 	    static const char* gltfpath = gltf_list[0];
 	    if(ImGui::Combo("gltfs", &current_gltf, gltf_list, IM_ARRAYSIZE(gltf_list)))
 	    {
@@ -186,15 +187,16 @@ void vulkan_sample::run()
 		  log::timer timer("load model");
 		  unload();
 		  import::load_gltf(images, meshes, gltfpath);
-		  blob::miscbank.print();
 		  log::debug("loaded {}, images {}, meshes {}", gltfpath, images.size(), meshes.size());
 	       }
-	       if(ImGui::Button("test"))
+	       ImGui::SameLine();
+	       if (filesystem::exists(gltfpath) && ImGui::Button("load gltf zip"))
 	       {
-		  // import::load_scene_zip(images, meshes, "Sponza.gltf.zip");
-		  // import::load_scene_zip(images, meshes, "imports/Sponza.gltf/meshes.zip");
-		  import::load_scene_zip(images, meshes, "SciFiHelmet.gltf");
-		  log::info("actual lens: {} {}", images.size(), meshes.size());
+		  log::scope topic("timer", true);
+		  log::timer timer("load model");
+		  unload();
+		  import::load_scene_zip(images, meshes, gltf_list_zip[current_gltf]);
+		  log::debug("loaded {}, images {}, meshes {}", gltf_list_zip[current_gltf], images.size(), meshes.size());
 	       }
 	    }
 	 }
