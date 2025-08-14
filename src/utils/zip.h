@@ -17,6 +17,7 @@ namespace fw
 	 bool ret = load_entry(index, in_bank, (blob::allocation*)out_asset);
 	 assert(((out_asset->len-sizeof(out_asset->head)) % sizeof(*out_asset->data)) == 0);
 	 assert(out_asset->head.ver == blob::fourcc);
+	 out_asset->len = (out_asset->len-sizeof(out_asset->head)) / sizeof(*out_asset->data);
 	 return ret;
       }
       template<typename T> bool load_index(int index, blob::bank* in_bank, blob::assetnc<T>* out_asset)
@@ -24,6 +25,7 @@ namespace fw
 	 bool ret = load_entry(index, in_bank, (blob::allocation*)out_asset);
 	 assert(((out_asset->len-sizeof(out_asset->head)) % sizeof(*out_asset->data)) == 0);
 	 assert(out_asset->head.ver == blob::fourcc);
+	 out_asset->len = (out_asset->len-sizeof(out_asset->head)) / sizeof(*out_asset->data);
 	 return ret;
       }
       bool end_load();

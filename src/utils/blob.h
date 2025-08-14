@@ -77,7 +77,7 @@ namespace fw
 	 assert(in_buffer.head.ver == fourcc); // T::fourcc?
 	 assert(in_buffer.data != nullptr);
 	 // data can't point at header... unless it can!!
-	 // turns out fw::Image immediately has the ibo, which is bad.
+	 // turns out fw::Image immediately has the ibo, which is bad? maybe?
 	 // assert(((blob::header*)in_buffer.data)->ver != fourcc);
 	 // assert(((blob::header*)in_buffer.data) != &in_buffer.head);
 	 if(in_buffer.head.hash == 0)
@@ -105,7 +105,7 @@ namespace fw
 	 alloc->head = *((header*)out_buffer.data);
 	 // todo: this shift is a bit awkward if you're using the allocate function directly.
 	 // ----: should all allocations always have the blob header?
-	 out_buffer.data = (decltype(out_buffer.data)) ((char*)out_buffer.data+sizeof(out_buffer.head));
+	 out_buffer.data = (decltype(out_buffer.data))((blob::header*)out_buffer.data+1);
 	 assert(out_buffer.head.ver == fourcc);
 	 // todo: decide if a file with no content is ok: (out_buffer.len == sizeof(out_buffer.head)).
 	 assert(out_buffer.head.hash != 0 || out_buffer.len == sizeof(out_buffer.head));

@@ -429,7 +429,6 @@ namespace fw
 	 zip::end_load();
 	 return true;
       }
-
       void save_scene(std::vector<fw::Image>& in_images, std::vector<Mesh>& in_meshes, const char* in_name)
       {
 	 log::scope topic("timer", true);

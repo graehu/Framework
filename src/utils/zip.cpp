@@ -63,6 +63,7 @@ namespace fw
       // todo: allocholder->alloc is a hack, not my favourite.
       // ----: it's taking advantage of the first allocation being the
       // ----: allocation for the resource, I'm not sure that's consistent behaviour.
+      // ----: assert(holder.alloc->data == out_entry->data); // this will fail if not.
       struct allocholder
       {
 	 blob::bank* bank = nullptr;
@@ -102,9 +103,12 @@ namespace fw
 	 out_entry->data = (const char*)mz_zip_reader_extract_to_heap(&read_archive, index, &out_entry->len, 0);
 	 if (out_entry->data != nullptr)
 	 {
-	    // note: I'm writing the header twice in my data, we should not do that!
-	    // ----: lies, we can have assets inside assets.
 	    assert(((blob::header*)out_entry->data)->hash != 0);
+	    // note: allocholder->alloc is not my favourite.
+	    // ----: it's taking advantage of the first allocation being the resource.
+	    // ----: I'm not sure that's consistent behaviour.
+	    // ----: this assert will fail if not.
+	    assert(holder.alloc->data == out_entry->data); 
 	    out_entry->head = *((blob::header*)out_entry->data);
 	    holder.alloc->head = *((blob::header*)out_entry->data);
 	    assert(out_entry->head.hash != 0);
