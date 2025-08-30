@@ -1,3 +1,4 @@
+#include <type_traits>
 #include <vector>
 #include <algorithm>
 #include <cassert>
@@ -9,6 +10,7 @@
 #include "zip.h"
 #include "filesystem.h"
 #include "log/log.h"
+#include "string_helpers.h"
 
 #include <execution>
 // note: this requires linking ttb (i.e. -lttb) on linux.
@@ -354,43 +356,39 @@ namespace fw
 
       void load_meshes(std::vector<Mesh*>& out_meshes, const char* in_name)
       {
-#define macro(fmtstr) fmt::format(fmtstr, in_name).c_str()
-	 int num_meshes = fw::filesystem::countdirs(macro("imports/{}/meshes/"));
+	 auto base_str = fmt::format("imports/{}/meshes/", in_name);
+	 int num_meshes = fw::filesystem::countdirs(base_str.c_str());
 	 out_meshes.resize(num_meshes);
 	 log::debug("num meshes to load: {}", num_meshes);
-#undef macro
-#define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
 	 for (int i = 0; i < num_meshes; i++)
 	 {
-	    blob::assetnc<fw::Mesh> mb = {{}, nullptr, 1};
-	    blob::meshbank.load(macro("imports/{}/meshes/{}/mesh.blob"), mb);
-	    blob::meshbank.load(macro("imports/{}/meshes/{}/ibo.blob"), mb.data->geometry.ibo);
-	    blob::meshbank.load(macro("imports/{}/meshes/{}/vbo.blob"), mb.data->geometry.vbo);
+	    auto dir_str = base_str+std::to_string(i);
+	    blob::asset<fw::Mesh> mb = {{}, nullptr, 1};
+	    assert(blob::meshbank.load((dir_str+"/mesh.blob").c_str(), mb));
+	    assert(blob::meshbank.load((dir_str+"/ibo.blob").c_str(), mb.data->geometry.ibo));
+	    assert(blob::meshbank.load((dir_str+"/vbo.blob").c_str(), mb.data->geometry.vbo));
 	    blob::imagebank.fixup(mb.data->images[0].buffer);
 	    blob::imagebank.fixup(mb.data->images[1].buffer);
 	    blob::imagebank.fixup(mb.data->images[2].buffer);
 	    blob::imagebank.fixup(mb.data->images[3].buffer);
-	    out_meshes[i] = mb.data;
+	    out_meshes[i] = (fw::Mesh*)mb.data;
 	 }
-#undef macro
       }
 
       void load_images(std::vector<fw::Image*>& out_images, const char* in_name)
       {
-#define macro(fmtstr) fmt::format(fmtstr, in_name).c_str()
-	 int num_images = fw::filesystem::countdirs(macro("imports/{}/images/"));
+	 auto base_str = fmt::format("imports/{}/images/", in_name);
+	 int num_images = fw::filesystem::countdirs(base_str.c_str());
 	 out_images.resize(num_images);
 	 log::debug("num images to load: {}", num_images);
-#undef macro
-#define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
 	 for (int i = 0; i < num_images; i++)
 	 {
-	    blob::assetnc<fw::Image> ib = {{}, nullptr, 1};
-	    blob::imagebank.load(macro("imports/{}/images/{}/image.blob"), ib);
-	    blob::imagebank.load(macro("imports/{}/images/{}/ibo.blob"), ib.data->buffer);
-	    out_images[i] = ib.data;
+	    auto dir_str = base_str+std::to_string(i);
+	    blob::asset<fw::Image> ib = {{}, nullptr, 1};
+	    assert(blob::imagebank.load((dir_str+"/image.blob").c_str(), ib));
+	    assert(blob::imagebank.load((dir_str+"/ibo.blob").c_str(), ib.data->buffer));
+	    out_images[i] = (fw::Image*)ib.data;
 	 }
-#undef macro
       }
       bool load_images_zip(std::vector<fw::Image*>& out_images, const char* in_name)
       {
@@ -400,10 +398,10 @@ namespace fw
 	 log::info("num entries: {}", num_entries);
 	 for (int i = 0; i < num_entries; i+=2)
 	 {
-	    blob::assetnc<fw::Image> ib = {{}, nullptr, 1};
+	    blob::asset<fw::Image> ib = {{}, nullptr, 1};
 	    zip::load_index(i, &blob::imagebank, &ib);
 	    zip::load_index(i+1, &blob::imagebank, &ib.data->buffer);
-	    out_images.push_back(ib.data);
+	    out_images.push_back((fw::Image*)ib.data);
 	 }
 	 zip::end_load();
 	 return true;
@@ -416,15 +414,15 @@ namespace fw
 	 log::info("num entries: {}", num_entries);
 	 for (int i = 0; i < num_entries; i+=3)
 	 {
-	    blob::assetnc<fw::Mesh> mb = {{}, nullptr, 1};
+	    blob::asset<fw::Mesh> mb = {{}, nullptr, 1};
 	    zip::load_index(i, &blob::meshbank, &mb);
 	    zip::load_index(i+1, &blob::meshbank, &mb.data->geometry.ibo);
 	    zip::load_index(i+2, &blob::meshbank, &mb.data->geometry.vbo);
-	    blob::imagebank.fixup(mb.data->images[0].buffer);
+	    assert(blob::imagebank.fixup(mb.data->images[0].buffer));
 	    blob::imagebank.fixup(mb.data->images[1].buffer);
 	    blob::imagebank.fixup(mb.data->images[2].buffer);
 	    blob::imagebank.fixup(mb.data->images[3].buffer);
-	    out_meshes.push_back(mb.data);
+	    out_meshes.push_back((fw::Mesh*)mb.data);
 	 }
 	 zip::end_load();
 	 return true;

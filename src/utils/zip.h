@@ -12,20 +12,10 @@ namespace fw
       bool begin_load(const char *zip_file);
       int entry_count();
       bool load_entry(int index, blob::bank* in_bank, blob::allocation* alloc);
-      template<typename T> bool load_index(int index, blob::bank* in_bank, blob::asset<T>* out_asset)
+      template<typename T> bool load_index(int index, blob::bank* in_bank, const blob::asset<T>* out_asset)
       {
 	 bool ret = load_entry(index, in_bank, (blob::allocation*)out_asset);
-	 assert(((out_asset->len-sizeof(out_asset->head)) % sizeof(*out_asset->data)) == 0);
-	 assert(out_asset->head.ver == blob::fourcc);
-	 out_asset->len = (out_asset->len-sizeof(out_asset->head)) / sizeof(*out_asset->data);
-	 return ret;
-      }
-      template<typename T> bool load_index(int index, blob::bank* in_bank, blob::assetnc<T>* out_asset)
-      {
-	 bool ret = load_entry(index, in_bank, (blob::allocation*)out_asset);
-	 assert(((out_asset->len-sizeof(out_asset->head)) % sizeof(*out_asset->data)) == 0);
-	 assert(out_asset->head.ver == blob::fourcc);
-	 out_asset->len = (out_asset->len-sizeof(out_asset->head)) / sizeof(*out_asset->data);
+	 blob::convert<T>((blob::allocation*)out_asset);
 	 return ret;
       }
       bool end_load();
