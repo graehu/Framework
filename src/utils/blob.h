@@ -36,6 +36,7 @@ namespace fw
       struct allocnode
       {
 	 allocation alloc;
+	 size_t capacity;
 	 allocnode* next = nullptr;
       };
       class bank final
@@ -60,7 +61,7 @@ namespace fw
 	 template<typename T> inline bool find(hash::u32 in_hash, asset<T>& out_buffer);
 	 template<typename T> inline bool fixup(asset<T>& out_buffer);
 	 template<typename T> inline bool fixup(const asset<T>& out_buffer);
-
+	 
 	 allocation* allocate(size_t);
 	 bool free(char*);
 	 
@@ -114,12 +115,10 @@ namespace fw
 	 // todo: this shift is a bit awkward if you're using the allocate function directly.
 	 // ----: should all allocations always have the blob header?
 	 out_buffer.data = (T*)((blob::header*)out_buffer.data+1);
-	 // out_buffer.data = (decltype(out_buffer.data))((blob::header*)out_buffer.data+1);
 	 convert<T>((allocation*)&out_buffer);
 	 assert(out_buffer.head.ver == fourcc);
 	 // todo: decide if a file with no content is ok: (out_buffer.len == sizeof(out_buffer.head)).
 	 assert(out_buffer.head.hash != 0 || out_buffer.len == sizeof(out_buffer.head));
-	 // out_buffer.len = (out_buffer.len-sizeof(out_buffer.head)) / sizeof(*out_buffer.data);
 	 fclose(file);
 	 return true;
       }
@@ -127,18 +126,6 @@ namespace fw
       {
 	 return bank::load(in_filename, const_cast<asset<T>&>(out_buffer));
       }
-      // template<typename T> inline bool bank::load(const char* in_filename, asset<T>& out_buffer)
-      // todo: should this shift / populate the header?
-      // ----: related to above todo in load.
-      // template<typename T> inline bool bank::allocate(asset<T>& out_buffer)
-      // {
-      // 	 assert(out_buffer.data == nullptr);
-      // 	 assert(out_buffer.len != 0);
-      // 	 size_t alloc_size = sizeof(decltype(*out_buffer.data))*out_buffer.len;
-      // 	 allocation* alloc = allocate(alloc_size+1);
-      // 	 out_buffer.data = (decltype(out_buffer.data))alloc->data;
-      // 	 return true;
-      // }
       template<typename T> inline bool bank::free(asset<T>& in)
       {
 	 if(free((char*)in.data-sizeof(in.head))) { in = {}; return true; }
@@ -160,17 +147,15 @@ namespace fw
 	 }
 	 return false;
       }
-      // the assert part of this is maybe overkill.
-      // todo: I overallocate often, so the returned len is bad.
-      // ----: I want to be able to assert len == out_buffer.len but can't.
+      // asserts the fixed up asset is the len we provide, if you don't know the len provide zero.
       template<typename T> inline bool bank::fixup(asset<T>& out_buffer)
       {
 	 size_t len = out_buffer.len;
 	 out_buffer.data = nullptr;
 	 out_buffer.len = 0;
 	 bool ret = find(out_buffer.head.hash, out_buffer);
+	 assert(len == 0 || len == out_buffer.len || ret == false);
 	 if(ret && len) out_buffer.len = len;
-	 // assert(len == out_buffer.len || ret == false);
 	 return ret;
       }
       template<typename T> inline bool bank::fixup(const asset<T>& out_buffer) { return bank::fixup((asset<T>&)(out_buffer)); }

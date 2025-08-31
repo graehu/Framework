@@ -72,10 +72,10 @@ namespace fw
       {
 	 log::scope topic("blob");
 	 // quantise to page size
-	 size = ((size/page)+1)*page;
-	 log::debug("allocating {}", size);
+	 size_t alloc_cap = ((size/page)+1)*page;
+	 log::debug("allocating {}", alloc_cap);
 	 assert(heap != nullptr);
-	 assert((end-heap) + size < capacity);
+	 assert((end-heap) + alloc_cap < capacity);
 	 assert(total_allocations < capacity/page);
       
 	 allocnode* node = nullptr;
@@ -88,16 +88,19 @@ namespace fw
 	       // note: this goes horribly if the bank is allocating lots of different sized things
 	       // ----: splitting also goes poorly if that's the case.
 	       // ----: so, only try to use freed if the slop isn't massive, 8 pages or 16 pages.
-	       if(node->alloc.len >= size && ((node->alloc.len/page)-(size/page)) < 8)
+	       if(node->capacity >= alloc_cap && ((node->capacity/page)-(alloc_cap/page)) < 8)
 	       {
-		  log::debug("found free alloc {} vs {}", (size/page), node->alloc.len/page);
-		  // if((size/page) != (node->alloc.len/page))
+		  log::debug("found free alloc {} vs {}", (alloc_cap/page), node->capacity/page);
+		  node->alloc.len = size;
+		  // todo: fix this, allocnodes now store the total capacity not the allocation.
+		  // if((alloc_cap/page) != (node->capacity/page))
 		  // {
 		  //    log::debug("splitting");
 		  //    allocnode* split = &allocations[total_allocations++];
-		  //    *split = {{{}, node->alloc.data, size}, node};
-		  //    node->alloc.data += size;
-		  //    node->alloc.len -= size;
+		  //    *split = {{{}, node->alloc.data, size}, alloc_cap, node};
+		  //    node->alloc.data += alloc_cap;
+		  //    node->capcaity -= alloc_cap;
+		  //    //node->alloc.len -= size; // this changed after alloc_cap, don't think I should touch len.
 		  //    node = split;
 		  //    freecount++;
 		  // }
@@ -126,8 +129,8 @@ namespace fw
 	 {
 	    usedcount++;
 	    node = &allocations[total_allocations++];
-	    *node = {{{}, end, size}, nullptr};
-	    end += size;
+	    *node = {{{}, end, size}, alloc_cap, nullptr};
+	    end += alloc_cap;
 	    allocnode* previous = used;
 	    used = node;
 	    node->next = previous;
