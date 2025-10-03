@@ -268,6 +268,7 @@ void vulkan_sample::run()
 	       m_input->mouseDelta(dx, dy);
 	       cam.changeHeading(dx);
 	       cam.changePitch(-dy);
+	       m_input->centerMousePosition();
 	    }
 	    const float speed = 10.0;
 	    float forward = 0.0;

@@ -15,7 +15,7 @@ namespace fwvulkan
       extern int CreateVertexBufferHandle(const fw::Vertex* vertices, int num_vertices);
       extern int CreateIndexBufferHandle(const uint32_t* indices, int num_indices);
       extern void SetDescriptorImage(VkImageView image_view, std::vector<VkDescriptorSet> image_sets, unsigned int dst_binding);
-      extern VkDescriptorSetLayout CreateDescriptorSetLayout(VkDescriptorType* types, VkShaderStageFlags* stage_flags, int num);
+      extern VkDescriptorSetLayout CreateDescriptorSetLayout(VkDescriptorType* types, VkShaderStageFlags* stage_flags, VkDescriptorBindingFlags* bind_flags, int num);
    }
    namespace pipeline
    {

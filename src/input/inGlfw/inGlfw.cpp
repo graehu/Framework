@@ -82,6 +82,23 @@ bool inGlfw::isKeyPressed(keys _key)
 {
    return m_keys[_key];
 }
+bool inGlfw::setMousePosition(float _x, float _y)
+{
+   glfwSetCursorPos(fwvulkan::g_window, (double)_x, (double)_y);
+   g_glfw_prev_mouse_x = _x;
+   g_glfw_prev_mouse_x = _y;
+   g_glfw_mouse_x = g_glfw_prev_mouse_x;
+   g_glfw_mouse_y = g_glfw_prev_mouse_y;
+   return true;
+}
+bool inGlfw::centerMousePosition()
+{
+   int w,h;
+   glfwGetWindowSize(fwvulkan::g_window, &w, &h);
+   setMousePosition(w*0.5f, h*0.5f);
+   return true;
+}
+
 void inGlfw::mouseDelta(float &_x, float &_y)
 {
    _x = g_glfw_prev_mouse_x - g_glfw_mouse_x;

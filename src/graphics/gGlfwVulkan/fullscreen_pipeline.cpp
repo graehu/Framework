@@ -117,9 +117,10 @@ namespace fwvulkan
       {
 	 VkDescriptorType types[g_num_textures] = { };
 	 VkShaderStageFlags stages[g_num_textures] = { };
+	 VkDescriptorBindingFlags bind_flags[g_num_textures] = { };
 	 for(unsigned int i = 0; i < g_num_textures; i++) { types[i] = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE; }
 	 for(unsigned int i = 0; i < g_num_textures; i++) { stages[i] = VK_SHADER_STAGE_FRAGMENT_BIT; }
-	 g_descriptor_set_layout = buffers::CreateDescriptorSetLayout(types, stages, g_num_textures);
+	 g_descriptor_set_layout = buffers::CreateDescriptorSetLayout(types, stages, bind_flags, g_num_textures);
 	 g_descriptor_pool = CreateDescriptorPool();
 	 
 	 CreateDescriptorSets();

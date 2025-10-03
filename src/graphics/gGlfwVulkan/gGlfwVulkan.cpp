@@ -94,6 +94,7 @@ namespace fwvulkan
    extern bool g_resized;
    // device
    VkPhysicalDevice g_physical_device = VK_NULL_HANDLE;
+   uint32_t g_min_ub_alignment = 0;
    VkDevice g_logical_device = VK_NULL_HANDLE;
    VkQueue g_present_queue = VK_NULL_HANDLE;
    VkQueue g_graphics_queue = VK_NULL_HANDLE;
@@ -112,8 +113,6 @@ namespace fwvulkan
    // todo: this sucks
    VkDescriptorPool g_shared_descriptor_pool;
    std::vector<VkDescriptorSet> g_shared_descriptor_sets;
-   
-
    
    SharedUniforms ubo = {};
    VkDescriptorSetLayout g_shared_descriptor_set_layout;
@@ -181,6 +180,7 @@ namespace fwvulkan
       VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME
    };
 #define USE_DYNAMIC_RENDERING 1
+#define USE_DESCRIPTOR_INDEXING 1
    const std::vector<const char *> g_device_extensions = {
       VK_KHR_SWAPCHAIN_EXTENSION_NAME,
       VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
@@ -219,6 +219,9 @@ namespace fwvulkan
    };
    namespace utils
    {
+      uint32_t PadSizeToMinAlignment(uint32_t originalSize, uint32_t minAlignment) {
+	 return (originalSize + minAlignment - 1) & ~(minAlignment - 1);
+      }
       uint32_t FindMemoryType(uint32_t type_filter, VkMemoryPropertyFlags properties)
       {
 	 VkPhysicalDeviceMemoryProperties memory_properties;
@@ -399,6 +402,9 @@ namespace fwvulkan
    }
    namespace buffers
    {
+      uint32_t PadUBSizeToMinAlignment(uint32_t originalSize) {
+	 return utils::PadSizeToMinAlignment(originalSize, g_min_ub_alignment);
+      }
       // todo: this has a bunch of duplicated code in it, make a generic create image.
       // buffers::internal::CreateImage
       void CreateImage(int width, int height, VkFormat format, VkImageUsageFlags usage, VkImage& image, VkDeviceMemory& image_memory)
@@ -472,12 +478,11 @@ namespace fwvulkan
 	 }
 	 return view;
       }
-      VkDescriptorSetLayout CreateDescriptorSetLayout(VkDescriptorType* types, VkShaderStageFlags* stage_flags, int num)
+      VkDescriptorSetLayout CreateDescriptorSetLayout(VkDescriptorType* types, VkShaderStageFlags* stage_flags, VkDescriptorBindingFlags* bind_flags, int num)
       {
 	 log::debug("CreateDescriptorSetLayout");
 	 assert(num < DrawHandle::max_draws);
 	 std::array<VkDescriptorSetLayoutBinding, DrawHandle::max_draws> bindings;
-		      
 	 for (int i = 0; i < num; i++)
 	 {
 	    bindings[i].binding = i;
@@ -492,6 +497,22 @@ namespace fwvulkan
 	 layout_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	 layout_ci.bindingCount = num;
 	 layout_ci.pBindings = bindings.data();
+#if USE_DESCRIPTOR_INDEXING
+	 bool needs_bindless = false;
+	 for(int i = 0; i < num; i++) if(bind_flags[i]) { needs_bindless = true; break; }
+	 if(needs_bindless)
+	 {
+	    layout_ci.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
+
+	    VkDescriptorSetLayoutBindingFlagsCreateInfo binding_ci{};
+	    binding_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+	    binding_ci.pNext = nullptr;
+	    binding_ci.pBindingFlags = bind_flags;
+	    binding_ci.bindingCount = num;
+
+	    layout_ci.pNext = &binding_ci;
+	 }
+#endif
 	
 	 VkDescriptorSetLayout descriptor_set;
 	 if (vkCreateDescriptorSetLayout(g_logical_device, &layout_ci, nullptr, &descriptor_set) != VK_SUCCESS)
@@ -556,6 +577,9 @@ namespace fwvulkan
 	 pool_ci.poolSizeCount = 2;
 	 pool_ci.pPoolSizes = &pool_sizes[0];
 	 pool_ci.maxSets = g_max_frames_in_flight;
+#if USE_DESCRIPTOR_INDEXING
+	 pool_ci.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
+#endif
 
 	 VkDescriptorPool pool;
 	 if (vkCreateDescriptorPool(g_logical_device, &pool_ci, nullptr, &pool) != VK_SUCCESS) {
@@ -692,6 +716,8 @@ namespace fwvulkan
       // these are bound to descriptor pool and descriptor_set_layout
       void CreateSharedDescriptorSets()
       {
+         // https://dev.to/gasim/implementing-bindless-design-in-vulkan-34no
+	 // Manage bindless descriptors and communication 
 	 log::debug("CreateSharedDescriptorSets");
 	 std::vector<VkDescriptorSetLayout> layouts(g_max_frames_in_flight, g_shared_descriptor_set_layout);
 	 VkDescriptorSetAllocateInfo alloc_info{};
@@ -1145,16 +1171,24 @@ namespace fwvulkan
 
 	 VkPhysicalDeviceFeatures2 device_features = {};
 	 device_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+	 device_features.pNext = nullptr;
+	 
+#if USE_DESCRIPTOR_INDEXING
+	 VkPhysicalDeviceDescriptorIndexingFeatures desc_id_features{};
+	 desc_id_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+	 desc_id_features.pNext = nullptr;
+#endif
 #if USE_DYNAMIC_RENDERING
-	 VkPhysicalDeviceVulkan13Features features13 = {};	 
+	 VkPhysicalDeviceVulkan13Features features13 = {};
 	 features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
 	 device_features.pNext = &features13;
-#else
-	 device_features.pNext = VK_NULL_HANDLE;
+#endif
+#if USE_DESCRIPTOR_INDEXING && USE_DYNAMIC_RENDERING
+	 features13.pNext = &desc_id_features;
+#elif USE_DESCRIPTOR_INDEXING
+	 device_features.pNext = &desc_id_features
 #endif
 	 vkGetPhysicalDeviceFeatures2(physical_device, &device_features);
-	 
-	 
 
 	 QueueFamilyIndices indices = FindQueueFamilies(physical_device, surface);
 	 bool extensions_supported = CheckDeviceExtensionSupport(physical_device, device_extensions);
@@ -1166,6 +1200,14 @@ namespace fwvulkan
 	 suitable_device = suitable_device && extensions_supported;
 #if USE_DYNAMIC_RENDERING
 	 suitable_device = suitable_device && features13.dynamicRendering;
+#endif
+#if USE_DESCRIPTOR_INDEXING
+	 suitable_device = suitable_device && desc_id_features.shaderSampledImageArrayNonUniformIndexing;
+	 suitable_device = suitable_device && desc_id_features.descriptorBindingSampledImageUpdateAfterBind;
+	 suitable_device = suitable_device && desc_id_features.shaderUniformBufferArrayNonUniformIndexing;
+	 suitable_device = suitable_device && desc_id_features.descriptorBindingUniformBufferUpdateAfterBind;
+	 suitable_device = suitable_device && desc_id_features.shaderStorageBufferArrayNonUniformIndexing;
+	 suitable_device = suitable_device && desc_id_features.descriptorBindingStorageBufferUpdateAfterBind;
 #endif
 
 	 bool swap_chain_adequate = false;
@@ -1237,6 +1279,7 @@ namespace fwvulkan
 	    if (IsDeviceSuitable(device, g_surface, g_device_extensions))
 	    {
 	       g_physical_device = device;
+	       g_min_ub_alignment = static_cast<uint32_t>(device_properties.limits.minUniformBufferOffsetAlignment);
 	       break;
 	    }
 	 }
@@ -2452,7 +2495,8 @@ int gGlfwVulkan::init()
 	 // ----: them in glsl. Probably want to bind them for frag stage too?
 	 VkDescriptorType types[] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_SAMPLER };
 	 VkShaderStageFlags stages[] = { VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
-	 g_shared_descriptor_set_layout = buffers::CreateDescriptorSetLayout(types, stages, 2);
+	 VkDescriptorBindingFlags bind_flags[] = { VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT, 0};
+	 g_shared_descriptor_set_layout = buffers::CreateDescriptorSetLayout(types, stages, bind_flags, 2);
 	 g_shared_descriptor_pool = buffers::CreateDescriptorPool();
 	 buffers::CreateSharedDescriptorSets();
       }
