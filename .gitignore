@@ -1,10 +1,44 @@
+##
+## cache dirs
+##
 .clangd/
+.cache/
 __pycache__/
+.imports/
+
+##
+## temp files
+##
+\#*\#
 *.*~
-*.bin
-*.exe
-*.elf
+
+##
+## build artefacts
+##
+*.pcm
 *.o
 *.d
 *.a
+modules.idx
+modules.timestamp
 tracking.py
+compile_commands.json
+
+
+##
+## binary files
+##
+*.bin
+*.exe
+*.spv
+*.elf
+
+##
+## assets
+##
+*.blob
+
+##
+## renderdoc
+## 
+*.rdc

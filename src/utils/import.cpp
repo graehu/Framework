@@ -252,7 +252,7 @@ namespace fw
       void load_filehashes()
       {
 	 blob::asset<FileHashEntry> fhb;
-	 blob::miscbank.load("imports/filehashes.blob", fhb);
+	 blob::miscbank.load(".imports/filehashes.blob", fhb);
 	 filehashes.resize(fhb.len);
 	 for(int i = 0; i < (int)fhb.len; i++)
 	 {
@@ -263,7 +263,7 @@ namespace fw
       void save_filehashes()
       {
 	 blob::asset<FileHashEntry> fhb = {{}, filehashes.data(), filehashes.size()};
-	 blob::miscbank.save("imports/filehashes.blob", fhb);
+	 blob::miscbank.save(".imports/filehashes.blob", fhb);
       }
       bool update_filehashes(FileHashEntry entry)
       {
@@ -292,12 +292,12 @@ namespace fw
 	 for (int i = 0; i < (int)in_meshes.len; i++)
 	 {
 #define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
-	    fw::filesystem::makedirs(macro("imports/{}/meshes/{}"));
+	    fw::filesystem::makedirs(macro(".imports/{}/meshes/{}"));
       
 	    blob::asset<fw::Mesh> mb = {{}, in_meshes.data+i, 1};
-	    blob::meshbank.save(macro("imports/{}/meshes/{}/mesh.blob"), mb);
-	    blob::meshbank.save(macro("imports/{}/meshes/{}/ibo.blob"), mb.data->geometry.ibo);
-	    blob::meshbank.save(macro("imports/{}/meshes/{}/vbo.blob"), mb.data->geometry.vbo);
+	    blob::meshbank.save(macro(".imports/{}/meshes/{}/mesh.blob"), mb);
+	    blob::meshbank.save(macro(".imports/{}/meshes/{}/ibo.blob"), mb.data->geometry.ibo);
+	    blob::meshbank.save(macro(".imports/{}/meshes/{}/vbo.blob"), mb.data->geometry.vbo);
 #undef macro
 	 }
       }
@@ -306,7 +306,7 @@ namespace fw
       {
 	 // explitily serialise each buffer, then load like below.
 	 // handle images etc next.
-	 auto base_str = fmt::format("imports/{}/meshes", in_name);
+	 auto base_str = fmt::format(".imports/{}/meshes", in_name);
 	 int num_meshes = fw::filesystem::countdirs(base_str.c_str());
 	 zip::begin_archive((base_str+".zip").c_str());
 	 log::debug("num meshes to zip: {}", num_meshes);
@@ -324,7 +324,7 @@ namespace fw
       {
 	 // explitily serialise each buffer, then load like below.
 	 // handle images etc next.
-	 auto base_str = fmt::format("imports/{}/images", in_name);
+	 auto base_str = fmt::format(".imports/{}/images", in_name);
 	 int num_images = fw::filesystem::countdirs(base_str.c_str());
 	 zip::begin_archive((base_str+".zip").c_str());
 	 log::debug("num images to zip: {}", num_images);
@@ -345,18 +345,18 @@ namespace fw
 	 for (int i = 0; i < (int)in_images.len; i++)
 	 {
 #define macro(fmtstr) fmt::format(fmtstr, in_name, i).c_str()
-	    fw::filesystem::makedirs(macro("imports/{}/images/{}"));
+	    fw::filesystem::makedirs(macro(".imports/{}/images/{}"));
       
 	    blob::asset<fw::Image> ib = {{}, in_images.data+i, 1};
-	    blob::imagebank.save(macro("imports/{}/images/{}/image.blob"), ib);
-	    blob::imagebank.save(macro("imports/{}/images/{}/ibo.blob"), ib.data->buffer);
+	    blob::imagebank.save(macro(".imports/{}/images/{}/image.blob"), ib);
+	    blob::imagebank.save(macro(".imports/{}/images/{}/ibo.blob"), ib.data->buffer);
 #undef macro
 	 }
       }
 
       void load_meshes(std::vector<Mesh*>& out_meshes, const char* in_name)
       {
-	 auto base_str = fmt::format("imports/{}/meshes/", in_name);
+	 auto base_str = fmt::format(".imports/{}/meshes/", in_name);
 	 int num_meshes = fw::filesystem::countdirs(base_str.c_str());
 	 out_meshes.resize(num_meshes);
 	 log::debug("num meshes to load: {}", num_meshes);
@@ -377,7 +377,7 @@ namespace fw
 
       void load_images(std::vector<fw::Image*>& out_images, const char* in_name)
       {
-	 auto base_str = fmt::format("imports/{}/images/", in_name);
+	 auto base_str = fmt::format(".imports/{}/images/", in_name);
 	 int num_images = fw::filesystem::countdirs(base_str.c_str());
 	 out_images.resize(num_images);
 	 log::debug("num images to load: {}", num_images);
@@ -392,7 +392,7 @@ namespace fw
       }
       bool load_images_zip(std::vector<fw::Image*>& out_images, const char* in_name)
       {
-	 auto base_str = fmt::format("imports/{}/images", in_name);
+	 auto base_str = fmt::format(".imports/{}/images", in_name);
 	 zip::begin_load((base_str+".zip").c_str());
 	 int num_entries = zip::entry_count();
 	 log::info("num entries: {}", num_entries);
@@ -408,7 +408,7 @@ namespace fw
       }
       bool load_meshes_zip(std::vector<fw::Mesh*>& out_meshes, const char* in_name)
       {
-	 auto base_str = fmt::format("imports/{}/meshes", in_name);
+	 auto base_str = fmt::format(".imports/{}/meshes", in_name);
 	 zip::begin_load((base_str+".zip").c_str());
 	 int num_entries = zip::entry_count();
 	 log::info("num entries: {}", num_entries);
@@ -445,7 +445,8 @@ namespace fw
       {
 	 assert(blob::miscbank.is_initialised());
 	 blob::imagebank.init(1 GiBs, 4 KiBs);
-	 blob::meshbank.init(1 GiBs, 4 KiBs);
+         blob::meshbank.init(1 GiBs, 4 KiBs);
+	 fw::filesystem::makedirs(".imports");
 	 load_filehashes();
 	 zip::init();
 	 return true;
@@ -465,7 +466,7 @@ namespace fw
 	 // todo: the amount of fmr::format usage in this file is making me sad.
 	 // ----: write my own thing or start using c formating.
 	 const FileHashEntry filehash = {hash::string(import, strlen(import)), filesystem::filehash(in_path)};
-	 if(!update_filehashes(filehash) || !filesystem::exists(fmt::format("{}/{}","imports",import).c_str()))
+	 if(!update_filehashes(filehash) || !filesystem::exists(fmt::format("{}/{}",".imports",import).c_str()))
 	 {
 	    log::info("not skipped!");
 	    std::vector<fw::Image> images; std::vector<fw::Mesh> meshes;
