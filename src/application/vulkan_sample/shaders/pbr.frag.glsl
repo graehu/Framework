@@ -1,5 +1,8 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
+// this allows #include.
+#extension GL_ARB_shading_language_include : enable
+#define PI 3.14159265358979323846
 
 layout(set=0, binding = 1) uniform sampler tex_sampler;
 layout(set=1, binding = 0) uniform texture2D albedo_tex;
@@ -25,7 +28,6 @@ struct Lights
    float intensity;
 };
 
-#define PI			3.14159265358979323846
 // k term is for image based versus direct lighting
 // ibl = (rougness*rougness)*0.5f
 // direct = ((roughness+1)^2)*0.125
@@ -167,6 +169,7 @@ void main()
    vec3 view_direction = normalize(in_view_pos - in_position);
    vec3 tex_normal = texture(sampler2D(normal_tex, tex_sampler), in_uv).rgb;
    vec4 albedo = texture(sampler2D(albedo_tex, tex_sampler), in_uv);
+   if(albedo.a == 0) discard;
    // convert srgb to linear
    albedo = pow(albedo, vec4(2.2));
    // gltf metallic and roughness are packed in one texture
@@ -249,7 +252,8 @@ void main()
       case 5: out_color = vec4(abs(world_normal), 1.0); break; // show world normals
       case 6: out_color = vec4(vec3(roughness), 1.0); break;   // show texture roughness
       case 7: out_color = vec4(vec3(metallic), 1.0); break;    // show texture metallic
-      case 8: out_color = vec4(vec3(ao), 1.0); break;          // show ao
+      case 8: out_color = vec4(vec3(ao), 1.0);  break;         // show ao
+      case 9: out_color = vec4(vec3(albedo.a), 1.0); break;    // show alpha
 
       default: out_color = vec4(color, 1.0); break;
    }

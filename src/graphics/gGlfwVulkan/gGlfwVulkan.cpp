@@ -1994,7 +1994,7 @@ namespace fwvulkan
 	 //
 	 color_blend_state_ci.attachmentCount = 1;
 	 color_blend_state_ci.pAttachments = &color_blend_attachment_state;
-	 // optional constants. I think these are actually used, they're just initialised to zero by defualt.
+	 // note: optional constants. I think these are actually used, they're just initialised to zero by defualt.
 	 color_blend_state_ci.blendConstants[0] = 0.0f;
 	 color_blend_state_ci.blendConstants[1] = 0.0f;
 	 color_blend_state_ci.blendConstants[2] = 0.0f;
@@ -2014,21 +2014,29 @@ namespace fwvulkan
 	       throw std::runtime_error("failed to create pipeline layout!");
 	    }
 	    unsigned int shader_count = 0;
-	    std::array<VkPipelineShaderStageCreateInfo,fw::shader::e_count> shader_stage_ci = {};
-	    VkShaderModule vertex_shader = {};
+            std::array<VkPipelineShaderStageCreateInfo, fw::shader::e_count> shader_stage_ci = {};
+	    std::array<VkPipelineShaderStageCreateInfo, 2> depth_shader_stage_ci = {};
+            VkShaderModule vertex_shader = {};
+	    VkShaderModule frag_shader = {};
 	    for(int i = 0; i < fw::shader::e_count; i++)
 	    {
 	       if(mat.shaders[i] != 0)
 	       {
-		  if(auto module = g_shaders[i].find(mat.shaders[i]); module != g_shaders[i].end())
+		  if(auto shader_module = g_shaders[i].find(mat.shaders[i]); shader_module != g_shaders[i].end())
 		  {
-
 		     VkPipelineShaderStageCreateInfo& stage_ci = shader_stage_ci[shader_count++];
 		     stage_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		     stage_ci.stage = shaders::shaderbit_lut.find((shader::type)i)->second;
-		     stage_ci.module = module->second;
+		     stage_ci.module = shader_module->second;
 		     stage_ci.pName = "main";
-		     if((shader::type)i == shader::e_vertex) { vertex_shader = stage_ci.module; }
+                     if ((shader::type)i == shader::e_vertex)
+		     {
+			vertex_shader = stage_ci.module;
+                     }
+                     if ((shader::type)i == shader::e_fragment)
+		     {
+			frag_shader = stage_ci.module;
+		     }                     
 		  }
 	       }
 	    }
@@ -2118,25 +2126,40 @@ namespace fwvulkan
 	       // ----: see include vulkan/vk_enum_string_helper.h comment.
 	       // log::error("{}", string_VkResult(result));
 	       throw std::runtime_error("failed to create graphics pipeline!");
-	    }
+            }
 	    VkPipeline depth_pipeline = {};
 	    if(vertex_shader)
 	    {
 	       depth_stencil_ci.depthWriteEnable = VK_TRUE;
-	       // pipeline_ci.pDepthStencilState = &depth_stencil_ci;
-	       // todo: see if this matters? should this be reset.
-	       // pipeline_ci.pRasterizationState = nullptr;
-	       // pipeline_ci.pMultisampleState = nullptr;
-	       // pipeline_ci.pColorBlendState = nullptr;
-	       // pipeline_ci.pDynamicState = nullptr;
-	       pipeline_ci.stageCount = 1;
-	       VkPipelineShaderStageCreateInfo stage_ci = {};
-	       stage_ci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	       stage_ci.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	       stage_ci.module = vertex_shader;
-	       stage_ci.pName = "main";
+               // pipeline_ci.pDepthStencilState = &depth_stencil_ci;
+               // todo: see if this matters? should this be reset.
+               // pipeline_ci.pRasterizationState = nullptr;
+               // pipeline_ci.pMultisampleState = nullptr;
+               // pipeline_ci.pColorBlendState = nullptr;
+               // pipeline_ci.pDynamicState = nullptr;
+               //
+
+               // todo: this sucks, write a simpler fragment shader for alpha.
+	       // ----: i.e. don't reuse the normal fragment shader.
+               pipeline_ci.stageCount = (frag_shader && mat.flags.alpha) ? 2 : 1;
+               
+	       VkPipelineShaderStageCreateInfo vstage_ci = {};
+	       vstage_ci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	       vstage_ci.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	       vstage_ci.module = vertex_shader;
+               vstage_ci.pName = "main";
+               
+	       VkPipelineShaderStageCreateInfo pstage_ci = {};
+	       pstage_ci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	       pstage_ci.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	       pstage_ci.module = frag_shader;
+               pstage_ci.pName = "main";
+               
+               depth_shader_stage_ci[0] = vstage_ci;
+               depth_shader_stage_ci[1] = pstage_ci;
+               
 	       log::debug("CreateDepth");
-	       pipeline_ci.pStages = &stage_ci;
+	       pipeline_ci.pStages = depth_shader_stage_ci.data();
 	       if (vkCreateGraphicsPipelines(g_logical_device, VK_NULL_HANDLE, 1, &pipeline_ci, nullptr,
 					     &depth_pipeline) != VK_SUCCESS)
 	       {

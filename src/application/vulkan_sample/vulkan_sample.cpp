@@ -116,6 +116,7 @@ void vulkan_sample::run()
 	       case 6: smodestr = "texture roughness"; break;
 	       case 7: smodestr = "texture metallic";  break;
 	       case 8: smodestr = "texture ao";        break;
+	       case 9: smodestr = "texture alpha";     break;
 	    }
 	    switch(cmode)
 	    {
@@ -240,8 +241,8 @@ void vulkan_sample::run()
       {
 	 shade_toggling = true;
 	 int dir = m_input->isKeyPressed(input::e_shift) ? -1 : 1;
-	 shademode = (shademode+dir) % 9;
-	 if(shademode < 0) shademode = 8;
+	 shademode = (shademode+dir) % 10;
+	 if(shademode < 0) shademode = 9;
 	 log::debug("toggle shading: {}", shademode);
 	 m_graphics->set_shademode(shademode);
       }
@@ -253,7 +254,7 @@ void vulkan_sample::run()
 	 int dir = m_input->isKeyPressed(input::e_shift) ? -1 : 1;
 	 model_id = (model_id+dir) % meshes.size();
 	 if(model_id < 0) model_id = meshes.size()-1;
-	 log::debug("toggle meshes: {}", model_id);
+         log::debug("toggle meshes: {}", model_id);
       }
       else if(!wants_model && model_toggling) { model_toggling = false; }
       float dt = (1.0f/60.0f);
