@@ -26,7 +26,7 @@ camera::camera()
 void camera::update()
 {
    // Make the Quaternions that will represent our rotations
-   // todo: this - heading and 180 pitch are strange / wrong.
+   // todo: this negative heading and 180 pitch are strange / wrong.
    // ----: but I want to program camera controls now, so... :D
    m_qPitch.create_from_axis_angle(1.0f, 0.0f, 0.0f, (180+m_pitchDegrees));
    m_qHeading.create_from_axis_angle(0.0f, 1.0f, 0.0f, -m_headingDegrees);
@@ -34,11 +34,15 @@ void camera::update()
    // Combine the pitch and heading rotations and store the results in q
    // quaternion q =  m_qPitch * m_qHeading;
    quaternion q =  m_qHeading * m_qPitch;
-   
+
    mat4x4f Matrix;
+   // todo: i don't have a real near / far plane because I have no perspective
+   // ----: calcs below. There's a harsh cutoff in sponza if I don't scale the model.
+   // mat4x4f persp; persp.perspective(45.0f, 16.0f / 9.0f, 0.01f, 100.0f);
    q.create_matrix(&Matrix);
    Matrix.transpose();
    m_view = Matrix;
+   
    
    // Create a matrix from the pitch Quaternion and get the j vector 
    // for our direction.
