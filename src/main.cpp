@@ -28,7 +28,9 @@ int WINAPI WinMain(HINSTANCE hInstance,
 {
    LPWSTR *argv = nullptr;
    int argc = 0;
-
+   // note: this probably isn't working correctly.
+   // ----: argv and argc are defines in some windows header now.
+   // ----: so use those instead.
    argv = CommandLineToArgvW(GetCommandLineW(), &argc);
    int ret = main(argc, argv);
 

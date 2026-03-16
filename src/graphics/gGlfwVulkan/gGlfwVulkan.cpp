@@ -181,16 +181,20 @@ namespace fwvulkan
    };
 #define USE_DYNAMIC_RENDERING 1
 #define USE_DESCRIPTOR_INDEXING 1
+#define USE_DESCRIPTOR_HEAP 1
    const std::vector<const char *> g_device_extensions = {
-      VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-      VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
+       VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
 #if USE_DYNAMIC_RENDERING
-      VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+       VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
 #endif
-      // VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
-
+       VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
+       // todo: this requires a newer version of vulkan than I have.
+       // ----: need to move to some 1.4 or something.
+       // VK_EXT_DESCRIPTOR_HEAP_EXTENSION_NAME
    };
-   // Note: These layers require you to run Vulkan/1.3.280.1/setup-env.sh prior to running the executable.
+   // VK_EXT_descriptor_heap
+   // 
+   // note: These layers require you to run Vulkan/1.3.280.1/setup-env.sh prior to running the executable.
    const std::vector<const char *> g_validation_layers = {
       "VK_LAYER_KHRONOS_validation",
       "VK_LAYER_RENDERDOC_Capture",
