@@ -161,10 +161,11 @@ void vulkan_sample::run()
 	    ImGui::Text("free = %p, used %p", (void*)blob::meshbank.get_freednode(), (void*)blob::meshbank.get_usednode());
 	    ImGui::Unindent();
 	    static int current_gltf = 0;
-	    // todo: make tis list user driven, have it pull recursively from a directory.
+	    // todo: make this list user driven, have it pull recursively from a directory.
 	    static const char* gltf_list[] = {
-	       "../../../../glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf",
-	       "../../../../glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf",
+			"../../../../../Github/glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf",
+	       	"~/Github/glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", // todo: make this work?
+	       	"~/Github/glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf",
 	    };
 	    static const char* gltf_list_zip[] = { "Sponza.gltf", "SciFiHelmet.gltf", };
 	    static const char* gltfpath = gltf_list[0];
