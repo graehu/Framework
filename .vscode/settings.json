@@ -1,5 +1,6 @@
 {
     "python.analysis.extraPaths": [
         "./tools/confply"
-    ]
+    ],
+    "cmake.ignoreCMakeListsMissing": true
 }
