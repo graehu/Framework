@@ -156,9 +156,11 @@ iRenderVisitor* gSdlGl::getRenderer()
 {
    return (iRenderVisitor*)this;
 }
-
+//class ImDrawData;
+//namespace fw { class Light; }
 void gSdlGl::visit(fw::Mesh* _mesh){(void)_mesh;}
-
+void gSdlGl::visit(fw::Light*) { }
+void gSdlGl::visit(ImDrawData*) { }
 graphics* graphics::graphicsFactory()
 {
    return (graphics*)new gSdlGl;

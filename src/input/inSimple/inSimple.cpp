@@ -67,8 +67,10 @@ void inSimple::mouseDelta(float& /*_dx*/, float& /*_dy*/)
 {
   return;
 }
+  bool inSimple::setMousePosition(float, float) { return false; }
+  bool inSimple::centerMousePosition() { return false; }
 
 input* input::inputFactory(void)
 {
-  return (input*)new inSimple();
+  return (input*) new inSimple();
 }

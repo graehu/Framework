@@ -141,17 +141,18 @@ void mpeg_sample::run(void)
  
    glfwSetErrorCallback(glfw_error_callback);
  
-   // if (glfwInit())
+   //if (glfwInit())
    if(false)
    {
       glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
       glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+      glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
  
       window = glfwCreateWindow(640, 480, "mpeg_sample", NULL, NULL);
       if (!window)
       {
-	 glfwTerminate();
-	 exit(EXIT_FAILURE);
+	      glfwTerminate();
+	      exit(EXIT_FAILURE);
       }
  
       glfwSetKeyCallback(window, key_callback);
@@ -194,31 +195,35 @@ void mpeg_sample::run(void)
       glfwGetFramebufferSize(window, &width, &height);
       mpeg_writer gl_writer("gl_mpeg", width, height, 30);
       uint8_t* data = new uint8_t[3*width*height];
+      float time = 0;
       while (!glfwWindowShouldClose(window))
       {
-	 float ratio;
-	 mat4x4 m, p, mvp;
-	 glfwGetFramebufferSize(window, &width, &height);
-	 glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, data);
-	 gl_writer.add_frame(data);
-	 lv_mpeg_handler.data = gl_writer.pleb;
-	 lv_mpeg_handler.size = gl_writer.pleb_size;
-	 ratio = width / (float) height;
- 
-	 glViewport(0, 0, width, height);
-	 glClear(GL_COLOR_BUFFER_BIT);
- 
-	 mat4x4_identity(m);
-	 mat4x4_rotate_Z(m, m, (float) glfwGetTime());
-	 mat4x4_ortho(p, -ratio, ratio, -1.f, 1.f, 1.f, -1.f);
-	 mat4x4_mul(mvp, p, m);
- 
-	 glUseProgram(program);
-	 glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*) mvp);
-	 glDrawArrays(GL_TRIANGLES, 0, 3);
- 
-	 glfwSwapBuffers(window);
-	 glfwPollEvents();
+         float ratio;
+         mat4x4 m, p, mvp;
+         glfwGetFramebufferSize(window, &width, &height);
+         glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, data);
+         gl_writer.add_frame(data);
+         lv_mpeg_handler.data = gl_writer.pleb;
+         lv_mpeg_handler.size = gl_writer.pleb_size;
+         ratio = width / (float) height;
+
+         glViewport(0, 0, width, height);
+         glClear(GL_COLOR_BUFFER_BIT);
+
+         mat4x4_identity(m);
+         mat4x4_rotate_Z(m, m, time);//(float) glfwGetTime());
+         mat4x4_ortho(p, -ratio, ratio, -1.f, 1.f, 1.f, -1.f);
+         mat4x4_mul(mvp, p, m);
+
+         glUseProgram(program);
+         glUniformMatrix4fv(mvp_location, 1, GL_FALSE, (const GLfloat*) mvp);
+         glDrawArrays(GL_TRIANGLES, 0, 3);
+
+         glfwSwapBuffers(window);
+         glfwPollEvents();
+         std::this_thread::sleep_for(std::chrono::milliseconds(16));
+         time += (1.0f/60.0f);
+         if(time > 10.0f) break;
       }
       delete [] data;
       glfwDestroyWindow(window);
@@ -250,7 +255,7 @@ void mpeg_sample::run(void)
       }
       delete l_input;
    }
-   else if(false)
+   else if(true)
    {
       mpeg_reader reader("gl_mpeg.1.00.h264");
       reader.dump_screenshot(200);

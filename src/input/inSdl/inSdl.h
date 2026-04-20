@@ -14,6 +14,9 @@ class inSdl : public input
   bool isMouseClicked(mouseButtons _button);
   bool update(void);
   void mouseDelta(float& _dx, float& _dy);
+  bool setMousePosition(float _x, float _y);
+  bool centerMousePosition();
+
 
  protected:
  private:

@@ -71,7 +71,8 @@ void inSdl::mouseDelta(float& _x, float& _y)
 	_y = y;
 }
 
-
+  bool inSdl::setMousePosition(float, float) { return false; }
+  bool inSdl::centerMousePosition() { return false; }
 
 input* input::inputFactory()
 {

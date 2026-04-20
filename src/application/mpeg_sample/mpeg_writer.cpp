@@ -134,8 +134,9 @@ mpeg_writer::~mpeg_writer()
    } while (ret == EAGAIN);
    fwrite(endcode, 1, sizeof(endcode), out_file);
    fclose(out_file);
-   avcodec_close(codec_context);
-   av_free(codec_context);
+   avcodec_free_context(&codec_context);
+   // avcodec_close(codec_context);
+   // av_free(codec_context);
    av_freep(&frame->data[0]);
    av_frame_free(&frame);
    av_freep(&scaled_frame->data[0]);

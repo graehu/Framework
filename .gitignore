@@ -42,3 +42,6 @@ compile_commands.json
 ## renderdoc
 ## 
 *.rdc
+src/application/mpeg_sample/gl_mpeg.1.00.bmp
+src/application/mpeg_sample/gl_mpeg.1.00.pgm
+src/application/vulkan_sample/imgui.ini

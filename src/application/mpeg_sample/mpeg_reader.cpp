@@ -83,8 +83,9 @@ mpeg_reader::mpeg_reader(const char* _filename) :
 mpeg_reader::~mpeg_reader()
 {
    fclose(in_file);
-   avcodec_close(codec_context);
-   av_free(codec_context);
+   avcodec_free_context(&codec_context);
+   // avcodec_close(codec_context);
+   // av_free(codec_context);
    av_freep(&frame->data[0]);
    av_frame_free(&frame);
    av_freep(&rgb_frame->data[0]);

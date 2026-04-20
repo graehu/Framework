@@ -16,7 +16,8 @@ class inSimple : public input
   bool isKeyPressed(keys _key);
   bool isMouseClicked(mouseButtons _button);
   void mouseDelta(float& _dx, float& _dy);
-
+  bool setMousePosition(float _x, float _y);
+  bool centerMousePosition();
   // static input* inputFactory(void);
 protected:
   void pollInput();
