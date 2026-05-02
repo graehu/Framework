@@ -48,3 +48,5 @@ config.link_libraries.extend(["avformat", "avcodec", "swresample", "swscale", "a
 config.link_libraries.extend(["stdc++", "pthread", "m", "fwcore"])
 config.standard = "c++17"
 config.output_file = "mpeg_sample.bin"
+config.compile_commands = True
+

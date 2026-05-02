@@ -66,7 +66,7 @@ class graphics
 public:
    virtual int init(void) = 0; //initializing gl and what not for whatever window system is implemented
    virtual int render(void) = 0; //this'll have flipping the buffers
-   virtual bool register_shader(fw::hash::string/*name*/, const char*/*path*/, fw::shader::type/*type*/)  { return 0; } // being lazy here, don't want to have to implement this for everything
+   virtual bool register_shader(fw::hash::string/*name*/, const char* /*path*/, fw::shader::type /*type*/, const char* /*entry_point*/)  { return 0; } // being lazy here, don't want to have to implement this for everything
    virtual bool register_material(fw::Material /*material*/)  { return 0; } // being lazy here, don't want to have to implement this for everything
    virtual bool register_pass(fw::hash::string) {return 0;}
    virtual void set_shademode(int /*shademode*/) { } // lazy

@@ -62,12 +62,12 @@ struct vkVertex : public fw::Vertex
       attribute_description[1].location = 1;
       attribute_description[1].format = VK_FORMAT_R32G32B32_SFLOAT;
       attribute_description[1].offset = offsetof(Vertex, normal); // normal
-      
+
       attribute_description[2].binding = 0;
       attribute_description[2].location = 2;
       attribute_description[2].format = VK_FORMAT_R32G32B32_SFLOAT;
       attribute_description[2].offset = offsetof(Vertex, color); // colour
-      
+
       attribute_description[3].binding = 0;
       attribute_description[3].location = 3;
       attribute_description[3].format = VK_FORMAT_R32G32_SFLOAT;
@@ -87,7 +87,7 @@ namespace fwvulkan
    }
    // instance
    VkInstance g_instance;
-   const uint32_t g_vulkan_version = VK_API_VERSION_1_3;
+   const uint32_t g_vulkan_version = VK_API_VERSION_1_4;
    VkSurfaceKHR g_surface = VK_NULL_HANDLE;
    VkDebugUtilsMessengerEXT g_debug_messenger;
    extern GLFWwindow* g_window;
@@ -98,7 +98,7 @@ namespace fwvulkan
    VkDevice g_logical_device = VK_NULL_HANDLE;
    VkQueue g_present_queue = VK_NULL_HANDLE;
    VkQueue g_graphics_queue = VK_NULL_HANDLE;
-   // swapchain 
+   // swapchain
    VkSwapchainKHR g_swap_chain = VK_NULL_HANDLE;
    VkSurfaceFormatKHR g_swapchain_surface_format = {};
    unsigned int g_current_swapchain_image = 0;
@@ -113,7 +113,7 @@ namespace fwvulkan
    // todo: this sucks
    VkDescriptorPool g_shared_descriptor_pool;
    std::vector<VkDescriptorSet> g_shared_descriptor_sets;
-   
+
    SharedUniforms ubo = {};
    VkDescriptorSetLayout g_shared_descriptor_set_layout;
    std::vector<VkBuffer> g_uniformBuffers;
@@ -146,11 +146,16 @@ namespace fwvulkan
    {
       std::vector<VkSemaphore> image_available;
       std::vector<VkSemaphore> render_finished;
-      std::vector<VkFence> in_flight_fences;      
+      std::vector<VkFence> in_flight_fences;
    };
    std::map<fw::hash::string, SemaphoreHandle> g_semaphore_map;
    // shaders
-   typedef std::map<fw::hash::string, VkShaderModule> shader_map;
+   struct ShaderInfo
+   {
+		VkShaderModule module;
+		const char* name = "main";
+   };
+   typedef std::map<fw::hash::string, ShaderInfo> shader_map;
    std::array<shader_map, fw::shader::e_count> g_shaders;
    // pipeline
    struct PipelineHandle
@@ -160,7 +165,7 @@ namespace fwvulkan
       VkPipelineLayout layout = VK_NULL_HANDLE;
    };
    std::map<uint32_t, PipelineHandle> g_pipe_map;
-   
+
    // commands
    VkCommandPool g_command_pool = VK_NULL_HANDLE;
    // std::vector<VkCommandBuffer> g_command_buffers;
@@ -181,19 +186,21 @@ namespace fwvulkan
    };
 #define USE_DYNAMIC_RENDERING 1
 #define USE_DESCRIPTOR_INDEXING 1
-#define USE_DESCRIPTOR_HEAP 1
+#define USE_DESCRIPTOR_HEAP 0
    const std::vector<const char *> g_device_extensions = {
        VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
 #if USE_DYNAMIC_RENDERING
        VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
 #endif
-       VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
+       	VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
+		#if USE_DESCRIPTOR_HEAP
        // todo: this requires a newer version of vulkan than I have.
        // ----: need to move to some 1.4 or something.
-       // VK_EXT_DESCRIPTOR_HEAP_EXTENSION_NAME
+    	VK_EXT_DESCRIPTOR_HEAP_EXTENSION_NAME
+		#endif
    };
    // VK_EXT_descriptor_heap
-   // 
+   //
    // note: These layers require you to run Vulkan/1.3.280.1/setup-env.sh prior to running the executable.
    const std::vector<const char *> g_validation_layers = {
       "VK_LAYER_KHRONOS_validation",
@@ -269,7 +276,7 @@ namespace fwvulkan
       {
 	 return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
       }
-      
+
       typedef std::function<void(VkCommandBuffer)> RecordCB;
       void RecordAndSubmit(RecordCB func)
       {
@@ -399,7 +406,7 @@ namespace fwvulkan
 
 	    region.imageOffset = {0, 0, 0};
 	    region.imageExtent = { width, height, 1 };
-	    
+
 	    vkCmdCopyBufferToImage(cb, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 	 });
       }
@@ -437,16 +444,16 @@ namespace fwvulkan
 	 if (vkCreateImage(g_logical_device, &image_ci, nullptr, &image) != VK_SUCCESS) {
 	    throw std::runtime_error("failed to create image!");
 	 }
-	 
+
 	 VkMemoryAllocateInfo alloc_info = {};
 	 alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	    
+
 	 VkMemoryRequirements mem_requirements;
 	 vkGetImageMemoryRequirements(g_logical_device, image, &mem_requirements);
-	    
+
 	 alloc_info.allocationSize = mem_requirements.size;
 	 alloc_info.memoryTypeIndex = utils::FindMemoryType(mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	 
+
 	 if (vkAllocateMemory(g_logical_device, &alloc_info, nullptr, &image_memory) != VK_SUCCESS)
 	 {
 	    throw std::runtime_error("failed to allocate image mem!");
@@ -517,7 +524,7 @@ namespace fwvulkan
 	    layout_ci.pNext = &binding_ci;
 	 }
 #endif
-	
+
 	 VkDescriptorSetLayout descriptor_set;
 	 if (vkCreateDescriptorSetLayout(g_logical_device, &layout_ci, nullptr, &descriptor_set) != VK_SUCCESS)
 	 {
@@ -525,7 +532,7 @@ namespace fwvulkan
 	 }
 	 return descriptor_set;
       }
-      
+
       void CreateBuffer(void* source, size_t size, VkBufferUsageFlags usage, VkBuffer& buffer, VkDeviceMemory& memory)
       {
 	 log::debug("CreateBuffer: {}", size);
@@ -559,15 +566,15 @@ namespace fwvulkan
 	    buff_type = usage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT ? "vertex" : buff_type;
 	    buff_type = usage & VK_BUFFER_USAGE_INDEX_BUFFER_BIT ? "index" : buff_type;
 	    buff_type = usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT ? "uniform" : buff_type;
-	    
-	    void *data = nullptr; 
+
+	    void *data = nullptr;
 	    vkMapMemory(g_logical_device, memory, 0, buffer_ci.size, 0, &data);
 	    log::debug("Copying to {} buffer {} from {}", buff_type, data, source);
 	    memcpy(data, source, (size_t)buffer_ci.size);
 	    vkUnmapMemory(g_logical_device, memory);
 	 }
       }
-      
+
       VkDescriptorPool CreateDescriptorPool()
       {
 	 VkDescriptorPoolSize pool_sizes[2];
@@ -591,14 +598,14 @@ namespace fwvulkan
 	 }
 	 return pool;
       }
-      
+
       // todo: make a handle for these
       void CreateUniformBuffer(VkDeviceSize buffer_size, VkBuffer& buffer, VkDeviceMemory& mem, void*& mapping)
       {
 	 CreateBuffer(nullptr, buffer_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, buffer, mem);
 	 vkMapMemory(g_logical_device, mem, 0, buffer_size, 0, &mapping);
       }
-      
+
       void CreateSharedUniformBuffers()
       {
 	 VkDeviceSize buffer_size = sizeof(SharedUniforms);
@@ -634,7 +641,7 @@ namespace fwvulkan
             vkUpdateDescriptorSets(g_logical_device, 1, descriptorWrites, 0, nullptr);
 	 }
       }
-      
+
       void SetDescriptorSampler(VkSampler sampler)
       {
 	 log::debug("SetDescriptorSampler: {}", size_t(sampler));
@@ -715,13 +722,13 @@ namespace fwvulkan
             vkUpdateDescriptorSets(g_logical_device, 2, descriptorWrites, 0, nullptr);
 	 }
       }
-      
+
       int CreateSamplerHandle(VkFilter filtering, VkSamplerAddressMode uv_mode, bool enable_aniso);
       // these are bound to descriptor pool and descriptor_set_layout
       void CreateSharedDescriptorSets()
       {
          // https://dev.to/gasim/implementing-bindless-design-in-vulkan-34no
-	 // Manage bindless descriptors and communication 
+	 // Manage bindless descriptors and communication
 	 log::debug("CreateSharedDescriptorSets");
 	 std::vector<VkDescriptorSetLayout> layouts(g_max_frames_in_flight, g_shared_descriptor_set_layout);
 	 VkDescriptorSetAllocateInfo alloc_info{};
@@ -730,7 +737,7 @@ namespace fwvulkan
 	 alloc_info.descriptorSetCount = g_max_frames_in_flight;
 	 alloc_info.pSetLayouts = layouts.data();
 	 g_shared_descriptor_sets.resize(g_max_frames_in_flight);
-	 
+
 	 if (vkAllocateDescriptorSets(g_logical_device, &alloc_info, g_shared_descriptor_sets.data()) != VK_SUCCESS)
 	 {
             throw std::runtime_error("failed to allocate descriptor sets!");
@@ -745,7 +752,7 @@ namespace fwvulkan
 	 alloc_info.commandPool = g_command_pool;
 	 alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	 alloc_info.commandBufferCount = 1;
-	    
+
 	 VkCommandBuffer buffer;
 	 if (vkAllocateCommandBuffers(g_logical_device, &alloc_info, &buffer) != VK_SUCCESS)
 	 {
@@ -808,7 +815,7 @@ namespace fwvulkan
 	 size_t width = image.width;
 	 size_t height = image.height;
 	 size_t bits = image.bits;
-	 
+
 	 log::debug("CreateImageHandle: {} x {} ({}bit)", width, height, bits);
 	 if (image_buffer == nullptr || image.buffer.len == 0) return 0;
 	 size_t image_size = width * height * (bits/8);
@@ -856,13 +863,13 @@ namespace fwvulkan
 	    utils::CopyBufferToImage(copy_buffer, vkimage, width, height);
 	    // todo: this will be wrong if the bits aren't 32 / non 8888.
 	    utils::TransitionImageLayout(vkimage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-	    
+
 	    vkDestroyBuffer(g_logical_device, copy_buffer, nullptr);
 	    vkFreeMemory(g_logical_device, copy_memory, nullptr);
-	    
+
 	    // todo: this will be wrong if the bits aren't 32 / non 8888.
 	    VkImageView view = CreateImageView(vkimage, VK_FORMAT_R8G8B8A8_SRGB);
-	    
+
 	    g_im_map[image.buffer.head.hash] = {vkimage, view, image_memory, width, height};
 	    log::debug("Created IMHandle: {}", image.buffer.head.hash);
 	 }
@@ -969,7 +976,7 @@ namespace fwvulkan
 	    VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 	 createInfo.pfnUserCallback = DebugCallback;
       }
-      
+
       void SetupDebugMessenger()
       {
 	 log::debug("Setup Debug Messenger");
@@ -1166,7 +1173,7 @@ namespace fwvulkan
 	 }
 	 return details;
       }
-   
+
       bool IsDeviceSuitable(VkPhysicalDevice physical_device, VkSurfaceKHR surface,
 			    const std::vector<const char *> &device_extensions)
       {
@@ -1176,7 +1183,7 @@ namespace fwvulkan
 	 VkPhysicalDeviceFeatures2 device_features = {};
 	 device_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 	 device_features.pNext = nullptr;
-	 
+
 #if USE_DESCRIPTOR_INDEXING
 	 VkPhysicalDeviceDescriptorIndexingFeatures desc_id_features{};
 	 desc_id_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
@@ -1212,6 +1219,8 @@ namespace fwvulkan
 	 suitable_device = suitable_device && desc_id_features.descriptorBindingUniformBufferUpdateAfterBind;
 	 suitable_device = suitable_device && desc_id_features.shaderStorageBufferArrayNonUniformIndexing;
 	 suitable_device = suitable_device && desc_id_features.descriptorBindingStorageBufferUpdateAfterBind;
+#endif
+#if USE_DESCRIPTOR_HEAP
 #endif
 
 	 bool swap_chain_adequate = false;
@@ -1257,7 +1266,7 @@ namespace fwvulkan
 	       log::debug("\tmemheap usage: {}", budget.heapUsage[i]);
 	    }
 	 }
-	 
+
       }
       void PickPhysicalDevice()
       {
@@ -1287,9 +1296,11 @@ namespace fwvulkan
 	       break;
 	    }
 	 }
+	 assert(g_physical_device != VK_NULL_HANDLE);
 	 if (g_physical_device == VK_NULL_HANDLE)
 	 {
 	    std::runtime_error("Failed to find suitable a GPU!");
+
 	 }
 	 else
 	 {
@@ -1316,7 +1327,7 @@ namespace fwvulkan
 	 }
 	 VkPhysicalDeviceFeatures device_features = {};
 	 device_features.samplerAnisotropy = VK_TRUE;
-	 
+
 	 VkDeviceCreateInfo create_info = {};
 	 create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 #if USE_DYNAMIC_RENDERING
@@ -1341,7 +1352,7 @@ namespace fwvulkan
 	    create_info.enabledLayerCount = static_cast<uint32_t>(g_validation_layers.size());
 	    create_info.ppEnabledLayerNames = g_validation_layers.data();
 	 }
-#endif 
+#endif
 	 if (vkCreateDevice(g_physical_device, &create_info, nullptr, &g_logical_device) != VK_SUCCESS)
 	 {
 	    throw std::runtime_error("failed to create logical device!");
@@ -1445,7 +1456,7 @@ namespace fwvulkan
 #endif
 	 }
 	 vkDestroySwapchainKHR(g_logical_device, g_swap_chain, nullptr);
-	 
+
 #if 0 // todo: use this kind of thing to replace g_semaphore_map
 	 log::debug("cleaning up semaphores");
 	 for (auto pass : g_pass_map)
@@ -1479,7 +1490,7 @@ namespace fwvulkan
 	 vkDestroyImageView(g_logical_device, rt.view, nullptr);
 	 vkFreeMemory(g_logical_device, rt.image_mem, nullptr);
 	 g_rt_map.erase("depth");
-	 
+
 	 g_pass_map.clear();
 	 // todo: make sure this doesn't cause unwanted vb/ib/im recreation.
 	 g_drawhandles.clear();
@@ -1637,15 +1648,15 @@ namespace fwvulkan
 	 assert(pass.frame_buffers.size() == 0);
 	 assert(pass.image_views.size() == 0);
 	 assert(pass.image_mems.size() == 0);
-	 
+
 	 pass.images.resize(count);
 	 pass.image_views.resize(count);
 	 pass.image_mems.resize(count);
          pass.frame_buffers.resize(count);
-	 
+
          // back buffer format
 	 const VkImageUsageFlags usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-	 
+
 	 for (size_t i = 0; i < pass.images.size(); i++)
 	 {
 	    buffers::CreateImage(pass.extent.width, pass.extent.height, pass.image_format, usage, pass.images[i], pass.image_mems[i]);
@@ -1713,7 +1724,7 @@ namespace fwvulkan
 
 	    auto colour_attachment = GetDefaultColourAttachment();
 	    auto depth_attachment = GetDefaultDepthAttachment();
-	    
+
 	    colour_attachment.finalLayout = layout;
 
 	    VkAttachmentReference color_attachment_reference = {};
@@ -1737,7 +1748,7 @@ namespace fwvulkan
 	    VkAccessFlags access = {};
 	    access |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 	    access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-	    
+
 	    VkSubpassDependency subpass_dependency = {};
 	    subpass_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 	    subpass_dependency.dstSubpass = 0;
@@ -1761,7 +1772,7 @@ namespace fwvulkan
 	    {
 	       throw std::runtime_error("failed to create render pass!");
 	    }
-	    
+
 #endif
 	    VkCommandBuffer buffer = buffers::CreateCommandBuffer();
 	    g_pass_map[passname] = {pass, buffer, extent, format, {}, {}, {}, {}, {}, {}};
@@ -1769,7 +1780,7 @@ namespace fwvulkan
 	 }
 	 return false;
       }
-      
+
       void CreateDepthBuffer()
       {
 	 VkFormat format = utils::FindDepthFormat();
@@ -1781,7 +1792,7 @@ namespace fwvulkan
 	 g_rt_map["depth"] = { depth_image, depth_view, depth_memory, extent.width, extent.height };
 	 utils::TransitionImageLayout(depth_image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
       }
-      
+
    }
    namespace barriers
    {
@@ -1854,7 +1865,7 @@ namespace fwvulkan
       VkShaderModule CreateShaderModule(const std::vector<char> &code, VkDevice logical_device)
       {
 	 // todo: this should have a cache and we should hash the &code.
-	 // ----: return the shader module if found or assert if we ever 
+	 // ----: return the shader module if found or assert if we ever
 	 // ----: try to recreate a shader module.
 	 log::debug("CreateShaderModule");
 	 VkShaderModuleCreateInfo create_info = {};
@@ -1878,7 +1889,7 @@ namespace fwvulkan
 	 // ----: similar should be done if a non default vertex input state func is made.
 	 static VkVertexInputBindingDescription vert_binding_description = vkVertex::GetBindingDescription();
 	 static std::array<VkVertexInputAttributeDescription, 4> vert_attribute_description = vkVertex::GetAttributeDescriptions();
-	 
+
 	 VkPipelineVertexInputStateCreateInfo vertex_input_ci = {};
 	 vertex_input_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	 vertex_input_ci.vertexBindingDescriptionCount = 1;
@@ -1929,7 +1940,7 @@ namespace fwvulkan
 	 // ----: similar should be done if a non default viewport state func is made.
 	 static VkViewport viewport = {};
 	 viewport = GetDefaultViewport();
-	 
+
 	 static VkRect2D scissor = {};
 	 scissor = GetDefaultScissor();
 
@@ -1989,7 +2000,7 @@ namespace fwvulkan
 	    color_blend_attachment_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	    color_blend_attachment_state.alphaBlendOp = VK_BLEND_OP_ADD;
 	 }
-	 
+
 	 VkPipelineColorBlendStateCreateInfo color_blend_state_ci = {};
 	 color_blend_state_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	 color_blend_state_ci.logicOpEnable = VK_FALSE;
@@ -2005,7 +2016,7 @@ namespace fwvulkan
 	 color_blend_state_ci.blendConstants[3] = 0.0f;
 	 return color_blend_state_ci;
       }
-      
+
       int CreatePipelineVariants(Material mat, VkPipelineLayoutCreateInfo pipeline_layout_ci)
       {
 	 log::debug("CreateGraphicsPipeline");
@@ -2031,8 +2042,8 @@ namespace fwvulkan
 		     VkPipelineShaderStageCreateInfo& stage_ci = shader_stage_ci[shader_count++];
 		     stage_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		     stage_ci.stage = shaders::shaderbit_lut.find((shader::type)i)->second;
-		     stage_ci.module = shader_module->second;
-		     stage_ci.pName = "main";
+		     stage_ci.module = shader_module->second.module;
+		     stage_ci.pName = shader_module->second.name;
                      if ((shader::type)i == shader::e_vertex)
 		     {
 			vertex_shader = stage_ci.module;
@@ -2040,7 +2051,7 @@ namespace fwvulkan
                      if ((shader::type)i == shader::e_fragment)
 		     {
 			frag_shader = stage_ci.module;
-		     }                     
+		     }
 		  }
 	       }
 	    }
@@ -2052,7 +2063,7 @@ namespace fwvulkan
 	    auto raster_state_ci = GetDefaultRasterState();
 	    auto multisample_state_ci = GetDefaultMultisampleState();
 	    auto blend_state_ci = GetDefaultBlendState(mat.flags.alpha);
-	    
+
 
 	    // Setting any of these means parts of the associated create info is ignored.
 	    // The related parts must be recorded in commands, listing related commands below
@@ -2082,7 +2093,7 @@ namespace fwvulkan
 	    depth_stencil_ci.stencilTestEnable = VK_FALSE;
 	    depth_stencil_ci.front = {}; // Optional
 	    depth_stencil_ci.back = {}; // Optional
-	    
+
 	    VkGraphicsPipelineCreateInfo pipeline_ci = {};
 	    pipeline_ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	    pipeline_ci.stageCount = shader_count;
@@ -2146,22 +2157,22 @@ namespace fwvulkan
                // todo: this sucks, write a simpler fragment shader for alpha.
 	       // ----: i.e. don't reuse the normal fragment shader.
                pipeline_ci.stageCount = (frag_shader && mat.flags.alpha) ? 2 : 1;
-               
+
 	       VkPipelineShaderStageCreateInfo vstage_ci = {};
 	       vstage_ci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	       vstage_ci.stage = VK_SHADER_STAGE_VERTEX_BIT;
 	       vstage_ci.module = vertex_shader;
                vstage_ci.pName = "main";
-               
+
 	       VkPipelineShaderStageCreateInfo pstage_ci = {};
 	       pstage_ci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	       pstage_ci.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
 	       pstage_ci.module = frag_shader;
                pstage_ci.pName = "main";
-               
+
                depth_shader_stage_ci[0] = vstage_ci;
                depth_shader_stage_ci[1] = pstage_ci;
-               
+
 	       log::debug("CreateDepth");
 	       pipeline_ci.pStages = depth_shader_stage_ci.data();
 	       if (vkCreateGraphicsPipelines(g_logical_device, VK_NULL_HANDLE, 1, &pipeline_ci, nullptr,
@@ -2225,7 +2236,7 @@ namespace fwvulkan
 	 begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	 begin_info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 	 begin_info.pInheritanceInfo = nullptr;
-	 
+
 	 if (vkBeginCommandBuffer(pass.cmd_buffer, &begin_info) != VK_SUCCESS)
 	 {
 	    throw std::runtime_error("failed to begin recording command buffer!");
@@ -2235,7 +2246,7 @@ namespace fwvulkan
 	 vkCmdSetViewport(pass.cmd_buffer, 0, 1, vp);
 	 VkRect2D scissor[] = {pipeline::GetDefaultScissor()};
 	 vkCmdSetScissor(pass.cmd_buffer, 0, 1, scissor);
-	 
+
 #if USE_DYNAMIC_RENDERING
 	 auto colour_info = GetColourAttachmentInfo();
 	 auto depth_info = GetDepthAttachmentInfo();
@@ -2307,7 +2318,7 @@ namespace fwvulkan
 		  // ----: future graham, not sure this comment is true?
 		  vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 0, 1, &g_shared_descriptor_sets[g_flight_frame], 0, nullptr);
 	       }
-	    
+
 	       VkBuffer vertex_buffers[] = {g_vb_map[dh.vb_handle].vb};
 	       VkDeviceSize offsets[] = {0};
 	       SharedPushConstants constants = {shared_id};
@@ -2315,14 +2326,14 @@ namespace fwvulkan
 	       // todo: it would be faster to memcpy the whole ubo.model array.
 	       memcpy(&ubo.model[shared_id], &dh.owner->transform, sizeof(mat4x4f));
 	       // this needs to happen every time we setup a draw.
-	    
+
 	       vkCmdPushConstants(pass.cmd_buffer, g_pipe_map[pipeline_hash].layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(SharedPushConstants), &constants);
 	       vkCmdBindVertexBuffers(pass.cmd_buffer, 0, 1, vertex_buffers, offsets);
 	       auto ibh = g_ib_map[dh.ib_handle];
 	       vkCmdBindIndexBuffer(pass.cmd_buffer, ibh.ib, 0, VK_INDEX_TYPE_UINT32);
 
 	       assert(dh.ds_handle != -1);
-	    
+
 	       // std::array<VkDescriptorSet, 2> desc_sets = { g_descriptor_sets[g_flight_frame], g_drawdescriptor_sets[dh.ds_handle] };
 
 	       // note: the firstSet value is 1, because we're binding from that set number. I.e. we're binding set 1, which has our per-draw descriptor layout. (image, image)
@@ -2346,7 +2357,7 @@ namespace fwvulkan
 	       // note: depth must be first in order to fix self occlusion issues, otherwise it's just tri-order albedo.
 	       vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].depth_pipeline);
 	       vkCmdDrawIndexed(pass.cmd_buffer, ibh.len, 1, 0, 0, 0);
-	    
+
 	       // colour.
 	       vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].pipeline);
 	       vkCmdDrawIndexed(pass.cmd_buffer, ibh.len, 1, 0, 0, 0);
@@ -2360,8 +2371,8 @@ namespace fwvulkan
 #else
 	 vkCmdEndRenderPass(pass.cmd_buffer);
 #endif
-	 
-	 
+
+
 	 // log::debug("end commandbuffer");
 	 if (vkEndCommandBuffer(pass.cmd_buffer) != VK_SUCCESS)
 	 {
@@ -2427,7 +2438,7 @@ void UpdateUniformBuffer(uint32_t currentImage)
    // todo: move this matrix into the camera probably.
    ubo.proj.perspective(60.0f, (float)extent.width / extent.height, 0.1f, 100.f);
    ubo.view = g_view;
-   
+
    ubo.light = g_light.position;
    ubo.cam_pos = g_cam_pos;
 
@@ -2448,7 +2459,7 @@ void InitIMGUI()
    IMGUI_CHECKVERSION();
    ImGui::CreateContext();
    ImGui_ImplGlfw_InitForVulkan(fwvulkan::g_window, true);
-   
+
    ImGui_ImplVulkan_InitInfo init_info = {};
    init_info.ApiVersion = fwvulkan::g_vulkan_version;
    init_info.Instance = fwvulkan::g_instance;
@@ -2457,7 +2468,7 @@ void InitIMGUI()
    fwvulkan::QueueFamilyIndices indices = fwvulkan::device::FindQueueFamilies(fwvulkan::g_physical_device, fwvulkan::g_surface);
    init_info.QueueFamily = indices.graphics_family.value();
    init_info.Queue = fwvulkan::g_present_queue;
-   init_info.PipelineCache = VK_NULL_HANDLE; 
+   init_info.PipelineCache = VK_NULL_HANDLE;
    init_info.DescriptorPool = VK_NULL_HANDLE;
    init_info.UseDynamicRendering = true;
    // todo: investigate why you might want more MinImageCount.
@@ -2467,7 +2478,7 @@ void InitIMGUI()
    // note: this asserts if it's <= to MinImageCount, so just use that.
    init_info.ImageCount = init_info.MinImageCount;
    init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-   init_info.Allocator = VK_NULL_HANDLE;      
+   init_info.Allocator = VK_NULL_HANDLE;
    init_info.CheckVkResultFn = check_vk_result;
 
    VkPipelineRenderingCreateInfo rendering_ci = {};
@@ -2479,9 +2490,9 @@ void InitIMGUI()
    rendering_ci.pColorAttachmentFormats = col_formats;
    rendering_ci.depthAttachmentFormat   = depth_format;
    rendering_ci.stencilAttachmentFormat = depth_format;
-   
+
    init_info.PipelineRenderingCreateInfo = rendering_ci;
-   
+
    // todo: this might be wrong
    init_info.DescriptorPoolSize = fwvulkan::g_max_frames_in_flight;
    ImGui_ImplVulkan_Init(&init_info);
@@ -2532,7 +2543,7 @@ int gGlfwVulkan::init()
    }
    // todo: swapchain pass extent is set here, kinda gross.
    swapchain::CreateSwapChain();
-   // todo: this sucks. :) 
+   // todo: this sucks. :)
    renderpass::CreateDepthBuffer();
    swapchain::CreateSwapchainImageViews();
    swapchain::CreateSwapchainFrameBuffers();
@@ -2646,22 +2657,22 @@ int gGlfwVulkan::shutdown()
    {
       for(auto s : g_shaders[(fw::shader::type)t])
       {
-	 vkDestroyShaderModule(g_logical_device, s.second, nullptr);
+	 	vkDestroyShaderModule(g_logical_device, s.second.module, nullptr);
       }
    }
-   
+
    for (size_t i = 0; i < g_max_frames_in_flight; i++)
    {
       vkDestroyBuffer(g_logical_device, g_uniformBuffers[i], nullptr);
       vkFreeMemory(g_logical_device, g_uniformBuffersMemory[i], nullptr);
    }
-   
+
    for (auto sam : g_sam_map)
    {
       vkDestroySampler(g_logical_device, sam.second.sampler, nullptr);
    }
    g_sam_map.clear();
-   
+
    vkDestroyDescriptorPool(g_logical_device, g_shared_descriptor_pool, nullptr);
    vkDestroyDescriptorSetLayout(g_logical_device, g_shared_descriptor_set_layout, nullptr);
    vkDestroyDevice(g_logical_device, nullptr);
@@ -2726,7 +2737,7 @@ int gGlfwVulkan::render()
       VkSemaphore signals[] = {g_semaphore_map[pass.first].render_finished[frame_id]};
       VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
       VkCommandBuffer cmd_buffers[] = {g_pass_map[pass.first].cmd_buffer};
-      
+
       VkSubmitInfo submit_info = {};
       submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
       // todo: find out why vkQueueSubmit hangs if we add waits for non swapchain.
@@ -2742,7 +2753,7 @@ int gGlfwVulkan::render()
       // note: this triggers when all commands are complete.
       submit_info.signalSemaphoreCount = 1;
       submit_info.pSignalSemaphores = signals;
-      
+
       all_signals.push_back(signals[0]);
 
       vkResetFences(g_logical_device, 1, &g_semaphore_map[pass.first].in_flight_fences[frame_id]);
@@ -2798,7 +2809,7 @@ static std::vector<char> read_file(const std::string &filename)
     file.seekg(0);
     file.read(buffer.data(), file_size);
     file.close();
-    
+
     return buffer;
 }
 
@@ -2816,12 +2827,12 @@ static std::vector<char> read_file(const std::string &filename)
 // VK_PIPELINE_BIND_POINT_COMPUTE
 //   VK_SHADER_STAGE_COMPUTE_BIT
 
-bool gGlfwVulkan::register_shader(fw::hash::string name, const char* path, fw::shader::type type)
+bool gGlfwVulkan::register_shader(fw::hash::string name, const char* path, fw::shader::type type, const char* entry_point)
 {
    using namespace fwvulkan;
    auto shader_code = read_file(path);
    auto shader = shaders::CreateShaderModule(shader_code, g_logical_device);
-   g_shaders[type][name] = shader;
+   g_shaders[type][name] = {shader, entry_point};
    return true;
 }
 

@@ -36,3 +36,6 @@
 	path = libs/miniz
 	url = git@github.com:richgel999/miniz.git
 	shallow = true
+[submodule "libs/slang"]
+	path = libs/slang
+	url = git@github.com:shader-slang/slang.git

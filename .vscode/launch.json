@@ -5,7 +5,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${fileDirname}/${fileBasenameNoExtension}.bin",
-            "args": [],
+            "args": ["--log.default.level", "debug"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],
