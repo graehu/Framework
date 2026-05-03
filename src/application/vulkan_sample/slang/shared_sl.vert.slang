@@ -45,7 +45,6 @@ VSOutput main(VSInput input, uniform uint perdraw)
    modelrot[3] = float4(0,0,0,1);
    output.modelrot = modelrot;
    float4x4 viewrot = ubo.view;
-   
 
    viewrot[3] = float4(0,0,0,1);
    float4x4 projrot = ubo.proj;

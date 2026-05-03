@@ -59,6 +59,7 @@ void vulkan_sample::run()
 	m_graphics->register_shader("unlit", "shaders/spv/unlit.frag.spv", shader::e_fragment, "main");
 	// WAYLAND_DISPLAY= XDG_SESSION_TYPE=x11 qrenderdoc
 
+	
 	auto *tri_verts = initdata::geometry::tri_verts.data();
 	unsigned int tri_verts_count = initdata::geometry::tri_verts.size();
 

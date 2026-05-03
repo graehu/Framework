@@ -60,10 +60,8 @@ config.compile_commands = True
 
 def build_shaders():
     import os
-    # todo: symlink the slang tools from bin instead.
-    slang_tools = "../../../libs/slang/build/slang-2026.8-linux-x86_64/bin/"
     tools = "../../../tools"
-    os.environ["PATH"] = os.environ["PATH"]+f":{tools}/bin/:{slang_tools}"
+    os.environ["PATH"] = os.environ["PATH"]+f":{tools}/bin/:{tools}/slang/bin"
     for slang in os.listdir("slang"):
         if not slang.endswith(".slang"): continue
         slang, ext = slang.split(".")[:2]
