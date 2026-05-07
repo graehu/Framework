@@ -2647,9 +2647,12 @@ int gGlfwVulkan::shutdown()
    {
       for (int i = 0; i < g_max_frames_in_flight; i++)
       {
-	 vkDestroySemaphore(g_logical_device, sema.second.image_available[i], nullptr);
-	 vkDestroySemaphore(g_logical_device, sema.second.render_finished[i], nullptr);
-	 vkDestroyFence(g_logical_device, sema.second.in_flight_fences[i], nullptr);
+		if(i < sema.second.image_available.size())
+	 		vkDestroySemaphore(g_logical_device, sema.second.image_available[i], nullptr);
+		if(i < sema.second.render_finished.size())
+		 	vkDestroySemaphore(g_logical_device, sema.second.render_finished[i], nullptr);
+		if(i < sema.second.in_flight_fences.size())
+		 	vkDestroyFence(g_logical_device, sema.second.in_flight_fences[i], nullptr);
       }
    }
    vkDestroyCommandPool(g_logical_device, g_command_pool, nullptr);
