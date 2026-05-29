@@ -18,9 +18,9 @@
 using namespace fw;
 namespace fwvulkan
 {
-	extern GLFWwindow *g_window;
+	extern GLFWwindow* g_window;
 }
-application *application::factory()
+application* application::factory()
 {
 	return new vulkan_sample();
 }
@@ -45,7 +45,7 @@ void vulkan_sample::init()
 	m_graphics = graphics::graphicsFactory();
 	m_graphics->init(); // 1.7467304 seconds.
 	blob::miscbank.init(1 GiBs, 256);
-	import::init();
+	importer::init();
 }
 
 void vulkan_sample::run()
@@ -59,35 +59,26 @@ void vulkan_sample::run()
 	m_graphics->register_shader("unlit", "shaders/spv/unlit.frag.spv", shader::e_fragment, "main");
 	// WAYLAND_DISPLAY= XDG_SESSION_TYPE=x11 qrenderdoc
 
-	
-	auto *tri_verts = initdata::geometry::tri_verts.data();
+	auto* tri_verts = initdata::geometry::tri_verts.data();
 	unsigned int tri_verts_count = initdata::geometry::tri_verts.size();
 
-	auto *tri_indices = initdata::geometry::tri_indices.data();
+	auto* tri_indices = initdata::geometry::tri_indices.data();
 	unsigned int tri_indices_count = initdata::geometry::tri_indices.size();
 
-	Mesh swapchain_mesh = {{{{}, tri_verts, tri_verts_count}, {{}, tri_indices, tri_indices_count}}, {}, {}, {hash::string("swapchain")}, {}};
-	
+	Mesh swapchain_mesh = { {{{}, tri_verts, tri_verts_count}, {{}, tri_indices, tri_indices_count}}, {}, {}, {hash::string("swapchain")}, {} };
+
 	swapchain_mesh.material.shaders[fw::shader::e_vertex] = hash::string("fullscreen");
 	swapchain_mesh.material.shaders[fw::shader::e_fragment] = hash::string("unlit");
 
-	std::vector<Mesh *> meshes;
-	std::vector<Image *> images;
+	std::vector<Mesh*> meshes;
+	std::vector<Image*> images;
 	float time = 0;
 	int shademode = 0;
 	camera cam;
 	fw::Light light;
 	light.position = vec3f(-1.0f, 5.0f, 1.0f);
 	light.intensity = 0.01;
-	enum cam_mode
-	{
-		cam_linear,
-		cam_swoop,
-		cam_circle,
-		cam_free,
-		cam_locked,
-		cam_cycle
-	} cmode = cam_locked;
+	enum cam_mode { cam_linear, cam_swoop, cam_circle, cam_free, cam_locked, cam_cycle } cmode = cam_locked;
 	int cam_num = (int)cmode;
 	float cam_rot_offset = 0;
 	float cam_dist_offset = 0;
@@ -117,61 +108,29 @@ void vulkan_sample::run()
 		{
 			if (ImGui::Begin("vulkan_sample"))
 			{
-				const char *smodestr = "default";
-				const char *cmodestr = "default";
+				const char* smodestr = "default";
+				const char* cmodestr = "default";
 				switch (shademode)
 				{
-				case 0:
-					smodestr = "pbr";
-					break;
-				case 1:
-					smodestr = "texture uvs";
-					break;
-				case 2:
-					smodestr = "texture albedo";
-					break;
-				case 3:
-					smodestr = "vertex normals";
-					break;
-				case 4:
-					smodestr = "texture normals";
-					break;
-				case 5:
-					smodestr = "world normals";
-					break;
-				case 6:
-					smodestr = "texture roughness";
-					break;
-				case 7:
-					smodestr = "texture metallic";
-					break;
-				case 8:
-					smodestr = "texture ao";
-					break;
-				case 9:
-					smodestr = "texture alpha";
-					break;
+				case 0: smodestr = "pbr"; break;
+				case 1: smodestr = "texture uvs"; break;
+				case 2: smodestr = "texture albedo"; break;
+				case 3: smodestr = "vertex normals"; break;
+				case 4: smodestr = "texture normals"; break;
+				case 5: smodestr = "world normals"; break;
+				case 6: smodestr = "texture roughness"; break;
+				case 7: smodestr = "texture metallic"; break;
+				case 8: smodestr = "texture ao"; break;
+				case 9: smodestr = "texture alpha"; break;
 				}
 				switch (cmode)
 				{
-				case 0:
-					cmodestr = "cam_linear";
-					break;
-				case 1:
-					cmodestr = "cam_swoop";
-					break;
-				case 2:
-					cmodestr = "cam_circle";
-					break;
-				case 3:
-					cmodestr = "cam_free";
-					break;
-				case 4:
-					cmodestr = "cam_locked";
-					break;
-				case 5:
-					cmodestr = "cam_cycle";
-					break;
+				case 0: cmodestr = "cam_linear"; break;
+				case 1: cmodestr = "cam_swoop"; break;
+				case 2: cmodestr = "cam_circle"; break;
+				case 3: cmodestr = "cam_free"; break;
+				case 4: cmodestr = "cam_locked"; break;
+				case 5: cmodestr = "cam_cycle"; break;
 				}
 				if (ImGui::Button("next shademode"))
 					wants_shade = true;
@@ -192,7 +151,7 @@ void vulkan_sample::run()
 				ImGui::Indent();
 				ImGui::Text("free = %d, used %d", blob::miscbank.get_freecount(), blob::miscbank.get_usedcount());
 				ImGui::SameLine();
-				ImGui::Text("free = %p, used %p", (void *)blob::miscbank.get_freednode(), (void *)blob::miscbank.get_usednode());
+				ImGui::Text("free = %p, used %p", (void*)blob::miscbank.get_freednode(), (void*)blob::miscbank.get_usednode());
 				ImGui::Unindent();
 
 				ImGui::Text("imagebank:");
@@ -201,7 +160,7 @@ void vulkan_sample::run()
 				ImGui::Indent();
 				ImGui::Text("free = %d, used %d", blob::imagebank.get_freecount(), blob::imagebank.get_usedcount());
 				ImGui::SameLine();
-				ImGui::Text("free = %p, used %p", (void *)blob::imagebank.get_freednode(), (void *)blob::imagebank.get_usednode());
+				ImGui::Text("free = %p, used %p", (void*)blob::imagebank.get_freednode(), (void*)blob::imagebank.get_usednode());
 				ImGui::Unindent();
 
 				ImGui::Text("meshbank:");
@@ -210,33 +169,33 @@ void vulkan_sample::run()
 				ImGui::Indent();
 				ImGui::Text("free = %d, used %d", blob::meshbank.get_freecount(), blob::meshbank.get_usedcount());
 				ImGui::SameLine();
-				ImGui::Text("free = %p, used %p", (void *)blob::meshbank.get_freednode(), (void *)blob::meshbank.get_usednode());
+				ImGui::Text("free = %p, used %p", (void*)blob::meshbank.get_freednode(), (void*)blob::meshbank.get_usednode());
 				ImGui::Unindent();
 				static int current_gltf = 0;
 				// todo: make this list user driven, have it pull recursively from a directory.
-				static const char *gltf_list[] = {
+				static const char* gltf_list[] = {
 					"../../../../../Github/glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf",
 					"../../../../../Github/glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf",
 					"~/Github/glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", // todo: make this work?
 					"~/Github/glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf",
 				};
-				static const char *gltf_list_zip[] = {
+				static const char* gltf_list_zip[] = {
 					"Sponza.gltf",
 					"SciFiHelmet.gltf",
 				};
-				static const char *gltfpath = gltf_list[0];
+				static const char* gltfpath = gltf_list[0];
 				if (ImGui::Combo("gltfs", &current_gltf, gltf_list, IM_ARRAYSIZE(gltf_list)))
 				{
 					gltfpath = gltf_list[current_gltf];
 				}
 				{
 					auto unload = [&]()
-					{
-						// todo: fix potential image leaks in graphics.
-						m_graphics->reset();
-						import::unload_gltf(images, meshes);
-						skip_draws = true;
-					};
+						{
+							// todo: fix potential image leaks in graphics.
+							m_graphics->reset();
+							importer::unload_gltf(images, meshes);
+							skip_draws = true;
+						};
 					if (ImGui::Button("unload gltf"))
 					{
 						unload();
@@ -247,7 +206,7 @@ void vulkan_sample::run()
 						log::scope topic("timer", true);
 						log::timer timer("load model");
 						unload();
-						import::load_gltf(images, meshes, gltfpath);
+						importer::load_gltf(images, meshes, gltfpath);
 						log::debug("loaded {}, images {}, meshes {}", gltfpath, images.size(), meshes.size());
 					}
 					ImGui::SameLine();
@@ -256,19 +215,19 @@ void vulkan_sample::run()
 						log::scope topic("timer", true);
 						log::timer timer("load model");
 						unload();
-						import::load_scene_zip(images, meshes, gltf_list_zip[current_gltf]);
+						importer::load_scene_zip(images, meshes, gltf_list_zip[current_gltf]);
 						log::debug("loaded {}, images {}, meshes {}", gltf_list_zip[current_gltf], images.size(), meshes.size());
 					}
 					if (ImGui::Button("invalidate import cache"))
 					{
-						import::invalidate_cache();
+						importer::invalidate_cache();
 					}
 				}
 			}
 			ImGui::End();
 		}
 		ImGui::Render();
-		ImDrawData *ui_drawdata = ImGui::GetDrawData();
+		ImDrawData* ui_drawdata = ImGui::GetDrawData();
 
 		float alpha = 1.0 - (cos(time * 0.5f) + 1.0f) * 0.5f;
 		if (alpha == 0 && cmode == cam_cycle)
@@ -361,18 +320,18 @@ void vulkan_sample::run()
 		case cam_locked:
 			break;		 // don't do anything.
 		case cam_linear: // note: this is to verify fixing below doesn't break linear view normals.
-			cam.setPosition({0, 1 + 50 * (1.0f - alpha), 0});
+			cam.setPosition({ 0, 1 + 50 * (1.0f - alpha), 0 });
 			cam.m_pitchDegrees = 90;
 			break;
 		case cam_swoop: // note: this exposes incorrect normals across the ground quad at 45 degrees
-			cam.setPosition({0, 1 + 15 * (1.0f - alpha), -25 * alpha});
+			cam.setPosition({ 0, 1 + 15 * (1.0f - alpha), -25 * alpha });
 			cam.m_pitchDegrees = 90 * (1.0f - alpha);
 			break;
 		case cam_circle: // note: rotate around the scene.
 			const float cam_dist = 2.0f + cam_dist_offset;
 			const float height = 0.5f;
 			const float cam_time = (time * 0.1f + cam_rot_offset);
-			cam.setPosition({cam_dist * sin(cam_time), height, -cam_dist * cos(cam_time)});
+			cam.setPosition({ cam_dist * sin(cam_time), height, -cam_dist * cos(cam_time) });
 			cam.m_headingDegrees = (360.0 / (PI * 2.0)) * cam_time;
 			light.position = cam.m_position;
 			light.position.j = light.position.j;
@@ -425,7 +384,7 @@ void vulkan_sample::shutdown()
 
 	m_graphics->shutdown();
 	m_window->shutdown();
-	import::shutdown();
+	importer::shutdown();
 	blob::miscbank.shutdown();
 	log::debug("vulkan_sample finished.");
 }

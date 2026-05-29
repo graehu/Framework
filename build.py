@@ -26,7 +26,7 @@ aliases = {
     "net_physics_sample":"--in src/application/net_physics_sample/build.py",
     "param_sample":"--in src/application/param_sample/build.py",
     "log_sample":"--in src/application/log_sample/build.py",
-    "mpeg_sample":"--in src/application/mpeg_sample/build.cpp.py",
+    #"mpeg_sample":"--in src/application/mpeg_sample/build.cpp.py",
     "bitmap_sample":"--in src/application/bitmap_sample/build.py",
     "test":"--in src/application/mpeg_sample/build_test.py",
     "fwcore_lib":"--in libs/build_fwcore.py",
