@@ -1,7 +1,7 @@
 // todo fill.
 #pragma once
 #include "vulkan_types.h"
-namespace fw { struct Image; struct Mesh;};
+namespace fw { struct Image; struct Mesh; };
 namespace fwvulkan
 {
    namespace pbr
@@ -25,4 +25,4 @@ namespace fwvulkan
       void Reset();
       void Shutdown();
    }
-}    
+}

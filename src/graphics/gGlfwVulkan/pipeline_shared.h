@@ -1,10 +1,10 @@
 namespace fwvulkan
-{  
+{
    extern VkDevice g_logical_device;
    extern VkDescriptorSetLayout g_shared_descriptor_set_layout;
    extern std::map<uint32_t, struct IMHandle> g_im_map;
    extern std::map<fw::hash::string, struct PassHandle> g_pass_map;
-   
+
    namespace renderpass
    {
       VkImageView GetPassImageView(fw::hash::string passname);

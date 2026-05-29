@@ -54,4 +54,4 @@ namespace fwvulkan
       uint32_t id;
    };
 }
-   
+
