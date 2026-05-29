@@ -14,7 +14,7 @@ config.source_files = [
     "../../utils/params.cpp",
     "../../utils/log/log.cpp",
     "../../utils/blob.cpp",
-    "../../utils/import.cpp",
+    "../../utils/importer.cpp",
     "../../types/vec2f.cpp",
     "../../types/vec3f.cpp",
     "../../types/mat4x4f.cpp",
