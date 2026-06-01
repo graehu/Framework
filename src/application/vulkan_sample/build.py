@@ -35,6 +35,7 @@ config.include_paths = [
     f"{libs}/tinygltf/",
     f"{libs}/imgui/",
     f"{libs}/miniz/_build/amalgamation/",
+    f"{libs}/tracy/public/"
 ]
 imgui_files = [
     f"{libs}/imgui/imgui.cpp",
@@ -52,7 +53,7 @@ config.library_paths = [libs]
 config.warnings = ["all", "extra", "pedantic"]
 config.debug_info = True
 config.rebuild_on_change = False
-config.link_libraries = ["fwcore", "stdc++", "tbb", "glfwstatic", "vulkan"]
+config.link_libraries = ["fwcore", "stdc++", "tbb", "glfwstatic", "vulkan", "TracyClient"]
 config.standard = options.standard.cpp20
 config.output_file = "vulkan_sample.bin"
 config.compile_commands = True

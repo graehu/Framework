@@ -14,6 +14,9 @@
 #include "../../../libs/imgui/imgui.h"
 #include "../../utils/importer.h"
 
+#define TRACY_ENABLE 1
+#include "tracy/Tracy.hpp"
+
 #include "GLFW/glfw3.h"
 using namespace fw;
 namespace fwvulkan
@@ -26,6 +29,7 @@ application* application::factory()
 }
 void vulkan_sample::init()
 {
+	ZoneScoped;
 	m_name = "vulkan_sample";
 	fw::commandline::parse();
 	fw::log::topics::add("fw");
@@ -101,6 +105,8 @@ void vulkan_sample::run()
 
 	while (m_window->update())
 	{
+		FrameMark;
+		ZoneScopedN("Run Loop");
 		bool wants_shade = m_input->isKeyPressed(input::e_shademode);
 		bool wants_cmode = m_input->isKeyPressed(input::e_respawn);
 		bool wants_model = m_input->isKeyPressed(input::e_nextmodel);
@@ -375,11 +381,13 @@ void vulkan_sample::run()
 		m_input->update();
 		if (m_input->isKeyPressed(input::e_quit))
 			break;
+		
 	}
 }
 
 void vulkan_sample::shutdown()
 {
+	ZoneScoped;
 	log::scope vulkan_sample("vulkan_sample");
 
 	m_graphics->shutdown();

@@ -17,6 +17,9 @@
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_to_string.hpp>
 
+#define TRACY_ENABLE 1
+#include "tracy/Tracy.hpp"
+
 // todo: this is hacked atm, I added it manually to my
 // ----: libs/vlukan/include/vulkan.
 // ----: that's not going to show up in git.
@@ -2456,6 +2459,7 @@ static void check_vk_result(VkResult err)
 }
 void InitIMGUI()
 {
+	ZoneScoped;
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui_ImplGlfw_InitForVulkan(fwvulkan::g_window, true);
@@ -2502,6 +2506,7 @@ void InitIMGUI()
 
 int gGlfwVulkan::init()
 {
+	ZoneScoped;
 	using namespace fwvulkan;
 	log::topics::add("gGlfwVulkan");
 	log::scope topic("gGlfwVulkan");
@@ -2645,7 +2650,7 @@ int gGlfwVulkan::shutdown()
 
 	for (auto sema : g_semaphore_map)
 	{
-		for (int i = 0; i < g_max_frames_in_flight; i++)
+		for (size_t i = 0; i < (size_t)g_max_frames_in_flight; i++)
 		{
 			if (i < sema.second.image_available.size())
 				vkDestroySemaphore(g_logical_device, sema.second.image_available[i], nullptr);
@@ -2694,6 +2699,7 @@ int gGlfwVulkan::update() { return 0; }
 void gGlfwVulkan::reset() { fwvulkan::g_resized = true; }
 int gGlfwVulkan::render()
 {
+	ZoneScoped;
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	using namespace fwvulkan;

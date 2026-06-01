@@ -39,3 +39,6 @@
 [submodule "libs/slang"]
 	path = libs/slang
 	url = git@github.com:shader-slang/slang.git
+[submodule "libs/tracy"]
+	path = libs/tracy
+	url = https://github.com/wolfpld/tracy.git

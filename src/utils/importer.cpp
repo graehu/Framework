@@ -12,6 +12,10 @@
 #include "log/log.h"
 #include "string_helpers.h"
 
+#define TRACY_ENABLE 1
+#include "tracy/Tracy.hpp"
+
+
 #include <execution>
 // note: this requires linking ttb (i.e. -lttb) on linux.
 #define TINYGLTF_IMPLEMENTATION
@@ -304,6 +308,7 @@ namespace fw
 
 		void save_meshes_zip(const char* in_name)
 		{
+			ZoneScoped;
 			// explitily serialise each buffer, then load like below.
 			// handle images etc next.
 			auto base_str = fmt::format(".imports/{}/meshes", in_name);
@@ -443,6 +448,7 @@ namespace fw
 		}
 		bool init()
 		{
+			ZoneScoped;
 			assert(blob::miscbank.is_initialised());
 			blob::imagebank.init(1 GiBs, 4 KiBs);
 			blob::meshbank.init(1 GiBs, 4 KiBs);
@@ -453,6 +459,7 @@ namespace fw
 		}
 		bool load_gltf(std::vector<fw::Image*>& in_images, std::vector<Mesh*>& in_meshes, const char* in_path)
 		{
+			ZoneScoped;
 			log::scope topic("timer", true);
 			log::timer timer("load gltf");
 
@@ -496,6 +503,7 @@ namespace fw
 		}
 		bool unload_gltf(std::vector<fw::Image*>& in_images, std::vector<Mesh*>& in_meshes)
 		{
+			ZoneScoped;
 			for (auto& image : in_images)
 			{
 				assert(blob::imagebank.free(image->buffer));
@@ -519,17 +527,20 @@ namespace fw
 		}
 		bool load_scene_zip(std::vector<fw::Image*>& in_images, std::vector<Mesh*>& in_meshes, const char* in_path)
 		{
+			ZoneScoped;
 			load_images_zip(in_images, in_path);
 			load_meshes_zip(in_meshes, in_path);
 			return true;
 		}
 		bool invalidate_cache()
 		{
+			ZoneScoped;
 			filehashes.clear();
 			return true;
 		}
 		bool shutdown()
 		{
+			ZoneScoped;
 			blob::asset<FileHashEntry> fhb = { {}, filehashes.data(), filehashes.size() };
 			blob::miscbank.free(fhb);
 			return true;
