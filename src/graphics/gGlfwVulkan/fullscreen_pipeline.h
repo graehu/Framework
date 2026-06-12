@@ -8,7 +8,7 @@ namespace fwvulkan
    {
       void Init();
       VkDescriptorSet& GetDescriptorSet(unsigned int handle);
-      DrawHandle visit(fw::Mesh* _mesh);
+      DrawHandle render(fw::Mesh* _mesh);
       void Reset();
       void Shutdown();
    }

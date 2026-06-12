@@ -1,4 +1,5 @@
-#include "gGlfwVulkan.h"
+//#include "gGlfwVulkan.h"
+#include "../graphics2.h"
 #include "vulkan/vulkan.hpp"
 // todo: take all the glfw calls and put them in a different file.
 // ----: then this file can become vulkan only and be shared by other window systems.
@@ -16,9 +17,7 @@
 #include <vector>
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_to_string.hpp>
-
-#define TRACY_ENABLE 1
-#include "tracy/Tracy.hpp"
+#include "../../utils/profiler.h"
 
 // todo: this is hacked atm, I added it manually to my
 // ----: libs/vlukan/include/vulkan.
@@ -2233,6 +2232,7 @@ namespace fwvulkan
 		uint32_t shared_id = 0;
 		void RecordPass(hash::string passname)
 		{
+			PROFILE;
 			PassHandle& pass = g_pass_map[passname];
 
 			VkCommandBufferBeginInfo begin_info = {};
@@ -2459,7 +2459,7 @@ static void check_vk_result(VkResult err)
 }
 void InitIMGUI()
 {
-	ZoneScoped;
+	PROFILE;
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui_ImplGlfw_InitForVulkan(fwvulkan::g_window, true);
@@ -2503,10 +2503,9 @@ void InitIMGUI()
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 }
-
-int gGlfwVulkan::init()
+int graphics2::init()
 {
-	ZoneScoped;
+	PROFILE;
 	using namespace fwvulkan;
 	log::topics::add("gGlfwVulkan");
 	log::scope topic("gGlfwVulkan");
@@ -2560,13 +2559,13 @@ int gGlfwVulkan::init()
 	return 0;
 }
 hash::string shaders[shader::e_count];
-void gGlfwVulkan::visit(class physics::collider::polygon* /*_poly*/) {}
-void gGlfwVulkan::visit(ImDrawData* _imgui)
+void graphics2::render(class physics::collider::polygon* /*_poly*/) {}
+void graphics2::render(ImDrawData* _imgui)
 {
 	fwvulkan::renderpass::pass_gui = _imgui;
 }
 #include "../camera/camera.h"
-void gGlfwVulkan::visit(camera* _camera)
+void graphics2::render(camera* _camera)
 {
 	g_view = _camera->getView();
 	g_cam_pos = _camera->getPosition();
@@ -2579,7 +2578,7 @@ void gGlfwVulkan::visit(camera* _camera)
 // ----: will need to move to pools/handles for descriptor ids.
 // ----: g_used_pbr_descriptors generates a direct lookup into a array atm.
 
-void gGlfwVulkan::visit(fw::Mesh* _mesh)
+void graphics2::render(fw::Mesh* _mesh)
 {
 	using namespace fwvulkan;
 	DrawHandle drawhandle;
@@ -2590,14 +2589,14 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
 		log::debug("Visitor Mesh: {}", (void*)_mesh);
 		if (_mesh->passes[0] == hash::string("pbr"))
 		{
-			drawhandle = pbr::visit(_mesh);
+			drawhandle = pbr::render(_mesh);
 		}
 		// todo: shouldn't really have meshes that render with the "swapchain" pass
 		// ----: this should be an internal pass, as should the triangle used to render.
 		// ----: and the fullscreen/unlit/composite shaders.
 		else if (_mesh->passes[0] == hash::string("swapchain"))
 		{
-			drawhandle = fullscreen::visit(_mesh);
+			drawhandle = fullscreen::render(_mesh);
 		}
 		g_drawhandles[_mesh] = drawhandle;
 	}
@@ -2609,12 +2608,12 @@ void gGlfwVulkan::visit(fw::Mesh* _mesh)
 	}
 }
 
-void gGlfwVulkan::visit(fw::Light* _light)
+void graphics2::render(fw::Light* _light)
 {
 	g_light = *_light;
 }
 
-int gGlfwVulkan::shutdown()
+int graphics2::shutdown()
 {
 	// todo: add a "shutdown passes" and have a pass list
 	using namespace fwvulkan;
@@ -2695,17 +2694,20 @@ int gGlfwVulkan::shutdown()
 	ImGui::DestroyContext();
 	return 0;
 }
-int gGlfwVulkan::update() { return 0; }
-void gGlfwVulkan::reset() { fwvulkan::g_resized = true; }
-int gGlfwVulkan::render()
+int graphics2::update() { return 0; }
+void graphics2::reset() { fwvulkan::g_resized = true; }
+
+constexpr hash::string swchain_hash("swapchain");
+int graphics2::render()
 {
-	ZoneScoped;
+	PROFILE;
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	using namespace fwvulkan;
 	for (auto pass : g_pass_map)
 	{
-		unsigned int frame_id = pass.first == hash::string("swapchain") ? g_flight_frame : 0;
+		PROFILE_SCOPE("test");
+		unsigned int frame_id = pass.first == swchain_hash ? g_flight_frame : 0;
 		vkWaitForFences(g_logical_device, 1, &g_semaphore_map[pass.first].in_flight_fences[frame_id], VK_TRUE, std::numeric_limits<uint64_t>::max());
 	}
 
@@ -2836,7 +2838,7 @@ static std::vector<char> read_file(const std::string& filename)
 // VK_PIPELINE_BIND_POINT_COMPUTE
 //   VK_SHADER_STAGE_COMPUTE_BIT
 
-bool gGlfwVulkan::register_shader(fw::hash::string name, const char* path, fw::shader::type type, const char* entry_point)
+bool graphics2::register_shader(fw::hash::string name, const char* path, fw::shader::type type, const char* entry_point)
 {
 	using namespace fwvulkan;
 	auto shader_code = read_file(path);
@@ -2845,7 +2847,7 @@ bool gGlfwVulkan::register_shader(fw::hash::string name, const char* path, fw::s
 	return true;
 }
 
-bool gGlfwVulkan::register_pass(fw::hash::string pass)
+bool graphics2::register_pass(fw::hash::string pass)
 {
 	using namespace fwvulkan;
 	PassHandle& swapchain = g_pass_map["swapchain"];
@@ -2858,17 +2860,17 @@ bool gGlfwVulkan::register_pass(fw::hash::string pass)
 	return false;
 }
 
-void gGlfwVulkan::set_shademode(int in_shademode)
+void graphics2::set_shademode(int in_shademode)
 {
 	g_shademode = in_shademode;
 }
 
-iRenderVisitor* gGlfwVulkan::getRenderer()
-{
-	return (iRenderVisitor*)this;
-}
+// iRenderVisitor* graphics2::getRenderer()
+// {
+// 	return (iRenderVisitor*)this;
+// }
 
-graphics* graphics::graphicsFactory()
-{
-	return (graphics*)new gGlfwVulkan;
-}
+// graphics* graphics2::graphicsFactory()
+// {
+// 	return (graphics*)new gGlfwVulkan;
+// }

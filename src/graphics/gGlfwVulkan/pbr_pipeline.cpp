@@ -1,6 +1,6 @@
 #include "vulkan/vulkan.hpp"
 #include "pbr_pipeline.h"
-#include "../graphics.h"
+#include "../graphics2.h"
 #include "vulkan_types.h"
 #include "../../utils/log/log.h"
 #include "pipeline_shared.h"
@@ -130,7 +130,7 @@ namespace fwvulkan
 		{
 			InitDescriptors();
 		}
-		DrawHandle visit(fw::Mesh* _mesh)
+		DrawHandle render(fw::Mesh* _mesh)
 		{
 			log::debug("pbr draw descriptors: {}/{}", g_used_descriptors, g_descriptor_sets.size());
 			DrawHandle drawhandle = { _mesh,

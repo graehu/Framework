@@ -1,6 +1,6 @@
 #include "vulkan/vulkan.hpp"
 #include "fullscreen_pipeline.h"
-#include "../graphics.h"
+#include "../graphics2.h"
 #include "vulkan_types.h"
 #include "../../utils/log/log.h"
 #include "pipeline_shared.h"
@@ -140,7 +140,7 @@ namespace fwvulkan
 			vkDestroyDescriptorPool(g_logical_device, g_descriptor_pool, nullptr);
 			vkDestroyDescriptorSetLayout(g_logical_device, g_descriptor_set_layout, nullptr);
 		}
-		DrawHandle visit(fw::Mesh* _mesh)
+		DrawHandle render(fw::Mesh* _mesh)
 		{
 			log::debug("fullscreen draw descriptors: {}/{}", g_used_descriptors, g_descriptor_sets.size());
 			DrawHandle drawhandle = { _mesh,

@@ -11,9 +11,7 @@
 #include "filesystem.h"
 #include "log/log.h"
 #include "string_helpers.h"
-
-#define TRACY_ENABLE 1
-#include "tracy/Tracy.hpp"
+#include "profiler.h"
 
 
 #include <execution>
@@ -308,7 +306,7 @@ namespace fw
 
 		void save_meshes_zip(const char* in_name)
 		{
-			ZoneScoped;
+			PROFILE;
 			// explitily serialise each buffer, then load like below.
 			// handle images etc next.
 			auto base_str = fmt::format(".imports/{}/meshes", in_name);
@@ -448,7 +446,7 @@ namespace fw
 		}
 		bool init()
 		{
-			ZoneScoped;
+			PROFILE;
 			assert(blob::miscbank.is_initialised());
 			blob::imagebank.init(1 GiBs, 4 KiBs);
 			blob::meshbank.init(1 GiBs, 4 KiBs);
@@ -459,7 +457,7 @@ namespace fw
 		}
 		bool load_gltf(std::vector<fw::Image*>& in_images, std::vector<Mesh*>& in_meshes, const char* in_path)
 		{
-			ZoneScoped;
+			PROFILE;
 			log::scope topic("timer", true);
 			log::timer timer("load gltf");
 
@@ -503,7 +501,7 @@ namespace fw
 		}
 		bool unload_gltf(std::vector<fw::Image*>& in_images, std::vector<Mesh*>& in_meshes)
 		{
-			ZoneScoped;
+			PROFILE;
 			for (auto& image : in_images)
 			{
 				assert(blob::imagebank.free(image->buffer));
@@ -527,20 +525,20 @@ namespace fw
 		}
 		bool load_scene_zip(std::vector<fw::Image*>& in_images, std::vector<Mesh*>& in_meshes, const char* in_path)
 		{
-			ZoneScoped;
+			PROFILE;
 			load_images_zip(in_images, in_path);
 			load_meshes_zip(in_meshes, in_path);
 			return true;
 		}
 		bool invalidate_cache()
 		{
-			ZoneScoped;
+			PROFILE;
 			filehashes.clear();
 			return true;
 		}
 		bool shutdown()
 		{
-			ZoneScoped;
+			PROFILE;
 			blob::asset<FileHashEntry> fhb = { {}, filehashes.data(), filehashes.size() };
 			blob::miscbank.free(fhb);
 			return true;

@@ -3,8 +3,8 @@
 #include "../../utils/params.h"
 #include "../../utils/blob.h"
 #include "../../utils/filesystem.h"
-#include "../../window/window.h"
-#include "../../graphics/graphics.h"
+#include "../../window/window2.h"
+#include "../../graphics/graphics2.h"
 #include <cstddef>
 #include <cstring>
 #include <thread>
@@ -13,9 +13,7 @@
 #include "../../input/input.h"
 #include "../../../libs/imgui/imgui.h"
 #include "../../utils/importer.h"
-
-#define TRACY_ENABLE 1
-#include "tracy/Tracy.hpp"
+#include "../../utils/profiler.h"
 
 #include "GLFW/glfw3.h"
 using namespace fw;
@@ -29,38 +27,35 @@ application* application::factory()
 }
 void vulkan_sample::init()
 {
-	ZoneScoped;
+	PROFILE;
 	m_name = "vulkan_sample";
+	hash::path doot("test.this.out");
 	fw::commandline::parse();
 	fw::log::topics::add("fw");
-
 	fw::log::scope fw("fw");
 	fw::log::topics::add("window");
-	m_window = window::windowFactory();
 	m_width = 1920;
 	m_height = 1080;
-	m_window->init(m_width, m_height, m_name);
+	window2::init(m_width, m_height, m_name);
 
 	fw::log::topics::add("input");
 	m_input = input::inputFactory();
 	m_input->init();
 
 	fw::log::topics::add("graphics");
-	m_graphics = graphics::graphicsFactory();
-	m_graphics->init(); // 1.7467304 seconds.
+	graphics2::init(); // 1.7467304 seconds.
 	blob::miscbank.init(1 GiBs, 256);
 	importer::init();
 }
-
 void vulkan_sample::run()
 {
 	commandline::parse();
-
 	log::scope vulkan_sample("vulkan_sample", true);
-	m_graphics->register_shader("fullscreen", "shaders/spv/fullscreen.vert.spv", shader::e_vertex, "main");
-	m_graphics->register_shader("shared", "shaders/spv/shared_sl.vert.spv", shader::e_vertex, "main");
-	m_graphics->register_shader("pbr", "shaders/spv/pbr_sl.frag.spv", shader::e_fragment, "main");
-	m_graphics->register_shader("unlit", "shaders/spv/unlit.frag.spv", shader::e_fragment, "main");
+	
+	graphics2::register_shader("fullscreen", "shaders/spv/fullscreen.vert.spv", shader::e_vertex, "main");
+	graphics2::register_shader("shared", "shaders/spv/shared_sl.vert.spv", shader::e_vertex, "main");
+	graphics2::register_shader("pbr", "shaders/spv/pbr_sl.frag.spv", shader::e_fragment, "main");
+	graphics2::register_shader("unlit", "shaders/spv/unlit.frag.spv", shader::e_fragment, "main");
 	// WAYLAND_DISPLAY= XDG_SESSION_TYPE=x11 qrenderdoc
 
 	auto* tri_verts = initdata::geometry::tri_verts.data();
@@ -103,10 +98,9 @@ void vulkan_sample::run()
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
 
-	while (m_window->update())
+	while (window2::update())
 	{
-		FrameMark;
-		ZoneScopedN("Run Loop");
+		PROFILE_SCOPE("run Loop");
 		bool wants_shade = m_input->isKeyPressed(input::e_shademode);
 		bool wants_cmode = m_input->isKeyPressed(input::e_respawn);
 		bool wants_model = m_input->isKeyPressed(input::e_nextmodel);
@@ -198,7 +192,7 @@ void vulkan_sample::run()
 					auto unload = [&]()
 						{
 							// todo: fix potential image leaks in graphics.
-							m_graphics->reset();
+							graphics2::reset();
 							importer::unload_gltf(images, meshes);
 							skip_draws = true;
 						};
@@ -273,7 +267,7 @@ void vulkan_sample::run()
 			if (shademode < 0)
 				shademode = 9;
 			log::debug("toggle shading: {}", shademode);
-			m_graphics->set_shademode(shademode);
+			graphics2::set_shademode(shademode);
 		}
 		else if (!wants_shade && shade_toggling)
 		{
@@ -361,20 +355,20 @@ void vulkan_sample::run()
 			{
 				if (i == (size_t)model_id || !model_id)
 				{
-					m_graphics->getRenderer()->visit(meshes[i]);
+					graphics2::render(meshes[i]);
 				}
 			}
-			m_graphics->getRenderer()->visit(&cam);
-			m_graphics->getRenderer()->visit(&light);
-			m_graphics->getRenderer()->visit(ui_drawdata);
-			m_graphics->getRenderer()->visit(&swapchain_mesh);
+			graphics2::render(&cam);
+			graphics2::render(&light);
+			graphics2::render(ui_drawdata);
+			graphics2::render(&swapchain_mesh);
 		}
 		else
 		{
 			skip_draws = false;
 		}
 
-		m_graphics->render();
+		graphics2::render();
 		std::this_thread::sleep_for(std::chrono::milliseconds(16));
 		time += (1.0f / 60.0f);
 		io.Framerate = 60;
@@ -382,16 +376,17 @@ void vulkan_sample::run()
 		if (m_input->isKeyPressed(input::e_quit))
 			break;
 		
+		FrameMark;
 	}
 }
 
 void vulkan_sample::shutdown()
 {
-	ZoneScoped;
+	PROFILE;
 	log::scope vulkan_sample("vulkan_sample");
 
-	m_graphics->shutdown();
-	m_window->shutdown();
+	graphics2::shutdown();
+	window2::shutdown();
 	importer::shutdown();
 	blob::miscbank.shutdown();
 	log::debug("vulkan_sample finished.");

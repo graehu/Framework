@@ -13,7 +13,7 @@ namespace fwvulkan
       void SetDescriptorAO(VkImageView image_view, std::vector<VkDescriptorSet> ao_sets);
       VkPipelineLayoutCreateInfo GetPipelineLayout();
       VkDescriptorSet& GetDescriptorSet(unsigned int handle);
-      DrawHandle visit(fw::Mesh* _mesh);
+      DrawHandle render(fw::Mesh* _mesh);
       void Reset();
       void Shutdown();
    }
@@ -21,7 +21,7 @@ namespace fwvulkan
    {
       void Init();
       VkDescriptorSet& GetDescriptorSet(unsigned int handle);
-      DrawHandle visit(fw::Mesh* _mesh);
+      DrawHandle render(fw::Mesh* _mesh);
       void Reset();
       void Shutdown();
    }

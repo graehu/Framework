@@ -52,7 +52,8 @@ config.source_files += imgui_files
 config.library_paths = [libs]
 config.warnings = ["all", "extra", "pedantic"]
 config.debug_info = True
-config.rebuild_on_change = False
+config.rebuild_on_change = True
+
 config.link_libraries = ["fwcore", "stdc++", "tbb", "glfwstatic", "vulkan", "TracyClient"]
 config.standard = options.standard.cpp20
 config.output_file = "vulkan_sample.bin"

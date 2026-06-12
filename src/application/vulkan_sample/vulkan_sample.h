@@ -1,6 +1,5 @@
 #pragma once
 #include "../application.h"
-
 class vulkan_sample : public application
 {
  public:
