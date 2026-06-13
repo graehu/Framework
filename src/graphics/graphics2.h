@@ -79,6 +79,16 @@ namespace graphics2
    void render(fw::Mesh* _mesh);
    void render(fw::Light* _light);
    void render(ImDrawData* _imgui);
+
+   namespace pass
+   {
+      extern const fw::hash::string ui;
+      extern const fw::hash::string pbr;
+	   extern const fw::hash::string unlit;
+      extern const fw::hash::string shared;
+      extern const fw::hash::string fullscreen;
+      extern const fw::hash::string swapchain;
+   }
 }
 namespace fw
 {

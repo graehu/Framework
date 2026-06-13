@@ -4,7 +4,7 @@
 #include <cassert>
 #include <cstddef>
 #include <mutex>
-#include "../graphics/graphics.h"
+#include "../graphics/graphics2.h"
 #include "importer.h"
 #include "blob.h"
 #include "zip.h"
@@ -231,9 +231,12 @@ void load_tinygltf(const char* modelpath, std::vector<Mesh>& out_meshes, std::ve
 						out_mesh.images[3] = out_images[model.textures[tex_id].source];
 					}
 				}
-				out_mesh.passes = { hash::string("pbr") };
-				out_mesh.material.shaders[fw::shader::e_vertex] = { hash::string("shared") };
-				out_mesh.material.shaders[fw::shader::e_fragment] = { hash::string("pbr") };
+				{
+					using namespace graphics2;
+					out_mesh.passes = { pass::pbr };
+					out_mesh.material.shaders[fw::shader::e_vertex] = { pass::shared };
+					out_mesh.material.shaders[fw::shader::e_fragment] = { pass::pbr };
+				}
 				std::lock_guard<std::mutex> guard(m);
 				out_meshes.push_back(out_mesh);
 			}

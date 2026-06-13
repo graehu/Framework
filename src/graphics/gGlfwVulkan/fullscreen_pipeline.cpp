@@ -157,10 +157,13 @@ namespace fwvulkan
 			drawhandle.ds_handle = g_used_descriptors++;
 			assert(size_t(g_used_descriptors) < g_descriptor_sets.size());
 			std::vector<VkDescriptorSet> set(1, { g_descriptor_sets[drawhandle.ds_handle] });
-			SetDescriptorAlbedo(renderpass::GetPassImageView("ui"), set);
-			SetDescriptorMetallicRoughness(renderpass::GetPassImageView("pbr"), set);
-			SetDescriptorNormal(renderpass::GetPassImageView("pbr"), set);
-			SetDescriptorAO(renderpass::GetPassImageView("pbr"), set);
+			{
+				using namespace graphics2;
+				SetDescriptorAlbedo(renderpass::GetPassImageView(pass::ui), set);
+				SetDescriptorMetallicRoughness(renderpass::GetPassImageView(pass::pbr), set);
+				SetDescriptorNormal(renderpass::GetPassImageView(pass::pbr), set);
+				SetDescriptorAO(renderpass::GetPassImageView(pass::pbr), set);
+			}
 			return drawhandle;
 		}
 	}

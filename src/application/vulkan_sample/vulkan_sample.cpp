@@ -52,10 +52,13 @@ void vulkan_sample::run()
 	commandline::parse();
 	log::scope vulkan_sample("vulkan_sample", true);
 	
-	graphics2::register_shader("fullscreen", "shaders/spv/fullscreen.vert.spv", shader::e_vertex, "main");
-	graphics2::register_shader("shared", "shaders/spv/shared_sl.vert.spv", shader::e_vertex, "main");
-	graphics2::register_shader("pbr", "shaders/spv/pbr_sl.frag.spv", shader::e_fragment, "main");
-	graphics2::register_shader("unlit", "shaders/spv/unlit.frag.spv", shader::e_fragment, "main");
+	{
+		using namespace graphics2;
+		register_shader(pass::fullscreen, "shaders/spv/fullscreen.vert.spv", shader::e_vertex, "main");
+		register_shader(pass::shared, "shaders/spv/shared_sl.vert.spv", shader::e_vertex, "main");
+		register_shader(pass::pbr, "shaders/spv/pbr_sl.frag.spv", shader::e_fragment, "main");
+		register_shader(pass::unlit, "shaders/spv/unlit.frag.spv", shader::e_fragment, "main");
+	}
 	// WAYLAND_DISPLAY= XDG_SESSION_TYPE=x11 qrenderdoc
 
 	auto* tri_verts = initdata::geometry::tri_verts.data();
@@ -64,10 +67,10 @@ void vulkan_sample::run()
 	auto* tri_indices = initdata::geometry::tri_indices.data();
 	unsigned int tri_indices_count = initdata::geometry::tri_indices.size();
 
-	Mesh swapchain_mesh = { {{{}, tri_verts, tri_verts_count}, {{}, tri_indices, tri_indices_count}}, {}, {}, {hash::string("swapchain")}, {} };
+	Mesh swapchain_mesh = { {{{}, tri_verts, tri_verts_count}, {{}, tri_indices, tri_indices_count}}, {}, {}, {graphics2::pass::swapchain}, {} };
 
-	swapchain_mesh.material.shaders[fw::shader::e_vertex] = hash::string("fullscreen");
-	swapchain_mesh.material.shaders[fw::shader::e_fragment] = hash::string("unlit");
+	swapchain_mesh.material.shaders[fw::shader::e_vertex] = graphics2::pass::fullscreen;
+	swapchain_mesh.material.shaders[fw::shader::e_fragment] = graphics2::pass::unlit;
 
 	std::vector<Mesh*> meshes;
 	std::vector<Image*> images;
