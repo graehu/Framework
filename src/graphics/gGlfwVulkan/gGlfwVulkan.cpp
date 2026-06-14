@@ -144,6 +144,7 @@ namespace fwvulkan
 		std::vector<fw::hash::string> wait_passes;
 	};
 	std::map<fw::hash::string, PassHandle> g_pass_map;
+	PassHandle* g_swap_chain_handle = nullptr;
 	struct SemaphoreHandle
 	{
 		std::vector<VkSemaphore> image_available;
@@ -1387,7 +1388,7 @@ namespace fwvulkan
 		{
 #if !USE_DYNAMIC_RENDERING
 			log::debug("CreateSwapchainFrameBuffers");
-			auto& pass = g_pass_map[graphics2::pass::swapchain];
+			auto& pass = *fwvulkan::g_swap_chain_handle;
 			assert(pass.frame_buffers.size() == 0);
 			pass.frame_buffers.resize(pass.image_views.size());
 			for (size_t i = 0; i < pass.image_views.size(); i++)
@@ -1497,13 +1498,14 @@ namespace fwvulkan
 			// todo: make sure this doesn't cause unwanted vb/ib/im recreation.
 			g_drawhandles.clear();
 			g_swap_chain = VK_NULL_HANDLE;
+			g_swap_chain_handle = nullptr;
 			pbr::Reset();
 			fullscreen::Reset();
 		}
 		void CreateSwapchainImageViews()
 		{
 			log::debug("Create Swapchain Image Views");
-			auto& pass = g_pass_map[graphics2::pass::swapchain];
+			auto& pass = *fwvulkan::g_swap_chain_handle;
 			assert(pass.image_views.size() == 0);
 			pass.image_views.resize(pass.images.size());
 
@@ -1624,6 +1626,7 @@ namespace fwvulkan
 
 			renderpass::CreateDefaultRenderPass(graphics2::pass::swapchain, extent, surface_format.format, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 			auto& pass = g_pass_map[graphics2::pass::swapchain];
+			g_swap_chain_handle = &pass;
 			vkGetSwapchainImagesKHR(g_logical_device, g_swap_chain, &image_count, nullptr);
 			pass.images.resize(image_count);
 			vkGetSwapchainImagesKHR(g_logical_device, g_swap_chain, &image_count, pass.images.data());
@@ -1642,7 +1645,7 @@ namespace fwvulkan
 
 			if (pass.extent.width == 0 || pass.extent.width == 0)
 			{
-				pass.extent = g_pass_map[graphics2::pass::swapchain].extent;
+				pass.extent = fwvulkan::g_swap_chain_handle->extent;
 			}
 			log::debug("CreatePassImages '{}' ({}, {}) format: {}", passname.m_literal, pass.extent.width, pass.extent.height, pass.image_format);
 
@@ -1788,7 +1791,7 @@ namespace fwvulkan
 			VkFormat format = utils::FindDepthFormat();
 			VkImage depth_image; VkDeviceMemory depth_memory;
 			// todo: more suckage.
-			auto extent = g_pass_map[graphics2::pass::swapchain].extent;
+			auto extent = g_swap_chain_handle->extent;
 			buffers::CreateImage(extent.width, extent.height, format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depth_image, depth_memory);
 			auto depth_view = buffers::CreateImageView(depth_image, format, VK_IMAGE_ASPECT_DEPTH_BIT);
 			g_rt_map["depth"] = { depth_image, depth_view, depth_memory, extent.width, extent.height };
@@ -1918,7 +1921,7 @@ namespace fwvulkan
 		}
 		VkViewport GetDefaultViewport()
 		{
-			auto& pass = g_pass_map[graphics2::pass::swapchain];
+			auto& pass = *g_swap_chain_handle;
 			VkViewport viewport = {};
 			viewport.x = 0.0f;
 			viewport.y = 0.0f;
@@ -1930,7 +1933,7 @@ namespace fwvulkan
 		}
 		VkRect2D GetDefaultScissor()
 		{
-			auto& pass = g_pass_map[graphics2::pass::swapchain];
+			auto& pass = *g_swap_chain_handle;
 			VkRect2D scissor = {};
 			scissor.offset = { 0, 0 };
 			scissor.extent = pass.extent;
@@ -2118,8 +2121,8 @@ namespace fwvulkan
 				rendering_ci.pNext = VK_NULL_HANDLE;
 				rendering_ci.colorAttachmentCount = 1;
 				VkFormat depth_format = utils::FindDepthFormat();
-				const VkFormat col_formats[1] = { g_pass_map[graphics2::pass::swapchain].image_format };
-				rendering_ci.pColorAttachmentFormats = col_formats;//&g_pass_map[graphics2::pass::swapchain].image_format;
+				const VkFormat col_formats[1] = { g_swap_chain_handle->image_format };
+				rendering_ci.pColorAttachmentFormats = col_formats;//&g_swap_chain_handle->image_format;
 				rendering_ci.depthAttachmentFormat = depth_format;
 				rendering_ci.stencilAttachmentFormat = depth_format;
 				pipeline_ci.pNext = &rendering_ci;
@@ -2127,7 +2130,7 @@ namespace fwvulkan
 #else
 				// note: this pipeline isn't limited to this render pass.
 				// ----: but we do require a render pass, so setup a default.
-				pipeline_ci.renderPass = g_pass_map[graphics2::pass::swapchain].pass;
+				pipeline_ci.renderPass = g_swap_chain_handle->pass;
 #endif
 				pipeline_ci.subpass = 0;
 				pipeline_ci.basePipelineHandle = VK_NULL_HANDLE;
@@ -2201,7 +2204,7 @@ namespace fwvulkan
 			VkRenderingAttachmentInfo color_attachment_info = {};
 			color_attachment_info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 			color_attachment_info.pNext = VK_NULL_HANDLE;
-			color_attachment_info.imageView = g_pass_map[graphics2::pass::swapchain].image_views[g_current_swapchain_image];
+			color_attachment_info.imageView = g_swap_chain_handle->image_views[g_current_swapchain_image];
 			color_attachment_info.clearValue = { {{0.1f, 0.1f, 0.1f, 1.0f}} };
 			// note: even though we're attaching the swapchain views, renderdoc points to specs when validating.
 			// ....: we should never have an attachment of VK_IMAGE_LAYOUT_PRESENT_SRC_KHR.
@@ -2442,7 +2445,7 @@ namespace fwvulkan
 void UpdateUniformBuffer(uint32_t currentImage)
 {
 	using namespace fwvulkan;
-	auto extent = g_pass_map[graphics2::pass::swapchain].extent;
+	auto extent = g_swap_chain_handle->extent;
 	// todo: move this matrix into the camera probably.
 	ubo.proj.perspective(60.0f, (float)extent.width / extent.height, 0.1f, 100.f);
 	ubo.view = g_view;
@@ -2495,7 +2498,7 @@ void InitIMGUI()
 	rendering_ci.pNext = VK_NULL_HANDLE;
 	rendering_ci.colorAttachmentCount = 1;
 	VkFormat depth_format = fwvulkan::utils::FindDepthFormat();
-	const VkFormat col_formats[1] = { fwvulkan::g_pass_map[graphics2::pass::swapchain].image_format };
+	const VkFormat col_formats[1] = { fwvulkan::g_swap_chain_handle->image_format };
 	rendering_ci.pColorAttachmentFormats = col_formats;
 	rendering_ci.depthAttachmentFormat = depth_format;
 	rendering_ci.stencilAttachmentFormat = depth_format;
@@ -2754,7 +2757,7 @@ int graphics2::render()
 		if (pass.first == pass::swapchain) continue;
 		fwvulkan::renderpass::RecordPass(pass.first, pass.second);
 	}
-	fwvulkan::renderpass::RecordPass(pass::swapchain);
+	fwvulkan::renderpass::RecordPass(pass::swapchain, *fwvulkan::g_swap_chain_handle);
 	std::vector<VkSemaphore> all_signals;
 	for (auto pass : g_pass_map)
 	{
@@ -2865,7 +2868,7 @@ bool graphics2::register_shader(fw::hash::string name, const char* path, fw::sha
 bool graphics2::register_pass(fw::hash::string pass)
 {
 	using namespace fwvulkan;
-	PassHandle& swapchain = g_pass_map[pass::swapchain];
+	PassHandle& swapchain = *g_swap_chain_handle;
 	if (renderpass::CreateDefaultRenderPass(pass, swapchain.extent, swapchain.image_format, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL))
 	{
 		renderpass::CreatePassImages(pass, 1);

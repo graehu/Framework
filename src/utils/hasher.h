@@ -55,6 +55,7 @@ namespace fw
 			}
 			constexpr string() = default;
 			constexpr operator u32() const { return m_hash; }
+			constexpr bool operator==(const string& rhs) { return rhs.m_hash == m_hash; }
 			constexpr bool operator< (const string& rhs) const { return u32(*this) < u32(rhs); }
 			constexpr bool operator> (const string& rhs) const { return rhs < *this; }
 			constexpr bool operator<=(const string& rhs) const { return !(*this > rhs); }
