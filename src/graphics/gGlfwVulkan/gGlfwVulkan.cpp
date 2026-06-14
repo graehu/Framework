@@ -2230,11 +2230,16 @@ namespace fwvulkan
 		}
 		ImDrawData* pass_gui = nullptr;
 		uint32_t shared_id = 0;
+
+		void RecordPass(hash::string passname, PassHandle& pass);
 		void RecordPass(hash::string passname)
 		{
-			PROFILE;
 			PassHandle& pass = g_pass_map[passname];
-
+			RecordPass(passname, pass);
+		}
+		void RecordPass(hash::string passname, PassHandle& pass)
+		{
+			PROFILE;
 			VkCommandBufferBeginInfo begin_info = {};
 			begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 			begin_info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
@@ -2590,6 +2595,7 @@ void graphics2::render(camera* _camera)
 
 void graphics2::render(fw::Mesh* _mesh)
 {
+	PROFILE_SCOPE("render mesh");
 	using namespace fwvulkan;
 	DrawHandle drawhandle;
 	//todo: don't store drawhandles against their ptr address.
@@ -2716,7 +2722,6 @@ int graphics2::render()
 	using namespace fwvulkan;
 	for (auto pass : g_pass_map)
 	{
-		PROFILE_SCOPE("test");
 		unsigned int frame_id = pass.first == pass::swapchain ? g_flight_frame : 0;
 		vkWaitForFences(g_logical_device, 1, &g_semaphore_map[pass.first].in_flight_fences[frame_id], VK_TRUE, std::numeric_limits<uint64_t>::max());
 	}
@@ -2747,7 +2752,7 @@ int graphics2::render()
 	for (auto pass : g_pass_map)
 	{
 		if (pass.first == pass::swapchain) continue;
-		fwvulkan::renderpass::RecordPass(pass.first);
+		fwvulkan::renderpass::RecordPass(pass.first, pass.second);
 	}
 	fwvulkan::renderpass::RecordPass(pass::swapchain);
 	std::vector<VkSemaphore> all_signals;

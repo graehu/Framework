@@ -1,14 +1,13 @@
 {
     "configurations": [
-        {
+            {
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
             "program": "${fileDirname}/${fileBasenameNoExtension}.bin",
-            "args": ["--log.default.level", "debug"],
+            "args": ["-log.default.level", "debug"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
-            "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
             "setupCommands": [
@@ -22,6 +21,18 @@
                     "text": "-gdb-set disassembly-flavor intel",
                     "ignoreFailures": true
                 }
+            ]
+        },
+        {
+            "name": "(lldb) Launch",
+            "type": "lldb-dap",
+            "request": "launch",
+            "cwd": "${fileDirname}",
+            "stopOnEntry": false,
+            "program": "${fileDirname}/${fileBasenameNoExtension}.bin",
+            "args": ["-log.default.level", "debug"],
+            "env": [
+                    "LSAN_OPTIONS=verbosity=1:log_threads=1"
             ]
         }
     ],

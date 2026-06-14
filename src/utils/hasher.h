@@ -22,7 +22,10 @@ namespace fw
 		template<std::size_t N>
 		constexpr u32 hash32(const char(&s)[N])
 		{
-			return hash_buffer(s, N);
+			// note: N-1 to stop us hashing the null-terminator.
+			// ----: not all strings are null terminated.
+			// ----: hasing to the last valid character is more consistent / stable.
+			return hash_buffer(s, N-1);
 		}
 		template <typename T>
 		constexpr u32 hash32(T&& s)
@@ -34,8 +37,8 @@ namespace fw
 			template<std::size_t N>
 			constexpr string(const char(&_literal)[N]) :
 				m_literal(&_literal[0]),
-				m_len(N),
-				m_hash(hash_buffer(m_literal, N))
+				m_len(N-1),
+				m_hash(hash_buffer(m_literal, N-1))
 			{
 			}
 			constexpr string(const char* _literal, const std::size_t _size) :
@@ -75,7 +78,7 @@ namespace fw
 				m_names(),
 				m_path(nullptr)
 			{
-				auto _len = N;
+				auto _len = N-1;
 				m_path = _path;
 				m_path_len = _len;
 				m_hash = hash_buffer(m_path, _len);

@@ -4,7 +4,7 @@ sys.path.append('../../../tools/confply')
 import confply.cpp_compiler.config as config
 import confply.cpp_compiler.options as options
 import confply.log as log
-config.version_hash='77a83ef65a5e032b989b8a76ac0083e9'
+config.version_hash='c42a98a4690a08e0bd87f8f462a5636f'
 
 config.confply.tool = options.tool.clangpp
 config.confply.log_topic = "vulkan_sample"
@@ -58,7 +58,7 @@ config.link_libraries = ["fwcore", "stdc++", "tbb", "glfwstatic", "vulkan", "Tra
 config.standard = options.standard.cpp20
 config.output_file = "vulkan_sample.bin"
 config.compile_commands = True
-
+# config.asan = True
 
 def build_shaders():
     import os

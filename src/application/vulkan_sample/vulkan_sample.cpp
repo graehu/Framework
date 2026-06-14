@@ -29,7 +29,6 @@ void vulkan_sample::init()
 {
 	PROFILE;
 	m_name = "vulkan_sample";
-	hash::path doot("test.this.out");
 	fw::commandline::parse();
 	fw::log::topics::add("fw");
 	fw::log::scope fw("fw");
@@ -372,7 +371,11 @@ void vulkan_sample::run()
 		}
 
 		graphics2::render();
-		std::this_thread::sleep_for(std::chrono::milliseconds(16));
+		// this should wait based on desired framerate.
+		{
+			PROFILE_SCOPE("frame sleep");
+			std::this_thread::sleep_for(std::chrono::milliseconds(16));
+		}
 		time += (1.0f / 60.0f);
 		io.Framerate = 60;
 		m_input->update();
