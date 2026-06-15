@@ -125,6 +125,7 @@ namespace fwvulkan
 	// renderpass
 	// the default one used for the swapchain
 	struct DrawHandle;
+	struct SemaphoreHandle;
 	struct PassHandle
 	{
 		VkFramebuffer CurrentFrame()
@@ -142,6 +143,7 @@ namespace fwvulkan
 		std::vector<VkFramebuffer> frame_buffers;
 		std::vector<DrawHandle> draws;
 		std::vector<fw::hash::string> wait_passes;
+		SemaphoreHandle* semas;
 	};
 	std::map<fw::hash::string, PassHandle> g_pass_map;
 	PassHandle* g_swap_chain_handle = nullptr;
@@ -1780,7 +1782,7 @@ namespace fwvulkan
 
 #endif
 				VkCommandBuffer buffer = buffers::CreateCommandBuffer();
-				g_pass_map[passname] = { pass, buffer, extent, format, {}, {}, {}, {}, {}, {} };
+				g_pass_map[passname] = { pass, buffer, extent, format, {}, {}, {}, {}, {}, {}, {} };
 				return true;
 			}
 			return false;
@@ -1823,6 +1825,7 @@ namespace fwvulkan
 			renderpass::CreateDepthBuffer();
 			CreateSwapchainImageViews();
 			CreateSwapchainFrameBuffers();
+			barriers::CreatePassSemaphores(graphics2::pass::swapchain);
 		}
 	}
 	namespace shaders
@@ -2401,7 +2404,8 @@ namespace fwvulkan
 			int num_images = pass.images.size();
 			if (num_images != 0)
 			{
-				if (auto it = g_semaphore_map.find(passname); it == g_semaphore_map.end())
+				auto it = g_semaphore_map.find(passname);
+				if (it == g_semaphore_map.end())
 				{
 					auto& semas = g_semaphore_map[passname];
 					semas.image_available.resize(num_images);
@@ -2434,8 +2438,11 @@ namespace fwvulkan
 							throw std::runtime_error("failed to create semaphore!");
 						}
 					}
+					pass.semas = &semas;
 					return true;
 				}
+				// note: semaphores don't get deleted till shutdown, so we need this hookup.
+				pass.semas = &it->second;
 			}
 			return false;
 		}
@@ -2726,14 +2733,14 @@ int graphics2::render()
 	for (auto pass : g_pass_map)
 	{
 		unsigned int frame_id = pass.first == pass::swapchain ? g_flight_frame : 0;
-		vkWaitForFences(g_logical_device, 1, &g_semaphore_map[pass.first].in_flight_fences[frame_id], VK_TRUE, std::numeric_limits<uint64_t>::max());
+		vkWaitForFences(g_logical_device, 1, &pass.second.semas->in_flight_fences[frame_id], VK_TRUE, std::numeric_limits<uint64_t>::max());
 	}
 
 	// this is needed for present, it's not needed for graphics queue submit.
 	uint32_t image_index = 0;
 	{
 		VkResult result = vkAcquireNextImageKHR(g_logical_device, g_swap_chain, std::numeric_limits<uint64_t>::max(),
-			g_semaphore_map[pass::swapchain].image_available[g_flight_frame], VK_NULL_HANDLE, &image_index);
+			g_swap_chain_handle->semas->image_available[g_flight_frame], VK_NULL_HANDLE, &image_index);
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || g_resized)
 		{
 			g_resized = false;
@@ -2762,10 +2769,10 @@ int graphics2::render()
 	for (auto pass : g_pass_map)
 	{
 		unsigned int frame_id = pass.first == pass::swapchain ? g_flight_frame : 0;
-		VkSemaphore wait_semaphores[] = { g_semaphore_map[pass.first].image_available[frame_id] };
-		VkSemaphore signals[] = { g_semaphore_map[pass.first].render_finished[frame_id] };
+		VkSemaphore wait_semaphores[] = { pass.second.semas->image_available[frame_id] };
+		VkSemaphore signals[] = { pass.second.semas->render_finished[frame_id] };
 		VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-		VkCommandBuffer cmd_buffers[] = { g_pass_map[pass.first].cmd_buffer };
+		VkCommandBuffer cmd_buffers[] = { pass.second.cmd_buffer };
 
 		VkSubmitInfo submit_info = {};
 		submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -2785,8 +2792,8 @@ int graphics2::render()
 
 		all_signals.push_back(signals[0]);
 
-		vkResetFences(g_logical_device, 1, &g_semaphore_map[pass.first].in_flight_fences[frame_id]);
-		if (vkQueueSubmit(g_graphics_queue, 1, &submit_info, g_semaphore_map[pass.first].in_flight_fences[frame_id]) != VK_SUCCESS)
+		vkResetFences(g_logical_device, 1, &pass.second.semas->in_flight_fences[frame_id]);
+		if (vkQueueSubmit(g_graphics_queue, 1, &submit_info, pass.second.semas->in_flight_fences[frame_id]) != VK_SUCCESS)
 		{
 			throw std::runtime_error("failed to submit draw command buffer!");
 		}
