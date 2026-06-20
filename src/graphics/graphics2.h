@@ -12,6 +12,17 @@
 
 namespace fw
 {
+#if 0
+#define MapGet(map, hh) map[hh.handle]
+#else
+#define MapGet(map, handle) (*handle.ptr)
+#endif
+   template <class type>
+   struct HandlePtr
+   {
+      uint32_t handle;
+      type* ptr;
+   };
    namespace shader
    {
       // why not enum class?

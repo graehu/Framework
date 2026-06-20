@@ -154,10 +154,10 @@ namespace fwvulkan
 				// todo: handle non pbr textures.
 				drawhandle.im_handles[i] = buffers::CreateImageHandle(_mesh->images[i]);
 				// drawhandle.im_handles[i] = buffers::CreateImageHandle(_mesh->images[i].data, _mesh->images[i].width, _mesh->images[i].height, _mesh->images[i].bits);
-				if (i == 0) SetDescriptorAlbedo(g_im_map[drawhandle.im_handles[0]].view, set);
-				else if (i == 1) SetDescriptorMetallicRoughness(g_im_map[drawhandle.im_handles[1]].view, set);
-				else if (i == 2) SetDescriptorNormal(g_im_map[drawhandle.im_handles[2]].view, set);
-				else if (i == 3) SetDescriptorAO(g_im_map[drawhandle.im_handles[3]].view, set);
+				if (i == 0) SetDescriptorAlbedo(MapGet(g_im_map, drawhandle.im_handles[0]).view, set);
+				else if (i == 1) SetDescriptorMetallicRoughness(MapGet(g_im_map, drawhandle.im_handles[1]).view, set);
+				else if (i == 2) SetDescriptorNormal(MapGet(g_im_map, drawhandle.im_handles[2]).view, set);
+				else if (i == 3) SetDescriptorAO(MapGet(g_im_map, drawhandle.im_handles[3]).view, set);
 			}
 			return drawhandle;
 		}

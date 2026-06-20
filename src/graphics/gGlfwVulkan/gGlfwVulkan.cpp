@@ -689,7 +689,7 @@ namespace fwvulkan
 			}
 		}
 
-		// todo: this does more than set the image, it also sets the uniform buffer.
+		// todo: this does more than set the sampler, it also sets the uniform buffer.
 		// ----: That's not ideal, I think more correctly you would create descriptors and rebind them when recording a pass.
 		// ----: so probably you need descriptor sets per draw handle, which can change the images and transforms.
 		// ----: Global transforms/constants should probably be in a push constant, or bound to the pipeline differently.
@@ -814,19 +814,21 @@ namespace fwvulkan
 			}
 			return hash;
 		}
-		int CreateImageHandle(fw::Image& image)
+		fw::HandlePtr<IMHandle> CreateImageHandle(fw::Image& image)
 		{
 			const unsigned int* image_buffer = image.buffer.data;
 			size_t width = image.width;
 			size_t height = image.height;
 			size_t bits = image.bits;
+			IMHandle* im_ptr = nullptr;
 
 			log::debug("CreateImageHandle: {} x {} ({}bit)", width, height, bits);
-			if (image_buffer == nullptr || image.buffer.len == 0) return 0;
+			if (image_buffer == nullptr || image.buffer.len == 0) return {0, nullptr};
 			size_t image_size = width * height * (bits / 8);
 			bool first_use = fw::hash_image(image);
-			if (image.buffer.head.hash == 0) return 0;
-			if (g_im_map.find(image.buffer.head.hash) == g_im_map.end())
+			if (image.buffer.head.hash == 0) return {0, nullptr};
+			auto iter = g_im_map.find(image.buffer.head.hash);
+			if (iter == g_im_map.end())
 			{
 				VkBuffer copy_buffer = VK_NULL_HANDLE;
 				VkDeviceMemory copy_memory = VK_NULL_HANDLE;
@@ -876,48 +878,58 @@ namespace fwvulkan
 				VkImageView view = CreateImageView(vkimage, VK_FORMAT_R8G8B8A8_SRGB);
 
 				g_im_map[image.buffer.head.hash] = { vkimage, view, image_memory, width, height };
+				im_ptr = &g_im_map[image.buffer.head.hash];
 				log::debug("Created IMHandle: {}", image.buffer.head.hash);
 			}
 			else
 			{
 				if (first_use) log::warn("Reusing IMHandle unexpectedly {}", image.buffer.head.hash);
 				else log::debug("Reusing IMHandle: {}", image.buffer.head.hash);
+				im_ptr = &iter->second;
 			}
-			return image.buffer.head.hash;
+			return {image.buffer.head.hash, im_ptr};
 		}
-		int CreateVertexBufferHandle(const fw::Vertex* vertices, int num_vertices)
+		fw::HandlePtr<VBHandle> CreateVertexBufferHandle(const fw::Vertex* vertices, int num_vertices)
 		{
 			uint32_t hash = hash::hash_buffer((const char*)vertices, num_vertices * sizeof(fw::Vertex));
-			if (g_vb_map.find(hash) == g_vb_map.end())
+			VBHandle* vb_ptr = nullptr;
+			auto iter = g_vb_map.find(hash);
+			if (iter  == g_vb_map.end())
 			{
 				VkBuffer vertex_buffer;
 				VkDeviceMemory vertex_buffer_memory;
 				CreateBuffer((void*)vertices, sizeof(fw::Vertex) * num_vertices, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertex_buffer, vertex_buffer_memory);
 				g_vb_map[hash] = { vertex_buffer, vertex_buffer_memory, (size_t)num_vertices };
+				vb_ptr = &g_vb_map[hash];
 				log::debug("Created VBHandle: {}, verts: {}, size: {}", hash, num_vertices, sizeof(fw::Vertex) * num_vertices);
 			}
 			else
 			{
 				log::debug("Reusing VBHandle: {}", hash);
+				vb_ptr = &iter->second;
 			}
-			return hash;
+			return {hash, vb_ptr};
 		}
-		int CreateIndexBufferHandle(const uint32_t* indices, int num_indices)
+		fw::HandlePtr<IBHandle> CreateIndexBufferHandle(const uint32_t* indices, int num_indices)
 		{
 			uint32_t hash = hash::hash_buffer((const char*)indices, num_indices * sizeof(uint32_t));
-			if (g_ib_map.find(hash) == g_ib_map.end())
+			IBHandle* ib_ptr = nullptr;
+			auto iter = g_ib_map.find(hash);
+			if (iter == g_ib_map.end())
 			{
 				VkBuffer index_buffer;
 				VkDeviceMemory index_buffer_memory;
 				CreateBuffer((void*)indices, sizeof(uint32_t) * num_indices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, index_buffer, index_buffer_memory);
 				g_ib_map[hash] = { index_buffer, index_buffer_memory, (size_t)num_indices };
+				ib_ptr = &g_ib_map[hash];
 				log::debug("Created IBHandle: {}", hash);
 			}
 			else
 			{
 				log::debug("Reusing IBHandle: {}", hash);
+				ib_ptr = &iter->second;
 			}
-			return hash;
+			return {hash, ib_ptr};
 		}
 	}
 
@@ -2025,11 +2037,13 @@ namespace fwvulkan
 			return color_blend_state_ci;
 		}
 
-		int CreatePipelineVariants(Material mat, VkPipelineLayoutCreateInfo pipeline_layout_ci)
+		fw::HandlePtr<PipelineHandle> CreatePipelineVariants(Material mat, VkPipelineLayoutCreateInfo pipeline_layout_ci)
 		{
 			log::debug("CreateGraphicsPipeline");
 			auto hash = hash::hash32(mat);
-			if (g_pipe_map.find(hash) == g_pipe_map.end())
+			PipelineHandle* pi_ptr = nullptr;
+			auto iter = g_pipe_map.find(hash);
+			if (iter == g_pipe_map.end())
 			{
 				VkPipelineLayout pipeline_layout;
 				if (vkCreatePipelineLayout(g_logical_device, &pipeline_layout_ci, nullptr, &pipeline_layout) != VK_SUCCESS)
@@ -2190,14 +2204,16 @@ namespace fwvulkan
 					}
 				}
 				g_pipe_map[hash] = { graphics_pipeline, depth_pipeline, pipeline_layout };
+				pi_ptr = &g_pipe_map[hash];
 				log::debug("pipeline created id: {}", hash);
 			}
 			else
 			{
 				log::debug("pipeline reuse id: {}", hash);
+				pi_ptr = &iter->second;
 			}
 
-			return hash;
+			return {hash, pi_ptr};
 		}
 	}
 	namespace renderpass
@@ -2324,16 +2340,17 @@ namespace fwvulkan
 					assert(shared_id < DrawHandle::max_draws);
 					// log::debug("Recording Draw vb: {} pi: {} nverts: {}", dh.vb_handle, dh.pi_handle, dh.num_verts);
 					// log::debug("bind pipeline");
-					if (uint32_t hash = dh.pi_handle; hash != pipeline_hash)
+					if (uint32_t hash = dh.pi_handle.handle; hash != pipeline_hash)
 					{
 						// todo: it would be nicer to have this sort of thing covered as a init frame pass or something.
 						pipeline_hash = hash;
 						// todo: this works because we only really have 1 pipeline layout.
 						// ----: future graham, not sure this comment is true?
-						vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 0, 1, &g_shared_descriptor_sets[g_flight_frame], 0, nullptr);
+						MapGet(g_pipe_map, dh.pi_handle);
+						vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, MapGet(g_pipe_map, dh.pi_handle).layout, 0, 1, &g_shared_descriptor_sets[g_flight_frame], 0, nullptr);
 					}
 
-					VkBuffer vertex_buffers[] = { g_vb_map[dh.vb_handle].vb };
+					VkBuffer vertex_buffers[] = { MapGet(g_vb_map, dh.vb_handle).vb };
 					VkDeviceSize offsets[] = { 0 };
 					SharedPushConstants constants = { shared_id };
 					// todo: make this happen once per draw before depth when recording depth
@@ -2341,9 +2358,11 @@ namespace fwvulkan
 					memcpy(&ubo.model[shared_id], &dh.owner->transform, sizeof(mat4x4f));
 					// this needs to happen every time we setup a draw.
 
-					vkCmdPushConstants(pass.cmd_buffer, g_pipe_map[pipeline_hash].layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(SharedPushConstants), &constants);
+					vkCmdPushConstants(pass.cmd_buffer, MapGet(g_pipe_map, dh.pi_handle).layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(SharedPushConstants), &constants);
 					vkCmdBindVertexBuffers(pass.cmd_buffer, 0, 1, vertex_buffers, offsets);
-					auto ibh = g_ib_map[dh.ib_handle];
+					
+					auto ibh = MapGet(g_ib_map, dh.ib_handle);
+
 					vkCmdBindIndexBuffer(pass.cmd_buffer, ibh.ib, 0, VK_INDEX_TYPE_UINT32);
 
 					assert(dh.ds_handle != -1);
@@ -2355,11 +2374,11 @@ namespace fwvulkan
 					if (passname == graphics2::pass::swapchain)
 					{
 						// setup the "fullscreen" descriptors - they should bind the PBR pass and the UI pass.
-						vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 1, 1, &fullscreen::GetDescriptorSet(dh.ds_handle), 0, nullptr);
+						vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, MapGet(g_pipe_map, dh.pi_handle).layout, 1, 1, &fullscreen::GetDescriptorSet(dh.ds_handle), 0, nullptr);
 					}
 					else if (passname == graphics2::pass::pbr)
 					{
-						vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].layout, 1, 1, &pbr::GetDescriptorSet(dh.ds_handle), 0, nullptr);
+						vkCmdBindDescriptorSets(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, MapGet(g_pipe_map, dh.pi_handle).layout, 1, 1, &pbr::GetDescriptorSet(dh.ds_handle), 0, nullptr);
 					}
 					else
 					{
@@ -2369,11 +2388,11 @@ namespace fwvulkan
 
 					// note: separate depth draw here.
 					// note: depth must be first in order to fix self occlusion issues, otherwise it's just tri-order albedo.
-					vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].depth_pipeline);
+					vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, MapGet(g_pipe_map, dh.pi_handle).depth_pipeline);
 					vkCmdDrawIndexed(pass.cmd_buffer, ibh.len, 1, 0, 0, 0);
 
 					// colour.
-					vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, g_pipe_map[pipeline_hash].pipeline);
+					vkCmdBindPipeline(pass.cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, MapGet(g_pipe_map, dh.pi_handle).pipeline);
 					vkCmdDrawIndexed(pass.cmd_buffer, ibh.len, 1, 0, 0, 0);
 
 					shared_id++;

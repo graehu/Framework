@@ -3,16 +3,21 @@
 
 namespace fwvulkan
 {
+   struct VBHandle;
+   struct IBHandle;
+   struct IMHandle;
+   struct PipelineHandle;
    struct DrawHandle
    {
       static const int max_draws = 128;
       // todo: owner should also be a handle.
       fw::Mesh* owner = nullptr;
-      int vb_handle = -1;
-      int ib_handle = -1;
-      int im_handles[fw::Mesh::max_images] = {};
-      int pi_handle = -1;
-      int ds_handle = -1;
+      fw::HandlePtr<VBHandle> vb_handle = {0, 0}; //VBHandle* vb_ptr = nullptr;
+      fw::HandlePtr<IBHandle> ib_handle = {0, 0}; //IBHandle* ib_ptr = nullptr;
+      fw::HandlePtr<IMHandle> im_handles[fw::Mesh::max_images] = {};
+      //IMHandle* im_ptrs[fw::Mesh::max_images] = {};
+      fw::HandlePtr<PipelineHandle> pi_handle = {0, 0}; //void* pi_ptr = nullptr;
+      int ds_handle = -1; //void* ds_ptr = nullptr;
    };
    struct VBHandle
    {
