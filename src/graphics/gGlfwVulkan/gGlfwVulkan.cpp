@@ -1,5 +1,5 @@
 //#include "gGlfwVulkan.h"
-#include "../graphics2.h"
+#include "graphics/graphics2.h"
 #include "vulkan/vulkan.hpp"
 // todo: take all the glfw calls and put them in a different file.
 // ----: then this file can become vulkan only and be shared by other window systems.
@@ -17,23 +17,23 @@
 #include <vector>
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_to_string.hpp>
-#include "../../utils/profiler.h"
+#include "utils/profiler.h"
 
 // todo: this is hacked atm, I added it manually to my
 // ----: libs/vlukan/include/vulkan.
 // ----: that's not going to show up in git.
 // #include <vulkan/vk_enum_string_helper.h>
 
-#include "../../utils/log/log.h"
-#include "../../utils/params.h"
-#include "../../types/mat4x4f.h"
+#include "utils/log/log.h"
+#include "utils/params.h"
+#include "types/mat4x4f.h"
 #include "vulkan_types.h"
 
 // todo: these can probably move into separate files like fullscreen and pbr
 
-#include "../../../libs/imgui/imgui.h"
-#include "../../../libs/imgui/backends/imgui_impl_glfw.h"
-#include "../../../libs/imgui/backends/imgui_impl_vulkan.h"
+#include "imgui/imgui.h"
+#include "imgui/backends/imgui_impl_glfw.h"
+#include "imgui/backends/imgui_impl_vulkan.h"
 
 using namespace fw;
 

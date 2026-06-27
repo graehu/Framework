@@ -31,10 +31,10 @@ config.source_files = [
 libs = "../../../libs"
 config.include_paths = [
     f"{src_dir}",
+    f"{libs}",
     f"{libs}/fmt/include/",
     f"{libs}/vulkan/include/",
     f"{libs}/glfw/include/",
-    f"{libs}/tinygltf/",
     f"{libs}/imgui/",
     f"{libs}/miniz/_build/amalgamation/",
     f"{libs}/tracy/public/"
@@ -60,7 +60,8 @@ config.link_libraries = ["fwcore", "stdc++", "tbb", "glfwstatic", "vulkan", "Tra
 config.standard = options.standard.cpp20
 config.output_file = "vulkan_sample.bin"
 config.compile_commands = True
-# config.asan = True
+config.asan = False
+
 
 def build_shaders():
     import os

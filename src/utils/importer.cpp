@@ -4,15 +4,15 @@
 #include <cassert>
 #include <cstddef>
 #include <mutex>
-#include "../graphics/graphics2.h"
-#include "importer.h"
-#include "blob.h"
-#include "zip.h"
-#include "filesystem.h"
-#include "log/log.h"
-#include "string_helpers.h"
-#include "profiler.h"
 
+#include "graphics/graphics2.h"
+#include "utils/importer.h"
+#include "utils/blob.h"
+#include "utils/zip.h"
+#include "utils/filesystem.h"
+#include "utils/log/log.h"
+#include "utils/string_helpers.h"
+#include "utils/profiler.h"
 
 #include <execution>
 // note: this requires linking ttb (i.e. -lttb) on linux.
@@ -26,7 +26,7 @@
 // #pragma warning (disable : 4200)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
-#include "tiny_gltf.h"
+#include "tinygltf/tiny_gltf.h"
 #pragma GCC diagnostic pop
 // #pragma warning (pop)
 using namespace fw;
