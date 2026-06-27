@@ -8,27 +8,29 @@ config.version_hash='c42a98a4690a08e0bd87f8f462a5636f'
 
 config.confply.tool = options.tool.clangpp
 config.confply.log_topic = "vulkan_sample"
+src_dir = "../.."
 config.source_files = [
-    "vulkan_sample.cpp",
-    "../../main.cpp",
-    "../../utils/params.cpp",
-    "../../utils/log/log.cpp",
-    "../../utils/blob.cpp",
-    "../../utils/importer.cpp",
-    "../../types/vec2f.cpp",
-    "../../types/vec3f.cpp",
-    "../../types/mat4x4f.cpp",
-    "../../graphics/camera/camera.cpp",
-    "../../types/quaternion.cpp",
-    "../../window/wGlfwVulkan/wGlfwVulkan.cpp",
-    "../../graphics/gGlfwVulkan/gGlfwVulkan.cpp",
-    "../../graphics/gGlfwVulkan/pbr_pipeline.cpp",
-    "../../graphics/gGlfwVulkan/fullscreen_pipeline.cpp",
-    "../../input/inGlfw/inGlfw.cpp",
-    "../../utils/zip.cpp",
+    f"vulkan_sample.cpp",
+    f"{src_dir}/main.cpp",
+    f"{src_dir}/utils/params.cpp",
+    f"{src_dir}/utils/log/log.cpp",
+    f"{src_dir}/utils/blob.cpp",
+    f"{src_dir}/utils/importer.cpp",
+    f"{src_dir}/types/vec2f.cpp",
+    f"{src_dir}/types/vec3f.cpp",
+    f"{src_dir}/types/mat4x4f.cpp",
+    f"{src_dir}/graphics/camera/camera.cpp",
+    f"{src_dir}/types/quaternion.cpp",
+    f"{src_dir}/window/wGlfwVulkan/wGlfwVulkan.cpp",
+    f"{src_dir}/graphics/gGlfwVulkan/gGlfwVulkan.cpp",
+    f"{src_dir}/graphics/gGlfwVulkan/pbr_pipeline.cpp",
+    f"{src_dir}/graphics/gGlfwVulkan/fullscreen_pipeline.cpp",
+    f"{src_dir}/input/inGlfw/inGlfw.cpp",
+    f"{src_dir}/utils/zip.cpp",
 ]
 libs = "../../../libs"
 config.include_paths = [
+    f"{src_dir}",
     f"{libs}/fmt/include/",
     f"{libs}/vulkan/include/",
     f"{libs}/glfw/include/",

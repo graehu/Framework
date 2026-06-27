@@ -1,21 +1,26 @@
-#include "vulkan_sample.h"
-#include "../../utils/log/log.h"
-#include "../../utils/params.h"
-#include "../../utils/blob.h"
-#include "../../utils/filesystem.h"
-#include "../../window/window2.h"
-#include "../../graphics/graphics2.h"
+// std
 #include <cstddef>
 #include <cstring>
 #include <thread>
 #include <vector>
-#include "../../graphics/camera/camera.h"
-#include "../../input/input.h"
-#include "../../../libs/imgui/imgui.h"
-#include "../../utils/importer.h"
-#include "../../utils/profiler.h"
 
+#include "vulkan_sample.h"
+// 
+#include "window/window2.h"
+#include "graphics/graphics2.h"
+#include "graphics/camera/camera.h"
+#include "input/input.h"
+// utils
+#include "utils/log/log.h"
+#include "utils/params.h"
+#include "utils/blob.h"
+#include "utils/filesystem.h"
+#include "utils/importer.h"
+#include "utils/profiler.h"
+
+#include "imgui.h"
 #include "GLFW/glfw3.h"
+
 using namespace fw;
 namespace fwvulkan
 {
@@ -73,6 +78,9 @@ void vulkan_sample::run()
 
 	std::vector<Mesh*> meshes;
 	std::vector<Image*> images;
+	char sponza[PATH_MAX]={}; char helmet[PATH_MAX]={};
+	filesystem::abs_path("~/Github/glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", sponza);
+	filesystem::abs_path("~/Github/glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", helmet);
 	float time = 0;
 	int shademode = 0;
 	camera cam;
@@ -175,12 +183,7 @@ void vulkan_sample::run()
 				ImGui::Unindent();
 				static int current_gltf = 0;
 				// todo: make this list user driven, have it pull recursively from a directory.
-				static const char* gltf_list[] = {
-					"../../../../../Github/glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf",
-					"../../../../../Github/glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf",
-					"~/Github/glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", // todo: make this work?
-					"~/Github/glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf",
-				};
+				static const char* gltf_list[] = { sponza, helmet };
 				static const char* gltf_list_zip[] = {
 					"Sponza.gltf",
 					"SciFiHelmet.gltf",

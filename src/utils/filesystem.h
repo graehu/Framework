@@ -12,111 +12,140 @@
 
 namespace fw
 {
-   namespace filesystem
-   {
-      const unsigned int max_path_len = 256;
-      // todo: handle windows slashes.
-      inline int makedirs(const char *path, mode_t mode = 0700)
-      {
-	 char temp[max_path_len];
-	 char *p = NULL;
-	 size_t len;
+	namespace filesystem
+	{
+		const unsigned int max_path_len = 256;
+		// todo: handle windows slashes.
+		inline int makedirs(const char* path, mode_t mode = 0700)
+		{
+			char temp[max_path_len];
+			char* p = NULL;
+			size_t len;
 
-	 // Copy path to a temporary buffer
-	 snprintf(temp, sizeof(temp), "%s", path);
-	 len = strlen(temp);
+			// Copy path to a temporary buffer
+			snprintf(temp, sizeof(temp), "%s", path);
+			len = strlen(temp);
 
-	 // Remove trailing slash if present
-	 if (temp[len - 1] == '/') { temp[len - 1] = '\0'; }
+			// Remove trailing slash if present
+			if (temp[len - 1] == '/') { temp[len - 1] = '\0'; }
 
-	 // Iterate over each part of the path
-	 for (p = temp + 1; *p; p++)
-	 {
-	    if (*p == '/')
-	    {
-	       struct stat st = {};
-	       *p = '\0';
-	       if (stat(temp, &st) == -1) { mkdir(temp, 0700); }
-	       *p = '/';
-	    }
-	 }
+			// Iterate over each part of the path
+			for (p = temp + 1; *p; p++)
+			{
+				if (*p == '/')
+				{
+					struct stat st = {};
+					*p = '\0';
+					if (stat(temp, &st) == -1) { mkdir(temp, 0700); }
+					*p = '/';
+				}
+			}
 
-	 // Make the final director
-	 struct stat st = {};
-	 if (stat(temp, &st) == -1) { mkdir(temp, mode); }
-	 return 0;
-      }
-      inline int countdirs(const char *path)
-      {
-	 DIR *dir;
-	 struct dirent *entry;
-	 struct stat statbuf;
-	 char fullpath[max_path_len];
-	 int count = 0;
+			// Make the final director
+			struct stat st = {};
+			if (stat(temp, &st) == -1) { mkdir(temp, mode); }
+			return 0;
+		}
+		inline int countdirs(const char* path)
+		{
+			DIR* dir;
+			struct dirent* entry;
+			struct stat statbuf;
+			char fullpath[max_path_len];
+			int count = 0;
 
-	 dir = opendir(path);
-	 if (!dir)
-	 {
-	    return 0;
-	 }
+			dir = opendir(path);
+			if (!dir)
+			{
+				return 0;
+			}
 
-	 while ((entry = readdir(dir)) != NULL)
-	 {
-	    // Skip . and ..
-	    if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
-	    {
-	       continue;
-	    }
+			while ((entry = readdir(dir)) != NULL)
+			{
+				// Skip . and ..
+				if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+				{
+					continue;
+				}
 
-	    snprintf(fullpath, sizeof(fullpath), "%s/%s", path, entry->d_name);
+				snprintf(fullpath, sizeof(fullpath), "%s/%s", path, entry->d_name);
 
-	    if (stat(fullpath, &statbuf) == 0)
-	    {
-	       if (S_ISDIR(statbuf.st_mode))
-	       {
-		  count++;
-	       }
-	    }
-	 }
+				if (stat(fullpath, &statbuf) == 0)
+				{
+					if (S_ISDIR(statbuf.st_mode))
+					{
+						count++;
+					}
+				}
+			}
 
-	 closedir(dir);
-	 return count;
-      }
-      inline size_t get_modtime(const char* path)
-      {
-	 struct stat attr;
-	 if (stat(path, &attr) == 0) {
-	    return (size_t)attr.st_mtime;  // Last modification time
-	 }
-	 return 0;
-      }
-      inline bool exists(const char* path)
-      {
-	 struct stat buffer;
-	 return (stat(path, &buffer) == 0);
-      }
-      inline hash::u32 filehash(const char* in_file)
-      {
-	 FILE* file = fopen(in_file, "rb");
-	 if (file == nullptr) { return 0; }
-	 fseek(file, 0, SEEK_END);
-	 size_t size = ftell(file);
-	 fseek(file, 0, SEEK_SET);
-	 char* alloc = new char[size];
-	 fread((char*)alloc, size, 1, file);
-	 hash::u32 out = hash::hash_buffer(alloc, size);
-	 fclose(file);
-	 delete [] alloc;
-	 return out;
-      }
-      inline bool remove_file(const char* path)
-      {
-	 return remove(path) == 0;
-      }
-      inline bool remove_dir(const char* path)
-      {
-	 return rmdir(path) == 0;
-      }
-   }
+			closedir(dir);
+			return count;
+		}
+		inline size_t get_modtime(const char* path)
+		{
+			struct stat attr;
+			if (stat(path, &attr) == 0) {
+				return (size_t)attr.st_mtime;  // Last modification time
+			}
+			return 0;
+		}
+		inline bool exists(const char* path)
+		{
+			struct stat buffer;
+			return (stat(path, &buffer) == 0);
+		}
+		inline hash::u32 filehash(const char* in_file)
+		{
+			FILE* file = fopen(in_file, "rb");
+			if (file == nullptr) { return 0; }
+			fseek(file, 0, SEEK_END);
+			size_t size = ftell(file);
+			fseek(file, 0, SEEK_SET);
+			char* alloc = new char[size];
+			fread((char*)alloc, size, 1, file);
+			hash::u32 out = hash::hash_buffer(alloc, size);
+			fclose(file);
+			delete[] alloc;
+			return out;
+		}
+		inline bool remove_file(const char* path)
+		{
+			return remove(path) == 0;
+		}
+		inline bool remove_dir(const char* path)
+		{
+			return rmdir(path) == 0;
+		}
+		inline const char* abs_path(const char* in_path)
+		{
+			static char out_path [PATH_MAX+1];
+			realpath(in_path, out_path);
+			return out_path;
+		}
+		inline void abs_path(const char* in_path, char* out_path)
+		{
+			if (in_path && in_path[0] == '~')
+			{
+				char temp_path[PATH_MAX];
+				char* temp_iter = temp_path;
+				unsigned int in_len = strlen(in_path);
+				const char* home = getenv("HOME");
+				unsigned int home_len = strlen(home);
+				if(home_len)
+				{
+					memcpy(temp_iter, home, home_len);
+					temp_iter += home_len;
+				}
+				in_path += 1;
+				memcpy(temp_iter, in_path, in_len);
+				realpath(temp_path, out_path);
+			}
+			else
+			{
+				realpath(in_path, out_path);
+			}
+		}
+	}
 }
 
