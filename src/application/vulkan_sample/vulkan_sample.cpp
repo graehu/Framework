@@ -9,7 +9,7 @@
 #include "window/window2.h"
 #include "graphics/graphics2.h"
 #include "graphics/camera/camera.h"
-#include "input/input.h"
+#include "input/input2.h"
 // utils
 #include "utils/log/log.h"
 #include "utils/params.h"
@@ -43,8 +43,7 @@ void vulkan_sample::init()
 	window2::init(m_width, m_height, m_name);
 
 	fw::log::topics::add("input");
-	m_input = input::inputFactory();
-	m_input->init();
+	input2::init();
 
 	fw::log::topics::add("graphics");
 	graphics2::init(); // 1.7467304 seconds.
@@ -76,11 +75,11 @@ void vulkan_sample::run()
 	swapchain_mesh.material.shaders[fw::shader::e_vertex] = graphics2::pass::fullscreen;
 	swapchain_mesh.material.shaders[fw::shader::e_fragment] = graphics2::pass::unlit;
 
-	std::vector<Mesh*> meshes;
-	std::vector<Image*> images;
-	char sponza[PATH_MAX]={}; char helmet[PATH_MAX]={};
+	std::vector<Mesh*> meshes; std::vector<Image*> images;
+	char sponza[PATH_MAX] = {}; char helmet[PATH_MAX] = {};
 	filesystem::abs_path("~/Github/glTF-Sample-Assets/Models/Sponza/glTF/Sponza.gltf", sponza);
 	filesystem::abs_path("~/Github/glTF-Sample-Assets/Models/SciFiHelmet/glTF/SciFiHelmet.gltf", helmet);
+	
 	float time = 0;
 	int shademode = 0;
 	camera cam;
@@ -111,9 +110,9 @@ void vulkan_sample::run()
 	while (window2::update())
 	{
 		PROFILE_SCOPE("run Loop");
-		bool wants_shade = m_input->isKeyPressed(input::e_shademode);
-		bool wants_cmode = m_input->isKeyPressed(input::e_respawn);
-		bool wants_model = m_input->isKeyPressed(input::e_nextmodel);
+		bool wants_shade = input2::isKeyPressed(input2::e_shademode);
+		bool wants_cmode = input2::isKeyPressed(input2::e_respawn);
+		bool wants_model = input2::isKeyPressed(input2::e_nextmodel);
 		ImGui::NewFrame();
 		{
 			if (ImGui::Begin("vulkan_sample"))
@@ -142,16 +141,13 @@ void vulkan_sample::run()
 				case 4: cmodestr = "cam_locked"; break;
 				case 5: cmodestr = "cam_cycle"; break;
 				}
-				if (ImGui::Button("next shademode"))
-					wants_shade = true;
+				wants_shade |= ImGui::Button("next shademode");
 				ImGui::SameLine();
 				ImGui::Text("shademode = %s", smodestr);
-				if (ImGui::Button("next cammode"))
-					wants_cmode = true;
+				wants_cmode |= ImGui::Button("next cammode");
 				ImGui::SameLine();
 				ImGui::Text("cam_mode = %s", cmodestr);
-				if (ImGui::Button("next model"))
-					wants_model = true;
+				wants_model |= ImGui::Button("next model");
 				ImGui::SameLine();
 				ImGui::Text("model = %d", model_id);
 
@@ -184,10 +180,7 @@ void vulkan_sample::run()
 				static int current_gltf = 0;
 				// todo: make this list user driven, have it pull recursively from a directory.
 				static const char* gltf_list[] = { sponza, helmet };
-				static const char* gltf_list_zip[] = {
-					"Sponza.gltf",
-					"SciFiHelmet.gltf",
-				};
+				static const char* gltf_list_zip[] = { "Sponza.gltf", "SciFiHelmet.gltf" };
 				static const char* gltfpath = gltf_list[0];
 				if (ImGui::Combo("gltfs", &current_gltf, gltf_list, IM_ARRAYSIZE(gltf_list)))
 				{
@@ -213,6 +206,11 @@ void vulkan_sample::run()
 						unload();
 						importer::load_gltf(images, meshes, gltfpath);
 						log::debug("loaded {}, images {}, meshes {}", gltfpath, images.size(), meshes.size());
+					}
+					ImGui::SameLine();
+					if (filesystem::exists(gltfpath) && ImGui::Button("save gltf zip"))
+					{
+						importer::save_scene_zip(gltf_list_zip[current_gltf]);
 					}
 					ImGui::SameLine();
 					if (filesystem::exists(gltfpath) && ImGui::Button("load gltf zip"))
@@ -246,7 +244,7 @@ void vulkan_sample::run()
 
 		if (wants_cmode && !cam_toggling)
 		{
-			int dir = m_input->isKeyPressed(input::e_shift) ? -1 : 1;
+			int dir = input2::isKeyPressed(input2::e_shift) ? -1 : 1;
 			cmode = (cam_mode)((((int)cmode) + dir) % ((int)cam_cycle));
 			log::debug("user camera mode: {}, {}, {}", cam_num, ((int)cmode + dir), (int)cam_cycle);
 			cam_toggling = true;
@@ -267,7 +265,7 @@ void vulkan_sample::run()
 		if (!shade_toggling && wants_shade)
 		{
 			shade_toggling = true;
-			int dir = m_input->isKeyPressed(input::e_shift) ? -1 : 1;
+			int dir = input2::isKeyPressed(input2::e_shift) ? -1 : 1;
 			shademode = (shademode + dir) % 10;
 			if (shademode < 0)
 				shademode = 9;
@@ -279,10 +277,10 @@ void vulkan_sample::run()
 			shade_toggling = false;
 		}
 
-		if (!model_toggling && wants_model)
+		if (!model_toggling && wants_model && meshes.size())
 		{
 			model_toggling = true;
-			int dir = m_input->isKeyPressed(input::e_shift) ? -1 : 1;
+			int dir = input2::isKeyPressed(input2::e_shift) ? -1 : 1;
 			model_id = (model_id + dir) % meshes.size();
 			if (model_id < 0)
 				model_id = meshes.size() - 1;
@@ -301,18 +299,18 @@ void vulkan_sample::run()
 			if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow))
 			{
 				float dx, dy;
-				m_input->mouseDelta(dx, dy);
+				input2::mouseDelta(dx, dy);
 				cam.changeHeading(dx);
 				cam.changePitch(-dy);
-				m_input->centerMousePosition();
+				input2::centerMousePosition();
 			}
 			const float speed = 10.0;
 			float forward = 0.0;
 			float right = 0.0;
-			right += m_input->isKeyPressed(input::e_right) ? speed * dt : 0.0;
-			right -= m_input->isKeyPressed(input::e_left) ? speed * dt : 0.0;
-			forward += m_input->isKeyPressed(input::e_up) ? speed * dt : 0.0;
-			forward -= m_input->isKeyPressed(input::e_down) ? speed * dt : 0.0;
+			right += input2::isKeyPressed(input2::e_right) ? speed * dt : 0.0;
+			right -= input2::isKeyPressed(input2::e_left) ? speed * dt : 0.0;
+			forward += input2::isKeyPressed(input2::e_up) ? speed * dt : 0.0;
+			forward -= input2::isKeyPressed(input2::e_down) ? speed * dt : 0.0;
 
 			cam.changeForwardVelocity(-forward);
 			cam.changeStrafeVelocity(right);
@@ -341,13 +339,13 @@ void vulkan_sample::run()
 			light.position = cam.m_position;
 			light.position.j = light.position.j;
 			light.intensity = 100 * alpha + 0.0001;
-			if (m_input->isKeyPressed(input::e_right))
+			if (input2::isKeyPressed(input2::e_right))
 				cam_rot_offset += 0.01;
-			if (m_input->isKeyPressed(input::e_left))
+			if (input2::isKeyPressed(input2::e_left))
 				cam_rot_offset -= 0.01;
-			if (m_input->isKeyPressed(input::e_down))
+			if (input2::isKeyPressed(input2::e_down))
 				cam_dist_offset += 0.01;
-			if (m_input->isKeyPressed(input::e_up))
+			if (input2::isKeyPressed(input2::e_up))
 				cam_dist_offset -= 0.01;
 			break;
 		}
@@ -381,8 +379,8 @@ void vulkan_sample::run()
 		}
 		time += (1.0f / 60.0f);
 		io.Framerate = 60;
-		m_input->update();
-		if (m_input->isKeyPressed(input::e_quit))
+		input2::update();
+		if (input2::isKeyPressed(input2::e_quit))
 			break;
 		
 		FrameMark;

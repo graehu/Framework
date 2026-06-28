@@ -533,6 +533,13 @@ namespace fw
 			load_meshes_zip(in_meshes, in_path);
 			return true;
 		}
+		bool save_scene_zip(const char* in_name)
+		{
+			PROFILE;
+			save_meshes_zip(in_name);
+			save_images_zip(in_name);
+			return true;
+		}
 		bool invalidate_cache()
 		{
 			PROFILE;
